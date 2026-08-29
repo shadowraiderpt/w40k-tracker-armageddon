@@ -107,6 +107,11 @@
   .diegrid button.hit{background:var(--ork-green);border-color:var(--ork-green);color:#fff;}
   .tally{font-size:12px;color:var(--text-sec);margin-top:6px;}
   .toggle-mode{font-size:12px;color:var(--gold);text-decoration:underline;cursor:pointer;text-align:right;margin-top:6px;padding:6px 0;}
+  .adjust-row{display:flex;align-items:center;gap:8px;margin:-4px 0 10px;flex-wrap:wrap;}
+  .adjust-row .step-hint{margin-bottom:0;}
+  .adjust-control{display:inline-flex;align-items:center;gap:6px;}
+  .adjust-control button{padding:2px 0;font-size:16px;font-weight:700;min-height:32px;width:32px;line-height:1;}
+  .adjust-control .adjust-value{min-width:28px;text-align:center;font-family:var(--display-font);font-size:14px;color:var(--gold);font-variant-numeric:tabular-nums;}
   .voice-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
   .mic-btn{flex-shrink:0;width:48px;height:48px;min-height:48px;border-radius:50%;font-size:20px;padding:0;display:flex;align-items:center;justify-content:center;}
   .mic-btn.listening{background:var(--danger);border-color:var(--danger);color:#fff;animation:mic-pulse 1.1s ease-in-out infinite;}
@@ -532,6 +537,19 @@ function maxOfDiceNotation(v) {
 function hasKeyword(weapon, kw) {
   return (weapon.keywords || []).some(k => k.toUpperCase().indexOf(kw.toUpperCase()) === 0);
 }
+// Aplica um ajuste manual a um threshold base "precisas de X+". O valor
+// introduzido representa o modificador ao ROLL (igual à notação do jogo:
+// "-1 to hit" = adjust -1), por isso o threshold sobe quando o modificador é
+// negativo (é mais difícil acertar) e desce quando é positivo — daí a
+// subtração. Resultado travado entre 2 (o melhor possível) e 7 (sentinela de
+// "auto-falha", mesma convenção já usada para saves > 6).
+function adjustedThreshold(base, adjust) {
+  if (base === null || base === undefined) return null;
+  return Math.max(2, Math.min(7, base - (adjust || 0)));
+}
+function thresholdText(t) {
+  return t > 6 ? "auto-falha" : (t + "+");
+}
 let uidCounter = 1;
 const nextId = () => uidCounter++;
 function el(tag, props, children) {
@@ -587,6 +605,14 @@ function emptyCycle() {
     hits: null, wounds: null, failedSaves: null,
     allocOrder: null, manualDamage: null, deadByGroup: null,
     inputMode: {}, diceRolls: {}, voice: {},
+    // Ajuste manual (+/-) que o jogador aplica ao threshold de acertar/ferir
+    // por causa de modificadores da mesa física (cobertura, stratagems...).
+    // A app nunca decide o modificador sozinha — só soma/subtrai o que o
+    // jogador já sabe.
+    hitAdjust: 0, woundAdjust: 0,
+    // DEVASTATING WOUNDS: quantos dos wounds confirmados foram um 6 não
+    // modificado (critical wound) — viram mortal wounds diretas, sem save.
+    critWounds: null, critDeadByGroup: null,
     // Usados só quando os grupos de alocação do alvo têm saves efetivos
     // diferentes (ex: líder com InvSv vs esquadrão sem) — nesse caso os
     // saves têm de ser resolvidos grupo a grupo, não com um número só.
@@ -1389,9 +1415,12 @@ function renderAttackCycle(phaseKey) {
   wrap.appendChild(banner);
 
   const isTorrent = phaseKey === "shooting" && hasKeyword(weapon, "TORRENT");
+  const isDevWounds = hasKeyword(weapon, "DEVASTATING WOUNDS");
   const hitThreshold = parseThreshold(toHitValue(weapon, phaseKey));
+  const effHitThreshold = adjustedThreshold(hitThreshold, c.hitAdjust);
   const targetT = target.groups[0].stats.T;
   const woundT = woundThreshold(weapon.S, targetT);
+  const effWoundThreshold = adjustedThreshold(woundT, c.woundAdjust);
 
   function effSaveFor(group) {
     const sv = parseThreshold(group.stats.SV);
@@ -1418,9 +1447,10 @@ function renderAttackCycle(phaseKey) {
       }));
     } else {
       wrap.appendChild(renderNumberStep({
-        title: "Precisas de " + hitThreshold + "+ para acertar",
-        hint: hitStat + " da arma: " + toHitValue(weapon, phaseKey),
-        threshold: hitThreshold, stepKey: "hits", max: attacksMax, countLabel: "Hits",
+        title: "Precisas de " + thresholdText(effHitThreshold) + " para acertar",
+        hint: hitStat + " da arma: " + toHitValue(weapon, phaseKey) + (c.hitAdjust ? " · ajuste manual aplicado: " + (c.hitAdjust > 0 ? "+" : "") + c.hitAdjust : ""),
+        threshold: effHitThreshold > 6 ? 999 : effHitThreshold, stepKey: "hits", max: attacksMax, countLabel: "Hits",
+        adjust: { value: c.hitAdjust, onChange: v => { c.hitAdjust = Math.max(-5, Math.min(5, v)); render(); } },
         onConfirm: n => { c.hits = n; c.step = 2; render(); },
         confirmLabel: "Confirmar hits →",
       }));
@@ -1430,9 +1460,10 @@ function renderAttackCycle(phaseKey) {
 
   if (c.step === 2) {
     wrap.appendChild(renderNumberStep({
-      title: "Precisas de " + woundT + "+ para ferir",
-      hint: "S " + weapon.S + " vs T " + targetT + " (" + target.label + ")",
-      threshold: woundT, stepKey: "wounds", max: c.hits, countLabel: "Wounds",
+      title: "Precisas de " + thresholdText(effWoundThreshold) + " para ferir",
+      hint: "S " + weapon.S + " vs T " + targetT + " (" + target.label + ")" + (c.woundAdjust ? " · ajuste manual aplicado: " + (c.woundAdjust > 0 ? "+" : "") + c.woundAdjust : ""),
+      threshold: effWoundThreshold > 6 ? 999 : effWoundThreshold, stepKey: "wounds", max: c.hits, countLabel: "Wounds",
+      adjust: { value: c.woundAdjust, onChange: v => { c.woundAdjust = Math.max(-5, Math.min(5, v)); render(); } },
       onConfirm: n => { c.wounds = n; c.step = 3; render(); },
       confirmLabel: "Confirmar wounds →",
     }));
@@ -1449,6 +1480,36 @@ function renderAttackCycle(phaseKey) {
       return wrap;
     }
 
+    if (isDevWounds && c.critWounds === null) {
+      if (c.wounds === 0) {
+        c.critWounds = 0;
+        c.critDeadByGroup = {};
+      } else {
+        wrap.appendChild(renderNumberStep({
+          title: "Desses wounds, quantos foram um 6 não modificado (critical wound)?",
+          hint: "⚠️ " + weapon.name + " tem DEVASTATING WOUNDS: cada 6 não modificado no wound roll vira mortal wound automática (Damage " + weapon.D + "), sem save, máx. 1 modelo morto por critical wound.",
+          threshold: null, stepKey: "critwounds", max: c.wounds, countLabel: "Wounds críticos (6 não modificado)",
+          onConfirm: n => {
+            c.critWounds = n;
+            c.critDeadByGroup = resolveDevastatingDeaths(target, n);
+            if (c.wounds - n <= 0) {
+              c.deadByGroup = c.critDeadByGroup;
+              c.manualDamage = 0;
+              c.failedSaves = 0;
+            }
+            render();
+          },
+          confirmLabel: "Confirmar críticos →",
+        }));
+        return wrap;
+      }
+    }
+    if (isDevWounds && c.wounds - (c.critWounds || 0) <= 0) {
+      c.step = 5;
+      return renderAttackCycle(phaseKey);
+    }
+
+    const woundsForSave = c.wounds - (c.critWounds || 0);
     const distinctSaves = new Set(liveGroups.map(g => effSaveFor(g)));
     const needsPerGroup = distinctSaves.size > 1;
 
@@ -1459,13 +1520,13 @@ function renderAttackCycle(phaseKey) {
       hintParts.push("vs AP " + weapon.AP);
       wrap.appendChild(renderNumberStep({
         title: "O adversário precisa de " + svText + " para salvar",
-        hint: hintParts.join(" / "),
-        threshold: saveThreshold > 6 ? 999 : saveThreshold, stepKey: "saves", max: c.wounds, countLabel: "Saves falhados",
+        hint: hintParts.join(" / ") + (isDevWounds && c.critWounds ? " · " + c.critWounds + " wound(s) já resolvido(s) como mortal wounds diretas" : ""),
+        threshold: saveThreshold > 6 ? 999 : saveThreshold, stepKey: "saves", max: woundsForSave, countLabel: "Saves falhados",
         onConfirm: n => {
           c.failedSaves = n;
           if (dmgInfo.fixed) {
             const total = n * dmgInfo.value;
-            allocateDamage(target, total);
+            allocateDamage(target, total, c.critDeadByGroup);
             c.manualDamage = null;
             c.step = 5;
           } else {
@@ -1482,7 +1543,7 @@ function renderAttackCycle(phaseKey) {
     if (!c.groupFlow) {
       c.groupFlow = "assign";
       c.groupCursor = 0;
-      c.woundsPool = c.wounds;
+      c.woundsPool = woundsForSave;
       c.groupResults = {};
     }
     const order = c.allocOrder.filter(key => {
@@ -1493,9 +1554,12 @@ function renderAttackCycle(phaseKey) {
     if (c.groupCursor >= order.length || c.woundsPool <= 0) {
       const deadByGroup = {};
       let totalDamage = 0;
-      order.forEach(key => {
+      target.groups.forEach(g => {
+        const key = g.key;
         const r = c.groupResults[key];
-        if (r) { deadByGroup[key] = r.dead || 0; totalDamage += r.damage || 0; }
+        const critDead = (c.critDeadByGroup && c.critDeadByGroup[key]) || 0;
+        deadByGroup[key] = critDead + ((r && r.dead) || 0);
+        if (r) totalDamage += r.damage || 0;
       });
       c.deadByGroup = deadByGroup;
       c.manualDamage = totalDamage;
@@ -1555,8 +1619,10 @@ function renderAttackCycle(phaseKey) {
           c.groupResults[currentKey].failedSaves = n;
           if (dmgInfo.fixed) {
             const dmg = n * dmgInfo.value;
+            const critDeadHere = (c.critDeadByGroup && c.critDeadByGroup[currentKey]) || 0;
+            const liveAfterCrit = Math.max(0, currentGroup.liveCount - critDeadHere);
             c.groupResults[currentKey].damage = dmg;
-            c.groupResults[currentKey].dead = Math.min(currentGroup.liveCount, Math.floor(dmg / currentGroup.stats.W));
+            c.groupResults[currentKey].dead = Math.min(liveAfterCrit, Math.floor(dmg / currentGroup.stats.W));
             c.groupFlow = "next";
           } else {
             c.groupFlow = "damage";
@@ -1580,8 +1646,10 @@ function renderAttackCycle(phaseKey) {
       const btn = el("button", { class: "primary", text: "Confirmar dano deste grupo →" });
       btn.style.cssText = "width:100%;margin-top:8px;";
       btn.onclick = () => {
+        const critDeadHere = (c.critDeadByGroup && c.critDeadByGroup[currentKey]) || 0;
+        const liveAfterCrit = Math.max(0, currentGroup.liveCount - critDeadHere);
         c.groupResults[currentKey].damage = v;
-        c.groupResults[currentKey].dead = Math.min(currentGroup.liveCount, Math.floor(v / currentGroup.stats.W));
+        c.groupResults[currentKey].dead = Math.min(liveAfterCrit, Math.floor(v / currentGroup.stats.W));
         c.groupFlow = "next";
         render();
       };
@@ -1603,7 +1671,7 @@ function renderAttackCycle(phaseKey) {
     card.appendChild(inp);
     const btn = el("button", { class: "primary", text: "Confirmar dano total →" });
     btn.style.width = "100%"; btn.style.marginTop = "8px";
-    btn.onclick = () => { c.manualDamage = v; allocateDamage(target, v); c.step = 5; render(); };
+    btn.onclick = () => { c.manualDamage = v; allocateDamage(target, v, c.critDeadByGroup); c.step = 5; render(); };
     card.appendChild(btn);
     wrap.appendChild(card);
     return wrap;
@@ -1612,9 +1680,15 @@ function renderAttackCycle(phaseKey) {
   if (c.step === 5) {
     const card = el("div", { class: "card" });
     card.appendChild(el("h2", { text: "Resultado" }));
-    const total = c.manualDamage !== null ? c.manualDamage : c.failedSaves * dmgInfo.value;
+    const critCount = c.critWounds || 0;
+    const critDamageDisplay = dmgInfo.fixed ? critCount * dmgInfo.value : null;
+    const normalDamage = c.manualDamage !== null ? c.manualDamage : (dmgInfo.fixed ? (c.failedSaves || 0) * dmgInfo.value : 0);
     const totalDead = Object.values(c.deadByGroup || {}).reduce((a, b) => a + b, 0);
-    const res = el("div", { class: "result final", text: total + " dano total → " + totalDead + " modelo(s) morto(s)" });
+    if (critCount > 0) {
+      card.appendChild(el("div", { class: "step-hint", text: "⚠️ Devastating Wounds: " + critCount + " critical wound(s) → mortal wounds diretas, sem save (máx. 1 modelo morto por critical wound)." }));
+    }
+    const totalText = critDamageDisplay !== null ? ((critDamageDisplay + normalDamage) + " dano total") : "dano total variável";
+    const res = el("div", { class: "result final", text: totalText + " → " + totalDead + " modelo(s) morto(s)" });
     card.appendChild(res);
     if (target.groups.length > 1) {
       const table = el("table");
@@ -1645,7 +1719,11 @@ function renderAttackCycle(phaseKey) {
   return wrap;
 }
 
-function allocateDamage(target, totalDamage) {
+// preDead (opcional): mortes já decididas antes deste cálculo (ex: mortal
+// wounds diretas de DEVASTATING WOUNDS) — reduz a pool de modelos vivos de
+// cada grupo antes de distribuir o dano normal, sem contar o mesmo modelo
+// morto duas vezes.
+function allocateDamage(target, totalDamage, preDead) {
   const c = state.cycle;
   const order = (c.allocOrder && c.allocOrder.length) ? c.allocOrder : target.groups.map(g => g.key);
   let remaining = totalDamage;
@@ -1654,11 +1732,34 @@ function allocateDamage(target, totalDamage) {
     const g = target.groups.find(gr => gr.key === key);
     if (!g) return;
     const w = g.stats.W;
-    const canDie = Math.min(g.liveCount, Math.floor(remaining / w));
-    dead[key] = canDie;
+    const already = (preDead && preDead[key]) || 0;
+    const liveAfterPre = Math.max(0, g.liveCount - already);
+    const canDie = Math.min(liveAfterPre, Math.floor(remaining / w));
+    dead[key] = already + canDie;
     remaining -= canDie * w;
   });
   c.deadByGroup = dead;
+}
+
+// DEVASTATING WOUNDS: cada critical wound (6 não modificado no wound roll)
+// vira mortal wounds diretas, sem save, mas mata no máximo 1 modelo por
+// critical wound — independentemente do valor de Damage da arma (ver
+// core_rules_reference.md, glossário de keywords). Por isso o cálculo aqui
+// não precisa do valor de dano, só da contagem de critical wounds.
+function resolveDevastatingDeaths(target, critCount) {
+  const c = state.cycle;
+  const order = (c.allocOrder && c.allocOrder.length) ? c.allocOrder : target.groups.map(g => g.key);
+  const dead = {};
+  let remaining = critCount;
+  order.forEach(key => {
+    const g = target.groups.find(gr => gr.key === key);
+    if (!g) return;
+    const alive = Math.max(0, g.liveCount - (dead[key] || 0));
+    const canDie = Math.min(alive, remaining);
+    dead[key] = (dead[key] || 0) + canDie;
+    remaining -= canDie;
+  });
+  return dead;
 }
 
 function applyDeaths(target, deadByGroup) {
@@ -1734,12 +1835,29 @@ function renderPicker(instances, phaseKey) {
     c.step = 1; c.hits = null; c.wounds = null; c.failedSaves = null;
     c.allocOrder = target.groups.length > 1 ? null : target.groups.map(g => g.key);
     c.manualDamage = null; c.deadByGroup = null;
+    c.hitAdjust = 0; c.woundAdjust = 0;
+    c.critWounds = null; c.critDeadByGroup = null;
+    c.groupFlow = null; c.groupCursor = 0; c.woundsPool = 0; c.groupResults = {};
     render();
   };
   card.appendChild(startBtn);
   return card;
 }
 
+function renderAdjustControl(value, onChange) {
+  const wrap = el("span", { class: "adjust-control" });
+  const minus = el("button", { class: "small", text: "−" });
+  minus.type = "button";
+  minus.onclick = () => onChange((value || 0) - 1);
+  const val = el("span", { class: "adjust-value", text: (value > 0 ? "+" : "") + value });
+  const plus = el("button", { class: "small", text: "+" });
+  plus.type = "button";
+  plus.onclick = () => onChange((value || 0) + 1);
+  wrap.appendChild(minus);
+  wrap.appendChild(val);
+  wrap.appendChild(plus);
+  return wrap;
+}
 function renderNumberStep(opts) {
   const card = el("div", { class: "card" });
   card.appendChild(el("div", { class: "step-hint", text: opts.hint }));
@@ -1747,6 +1865,13 @@ function renderNumberStep(opts) {
   const c = state.cycle;
   const mode = c.inputMode[opts.stepKey] || "number";
   const max = (typeof opts.max === "number" && isFinite(opts.max)) ? Math.max(0, opts.max) : null;
+
+  if (opts.adjust) {
+    const row = el("div", { class: "adjust-row" });
+    row.appendChild(el("span", { class: "step-hint", text: "Ajuste manual (cobertura, stratagems, etc.):" }));
+    row.appendChild(renderAdjustControl(opts.adjust.value, opts.adjust.onChange));
+    card.appendChild(row);
+  }
 
   if (max !== null && opts.countLabel) {
     card.appendChild(el("div", { class: "step-hint", text: opts.countLabel + " — máximo " + max + " nesta etapa", style: "color:var(--gold);" }));
