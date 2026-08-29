@@ -520,6 +520,15 @@ function parseDamage(d) {
   if (typeof d === "number") return { fixed: true, value: d };
   return { fixed: false, label: String(d) };
 }
+// Máximo fisicamente possível de um valor de dados tipo "D3", "D6", "D3+3".
+// Para um número fixo devolve o próprio número. Usado para travar campos
+// (hits/wounds/saves) num limite real em vez de deixar entrar qualquer valor.
+function maxOfDiceNotation(v) {
+  if (typeof v === "number") return v;
+  const m = String(v).match(/^D(\d+)(?:\+(\d+))?$/i);
+  if (!m) return null;
+  return parseInt(m[1], 10) + (m[2] ? parseInt(m[2], 10) : 0);
+}
 function hasKeyword(weapon, kw) {
   return (weapon.keywords || []).some(k => k.toUpperCase().indexOf(kw.toUpperCase()) === 0);
 }
@@ -1396,13 +1405,14 @@ function renderAttackCycle(phaseKey) {
   const defaultSaveGroup = liveGroups[0] || target.groups[0];
   const saveThreshold = effSaveFor(defaultSaveGroup);
   const dmgInfo = parseDamage(weapon.D);
+  const attacksMax = maxOfDiceNotation(weapon.A);
 
   if (c.step === 1) {
     if (isTorrent) {
       wrap.appendChild(renderNumberStep({
         title: "Quantos hits (TORRENT — acerta sempre)?",
         hint: "🎯 Arma TORRENT: acerta automaticamente, não há hit roll. Introduz quantos ataques rolaste.",
-        threshold: null, stepKey: "hits",
+        threshold: null, stepKey: "hits", max: attacksMax, countLabel: "Hits",
         onConfirm: n => { c.hits = n; c.step = 2; render(); },
         confirmLabel: "Confirmar hits →",
       }));
@@ -1410,7 +1420,7 @@ function renderAttackCycle(phaseKey) {
       wrap.appendChild(renderNumberStep({
         title: "Precisas de " + hitThreshold + "+ para acertar",
         hint: hitStat + " da arma: " + toHitValue(weapon, phaseKey),
-        threshold: hitThreshold, stepKey: "hits",
+        threshold: hitThreshold, stepKey: "hits", max: attacksMax, countLabel: "Hits",
         onConfirm: n => { c.hits = n; c.step = 2; render(); },
         confirmLabel: "Confirmar hits →",
       }));
@@ -1422,7 +1432,7 @@ function renderAttackCycle(phaseKey) {
     wrap.appendChild(renderNumberStep({
       title: "Precisas de " + woundT + "+ para ferir",
       hint: "S " + weapon.S + " vs T " + targetT + " (" + target.label + ")",
-      threshold: woundT, stepKey: "wounds",
+      threshold: woundT, stepKey: "wounds", max: c.hits, countLabel: "Wounds",
       onConfirm: n => { c.wounds = n; c.step = 3; render(); },
       confirmLabel: "Confirmar wounds →",
     }));
@@ -1450,7 +1460,7 @@ function renderAttackCycle(phaseKey) {
       wrap.appendChild(renderNumberStep({
         title: "O adversário precisa de " + svText + " para salvar",
         hint: hintParts.join(" / "),
-        threshold: saveThreshold > 6 ? 999 : saveThreshold, stepKey: "saves",
+        threshold: saveThreshold > 6 ? 999 : saveThreshold, stepKey: "saves", max: c.wounds, countLabel: "Saves falhados",
         onConfirm: n => {
           c.failedSaves = n;
           if (dmgInfo.fixed) {
@@ -1540,6 +1550,7 @@ function renderAttackCycle(phaseKey) {
         title: currentGroup.label + " (" + c.groupResults[currentKey].assignedWounds + " wound(s)): precisa de " + svText + " para salvar",
         hint: hintParts.join(" / "),
         threshold: gSave > 6 ? 999 : gSave, stepKey: "save-" + currentKey,
+        max: c.groupResults[currentKey].assignedWounds, countLabel: "Saves falhados",
         onConfirm: n => {
           c.groupResults[currentKey].failedSaves = n;
           if (dmgInfo.fixed) {
@@ -1735,17 +1746,27 @@ function renderNumberStep(opts) {
   card.appendChild(el("h3", { text: opts.title }));
   const c = state.cycle;
   const mode = c.inputMode[opts.stepKey] || "number";
+  const max = (typeof opts.max === "number" && isFinite(opts.max)) ? Math.max(0, opts.max) : null;
 
-  card.appendChild(renderVoiceControl(opts));
+  if (max !== null && opts.countLabel) {
+    card.appendChild(el("div", { class: "step-hint", text: opts.countLabel + " — máximo " + max + " nesta etapa", style: "color:var(--gold);" }));
+  }
+
+  card.appendChild(renderVoiceControl(opts, max));
   const voiceStatus = (c.voice[opts.stepKey] || {}).status;
   if (voiceStatus === "review") return card;
 
   const body = el("div");
   if (mode === "number") {
     const inp = el("input", { type: "number" }); inp.min = "0";
+    if (max !== null) inp.max = String(max);
     let val = 0;
     inp.value = 0;
-    inp.oninput = e => { val = Math.max(0, parseInt(e.target.value) || 0); };
+    inp.oninput = e => {
+      let n = Math.max(0, parseInt(e.target.value) || 0);
+      if (max !== null && n > max) { n = max; e.target.value = max; }
+      val = n;
+    };
     body.appendChild(inp);
     const btn = el("button", { class: "primary", text: opts.confirmLabel || "Confirmar" });
     btn.style.width = "100%"; btn.style.marginTop = "8px";
@@ -1753,17 +1774,19 @@ function renderNumberStep(opts) {
     body.appendChild(btn);
   } else {
     const rolls = c.diceRolls[opts.stepKey] || (c.diceRolls[opts.stepKey] = []);
+    const atMax = max !== null && rolls.length >= max;
     const grid = el("div", { class: "diegrid" });
     for (let n = 1; n <= 6; n++) {
       const isHit = opts.threshold !== null && n >= opts.threshold;
       const btn = el("button", { class: isHit ? "hit" : "", text: String(n) });
-      btn.onclick = () => { rolls.push(n); render(); };
+      btn.disabled = atMax;
+      btn.onclick = () => { if (!(max !== null && rolls.length >= max)) { rolls.push(n); render(); } };
       grid.appendChild(btn);
     }
     body.appendChild(grid);
     const successes = opts.threshold === null ? rolls.length : rolls.filter(r => r >= opts.threshold).length;
     const tally = el("div", { class: "tally" });
-    tally.appendChild(document.createTextNode(rolls.length + " dados registados — "));
+    tally.appendChild(document.createTextNode(rolls.length + (max !== null ? "/" + max : "") + " dados registados — "));
     tally.appendChild(el("b", { text: successes + " sucesso(s)", style: "color:var(--text)" }));
     if (rolls.length > 0) {
       const undoBtn = el("button", { class: "small", text: "desfazer" });
@@ -1772,6 +1795,7 @@ function renderNumberStep(opts) {
       tally.appendChild(undoBtn);
     }
     body.appendChild(tally);
+    if (atMax) body.appendChild(el("div", { class: "step-hint", text: "Máximo atingido — usa \"desfazer\" se precisares de corrigir." }));
     const btn = el("button", { class: "primary", text: opts.confirmLabel || "Confirmar" });
     btn.style.width = "100%"; btn.style.marginTop = "8px";
     btn.onclick = () => { c.diceRolls[opts.stepKey] = []; opts.onConfirm(successes); };
@@ -1786,7 +1810,7 @@ function renderNumberStep(opts) {
   return card;
 }
 
-function renderVoiceControl(opts) {
+function renderVoiceControl(opts, max) {
   const c = state.cycle;
   const stepKey = opts.stepKey;
   if (!c.voice[stepKey]) c.voice[stepKey] = { status: "idle" };
@@ -1833,9 +1857,10 @@ function renderVoiceControl(opts) {
 
     const validValues = v.entries.map(e => e.value).filter(x => x !== null);
     const invalidCount = v.entries.length - validValues.length;
+    const overMax = max !== null && validValues.length > max;
     const successes = opts.threshold === null ? validValues.length : validValues.filter(x => x >= opts.threshold).length;
     const summary = el("div", { class: "tally" });
-    summary.textContent = validValues.length + " número(s) válido(s)"
+    summary.textContent = validValues.length + (max !== null ? "/" + max : "") + " número(s) válido(s)"
       + (invalidCount > 0 ? ", " + invalidCount + " por corrigir/remover" : "")
       + " — " + successes + (opts.threshold === null ? " no total" : " sucesso(s)");
     panel.appendChild(summary);
@@ -1847,7 +1872,7 @@ function renderVoiceControl(opts) {
     discardBtn.onclick = () => { c.voice[stepKey] = { status: "idle" }; render(); };
     const confirmBtn = el("button", { class: "primary", text: opts.confirmLabel || "Confirmar" });
     confirmBtn.style.flex = "1";
-    confirmBtn.disabled = invalidCount > 0;
+    confirmBtn.disabled = invalidCount > 0 || overMax;
     confirmBtn.onclick = () => {
       c.voice[stepKey] = { status: "idle" };
       opts.onConfirm(successes);
@@ -1857,6 +1882,9 @@ function renderVoiceControl(opts) {
     panel.appendChild(actionRow);
     if (invalidCount > 0) {
       panel.appendChild(el("div", { class: "step-hint", text: "Corrige (digita 1-6) ou remove (✕) os números marcados a vermelho antes de confirmar." }));
+    }
+    if (overMax) {
+      panel.appendChild(el("div", { class: "step-hint", text: "Reconheceste mais números válidos (" + validValues.length + ") do que o máximo desta etapa (" + max + ") — remove os que sobram antes de confirmar." }));
     }
     wrap.appendChild(panel);
     return wrap;
