@@ -107,6 +107,23 @@
   .diegrid button.hit{background:var(--ork-green);border-color:var(--ork-green);color:#fff;}
   .tally{font-size:12px;color:var(--text-sec);margin-top:6px;}
   .toggle-mode{font-size:12px;color:var(--gold);text-decoration:underline;cursor:pointer;text-align:right;margin-top:6px;padding:6px 0;}
+  .voice-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .mic-btn{flex-shrink:0;width:48px;height:48px;min-height:48px;border-radius:50%;font-size:20px;padding:0;display:flex;align-items:center;justify-content:center;}
+  .mic-btn.listening{background:var(--danger);border-color:var(--danger);color:#fff;animation:mic-pulse 1.1s ease-in-out infinite;}
+  @keyframes mic-pulse{
+    0%{box-shadow:0 0 0 0 rgba(179,42,42,0.6);}
+    70%{box-shadow:0 0 0 14px rgba(179,42,42,0);}
+    100%{box-shadow:0 0 0 0 rgba(179,42,42,0);}
+  }
+  .voice-status{font-size:12px;color:var(--text-sec);flex:1;}
+  .voice-status.listening{color:var(--danger);font-weight:600;}
+  .voice-review{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px;margin-bottom:10px;}
+  .voice-chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0;}
+  .voice-chip{display:flex;flex-direction:column;align-items:center;gap:3px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:6px;}
+  .voice-chip.invalid{border-color:var(--danger);}
+  .voice-chip .raw{font-size:10px;color:var(--text-sec);max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .voice-chip input{width:52px;min-height:38px;padding:4px;text-align:center;}
+  .voice-chip button{min-height:28px;padding:2px 6px;font-size:11px;}
   .allocgroup{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;}
   .empty{color:var(--text-sec);font-size:12px;text-align:center;padding:20px 0;}
   .filebtns{display:flex;gap:8px;}
@@ -446,6 +463,44 @@ function renderUnitPhoto(ds) {
 }
 
 // ---------------------------------------------------------------------------
+// Input por voz (Web Speech API nativa, pt-PT) — alternativa aos contadores
+// manuais de hits/wounds/saves falhados. Nunca aplica nada sem confirmação.
+// ---------------------------------------------------------------------------
+const PT_NUMBER_WORDS = {
+  "zero": 0, "0": 0,
+  "um": 1, "uma": 1, "1": 1,
+  "dois": 2, "duas": 2, "2": 2,
+  "tres": 3, "3": 3,
+  "quatro": 4, "4": 4,
+  "cinco": 5, "5": 5,
+  "seis": 6, "6": 6,
+  "sete": 7, "7": 7,
+  "oito": 8, "8": 8,
+  "nove": 9, "9": 9,
+  "dez": 10, "10": 10,
+};
+function stripAccents(s) {
+  const combiningMarks = new RegExp("[" + String.fromCharCode(768) + "-" + String.fromCharCode(879) + "]", "g");
+  return s.normalize("NFD").replace(combiningMarks, "");
+}
+// Divide a frase reconhecida em números individuais (1-6 válidos; outros
+// ficam marcados como inválidos em vez de serem descartados em silêncio).
+function parseSpokenNumbers(transcript) {
+  const tokens = stripAccents(transcript.toLowerCase())
+    .split(/[\s,]+/)
+    .map(t => t.trim())
+    .filter(t => t.length > 0 && t !== "e");
+  return tokens.map(raw => {
+    const n = PT_NUMBER_WORDS[raw];
+    const valid = n !== undefined && n >= 1 && n <= 6;
+    return { raw, value: valid ? n : null, valid };
+  });
+}
+function getSpeechRecognitionCtor() {
+  return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
+
+// ---------------------------------------------------------------------------
 // Helpers de regras (core_rules_reference.md)
 // ---------------------------------------------------------------------------
 function parseThreshold(v) {
@@ -522,7 +577,7 @@ function emptyCycle() {
     step: 0, // 0=picking,1=hit,2=wound,3=save,4.5=manualDamage,5=result
     hits: null, wounds: null, failedSaves: null,
     allocOrder: null, manualDamage: null, deadByGroup: null,
-    inputMode: {}, diceRolls: {},
+    inputMode: {}, diceRolls: {}, voice: {},
     // Usados só quando os grupos de alocação do alvo têm saves efetivos
     // diferentes (ex: líder com InvSv vs esquadrão sem) — nesse caso os
     // saves têm de ser resolvidos grupo a grupo, não com um número só.
@@ -537,7 +592,7 @@ function render() {
   root.appendChild(el("div", { class: "subtitle", text: "Pré-visualização: Setup + sequência do turno (Command → Movement → Shooting → Charge → Fight)" }));
   root.appendChild(el("div", { class: "devbanner", text:
     "⚠ Pré-visualização em JavaScript puro para validar o fluxo antes de construir a app completa em React+Vite (é preciso instalar Node.js para esse passo). " +
-    "Faltam de propósito: log de pontuação, PWA e input por voz. O estado grava-se sozinho neste dispositivo (localStorage). Cada fase mostra os Core Stratagems relevantes (referência — a app nunca os ativa sozinha)."
+    "Faltam de propósito: log de pontuação e PWA completa. O estado grava-se sozinho neste dispositivo (localStorage). Hits/wounds/saves têm ditado por voz (🎤, pt-PT) como alternativa ao clique. Cada fase mostra os Core Stratagems relevantes (referência — a app nunca os ativa sozinha)."
   }));
 
   const tabs = el("div", { class: "tabs" });
@@ -1681,6 +1736,10 @@ function renderNumberStep(opts) {
   const c = state.cycle;
   const mode = c.inputMode[opts.stepKey] || "number";
 
+  card.appendChild(renderVoiceControl(opts));
+  const voiceStatus = (c.voice[opts.stepKey] || {}).status;
+  if (voiceStatus === "review") return card;
+
   const body = el("div");
   if (mode === "number") {
     const inp = el("input", { type: "number" }); inp.min = "0";
@@ -1725,6 +1784,157 @@ function renderNumberStep(opts) {
   card.appendChild(toggle);
 
   return card;
+}
+
+function renderVoiceControl(opts) {
+  const c = state.cycle;
+  const stepKey = opts.stepKey;
+  if (!c.voice[stepKey]) c.voice[stepKey] = { status: "idle" };
+  const v = c.voice[stepKey];
+  const Ctor = getSpeechRecognitionCtor();
+  const wrap = el("div");
+
+  if (!Ctor) {
+    const row = el("div", { class: "voice-row" });
+    const btn = el("button", { class: "mic-btn", text: "🎤" });
+    btn.disabled = true;
+    row.appendChild(btn);
+    row.appendChild(el("div", { class: "voice-status", text: "Ditado por voz não suportado neste browser — usa o clique ou o teclado." }));
+    wrap.appendChild(row);
+    return wrap;
+  }
+
+  if (v.status === "review") {
+    const panel = el("div", { class: "voice-review" });
+    panel.appendChild(el("div", { class: "step-hint", text: "Confere os resultados antes de confirmar — corrige ou remove o que não bateu certo." }));
+    const chips = el("div", { class: "voice-chips" });
+    v.entries.forEach((entry, i) => {
+      const chip = el("div", { class: "voice-chip" + (entry.value === null ? " invalid" : "") });
+      chip.appendChild(el("div", { class: "raw", text: "\"" + entry.raw + "\"" }));
+      const inp = el("input", { type: "number" });
+      inp.min = "1"; inp.max = "6";
+      inp.value = entry.value !== null ? entry.value : "";
+      inp.placeholder = "?";
+      inp.oninput = e => {
+        const n = parseInt(e.target.value, 10);
+        entry.value = (n >= 1 && n <= 6) ? n : null;
+        render();
+      };
+      chip.appendChild(inp);
+      const rm = el("button", { text: "✕" });
+      rm.onclick = () => { v.entries.splice(i, 1); render(); };
+      chip.appendChild(rm);
+      chips.appendChild(chip);
+    });
+    panel.appendChild(chips);
+    const addBtn = el("button", { class: "small", text: "+ Adicionar número" });
+    addBtn.onclick = () => { v.entries.push({ raw: "manual", value: null }); render(); };
+    panel.appendChild(addBtn);
+
+    const validValues = v.entries.map(e => e.value).filter(x => x !== null);
+    const invalidCount = v.entries.length - validValues.length;
+    const successes = opts.threshold === null ? validValues.length : validValues.filter(x => x >= opts.threshold).length;
+    const summary = el("div", { class: "tally" });
+    summary.textContent = validValues.length + " número(s) válido(s)"
+      + (invalidCount > 0 ? ", " + invalidCount + " por corrigir/remover" : "")
+      + " — " + successes + (opts.threshold === null ? " no total" : " sucesso(s)");
+    panel.appendChild(summary);
+
+    const actionRow = el("div", { class: "row" });
+    actionRow.style.cssText = "margin-top:8px;gap:8px;";
+    const discardBtn = el("button", { text: "Descartar" });
+    discardBtn.style.flex = "1";
+    discardBtn.onclick = () => { c.voice[stepKey] = { status: "idle" }; render(); };
+    const confirmBtn = el("button", { class: "primary", text: opts.confirmLabel || "Confirmar" });
+    confirmBtn.style.flex = "1";
+    confirmBtn.disabled = invalidCount > 0;
+    confirmBtn.onclick = () => {
+      c.voice[stepKey] = { status: "idle" };
+      opts.onConfirm(successes);
+    };
+    actionRow.appendChild(discardBtn);
+    actionRow.appendChild(confirmBtn);
+    panel.appendChild(actionRow);
+    if (invalidCount > 0) {
+      panel.appendChild(el("div", { class: "step-hint", text: "Corrige (digita 1-6) ou remove (✕) os números marcados a vermelho antes de confirmar." }));
+    }
+    wrap.appendChild(panel);
+    return wrap;
+  }
+
+  const row = el("div", { class: "voice-row" });
+  const btn = el("button", { class: "mic-btn" + (v.status === "listening" ? " listening" : "") , text: "🎤" });
+  const status = el("div", { class: "voice-status" + (v.status === "listening" ? " listening" : "") });
+  if (v.status === "denied") {
+    status.textContent = "Permissão de microfone recusada — usa o clique ou o teclado. Podes tentar de novo se mudares a permissão do browser.";
+  } else if (v.status === "listening") {
+    status.textContent = "A ouvir... diz os números separados por pausa (ex.: \"seis, três, cinco\") e depois toca no microfone para parar.";
+  } else {
+    status.textContent = "Dita os resultados em voz alta como alternativa ao clique (pt-PT).";
+  }
+  btn.onclick = () => {
+    if (v.status === "listening") {
+      if (v._recognition) { try { v._recognition.stop(); } catch (e) {} }
+      return;
+    }
+    startVoiceListening(stepKey);
+  };
+  row.appendChild(btn);
+  row.appendChild(status);
+  wrap.appendChild(row);
+  if (v.status === "listening" && v.interim) {
+    wrap.appendChild(el("div", { class: "step-hint", text: "Reconhecido até agora: " + v.interim }));
+  }
+  return wrap;
+}
+
+function startVoiceListening(stepKey) {
+  const c = state.cycle;
+  const Ctor = getSpeechRecognitionCtor();
+  const recognition = new Ctor();
+  recognition.lang = "pt-PT";
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  let finalTranscript = "";
+
+  c.voice[stepKey] = { status: "listening", _recognition: recognition, interim: "" };
+  render();
+
+  recognition.onresult = event => {
+    let interim = "";
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const transcript = event.results[i][0].transcript;
+      if (event.results[i].isFinal) finalTranscript += " " + transcript;
+      else interim += transcript;
+    }
+    if (c.voice[stepKey] && c.voice[stepKey].status === "listening") {
+      c.voice[stepKey].interim = (finalTranscript + " " + interim).trim();
+      render();
+    }
+  };
+  recognition.onerror = event => {
+    if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+      c.voice[stepKey] = { status: "denied" };
+    } else {
+      c.voice[stepKey] = { status: "idle" };
+    }
+    render();
+  };
+  recognition.onend = () => {
+    const v = c.voice[stepKey];
+    if (!v || v.status !== "listening") return; // já tratado por onerror (ex: recusado)
+    const transcript = finalTranscript.trim() || v.interim || "";
+    const entries = transcript ? parseSpokenNumbers(transcript) : [];
+    c.voice[stepKey] = entries.length > 0 ? { status: "review", entries } : { status: "idle" };
+    render();
+  };
+
+  try {
+    recognition.start();
+  } catch (e) {
+    c.voice[stepKey] = { status: "idle" };
+    render();
+  }
 }
 
 function renderAllocOrderPicker(groups, onConfirm) {
