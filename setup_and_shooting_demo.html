@@ -1,0 +1,1761 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>W40K Tracker — Armageddon</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#0d0e0c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="W40K Tracker">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* Paleta — ver plano visual: cada cor tem papel de facção E semântico */
+    --bg:#0d0e0c; --surface:#1a1b16; --surface2:#242619;
+    --text:#e8e6de; --text-sec:#8f8f7f;
+    --border:#3a3a32;
+    --sm-red:#8a1518; --gold:#c9a227; --ork-green:#4a5522;
+    --accent:var(--sm-red); --accent-text:var(--gold);
+    --good:var(--ork-green); --warn:var(--gold); --danger:#b32a2a;
+    --display-font:'Bebas Neue','Arial Narrow',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-tap-highlight-color:transparent;}
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font-family:'Inter',-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-variant-numeric:tabular-nums;
+    padding:12px;padding-bottom:60px;-webkit-font-smoothing:antialiased;
+  }
+  h1{font-family:var(--display-font);font-size:26px;margin:0 0 2px;text-align:center;letter-spacing:0.07em;text-transform:uppercase;}
+  .subtitle{font-size:11px;color:var(--text-sec);text-align:center;margin-bottom:14px;}
+  .devbanner{background:#2e2410;border:1px solid var(--gold);color:#e8c27a;font-size:11px;padding:8px 10px;border-radius:4px;margin-bottom:14px;line-height:1.4;}
+  .tabs{display:flex;gap:6px;margin-bottom:14px;}
+  .tab{
+    flex:1;min-height:48px;display:flex;align-items:center;justify-content:center;
+    padding:10px 4px;text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:4px;
+    font-family:var(--display-font);font-size:16px;letter-spacing:0.05em;color:var(--text-sec);cursor:pointer;text-transform:uppercase;
+  }
+  .tab.active{background:var(--sm-red);border-color:var(--sm-red);color:#fff;}
+  .card{
+    background:var(--surface);border-radius:4px;padding:14px;margin-bottom:12px;border:1px solid var(--border);
+    background-image:repeating-linear-gradient(135deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 5px);
+  }
+  .card h2{
+    font-family:var(--display-font);font-size:17px;margin:-14px -14px 12px;padding:9px 14px;
+    color:#fff;background:var(--sm-red);text-transform:uppercase;letter-spacing:0.06em;border-radius:3px 3px 0 0;
+  }
+  .card h3{font-family:var(--display-font);font-size:16px;margin:0 0 8px;letter-spacing:0.04em;color:var(--gold);text-transform:uppercase;}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+  button{
+    background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;
+    padding:12px 14px;font-size:14px;cursor:pointer;min-height:48px;font-family:inherit;font-variant-numeric:tabular-nums;
+  }
+  button.primary{background:var(--sm-red);border-color:var(--sm-red);color:#fff;font-weight:600;}
+  button.small{padding:8px 10px;font-size:12px;min-height:38px;}
+  button:disabled{opacity:0.4;cursor:not-allowed;}
+  input[type=number],input[type=text],select,textarea{
+    width:100%;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;
+    padding:10px;font-size:15px;font-family:inherit;min-height:44px;font-variant-numeric:tabular-nums;
+  }
+  textarea{resize:vertical;min-height:50px;}
+  label{font-family:var(--display-font);font-size:12px;letter-spacing:0.04em;color:var(--text-sec);display:block;margin-bottom:4px;text-transform:uppercase;}
+  .field{margin-bottom:12px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  @media (max-width:520px){ .grid2{grid-template-columns:1fr;} }
+  .faction-badge{
+    display:inline-block;font-size:11px;padding:4px 10px;border-radius:3px;background:var(--surface2);border:1px solid var(--border);
+    font-family:var(--display-font);letter-spacing:0.04em;text-transform:uppercase;
+  }
+  .faction-badge.sm{color:#fff;background:var(--sm-red);border-color:var(--sm-red);}
+  .faction-badge.ork{color:#fff;background:var(--ork-green);border-color:var(--ork-green);}
+  .unit-instance{background:var(--surface2);border-radius:4px;padding:10px;margin-bottom:6px;border-left:3px solid var(--border);}
+  .unit-instance.sm{border-left-color:var(--sm-red);}
+  .unit-instance.ork{border-left-color:var(--ork-green);}
+  .unit-instance .row{margin-bottom:6px;}
+  .player-card.sm{border-top:3px solid var(--sm-red);}
+  .player-card.ork{border-top:3px solid var(--ork-green);}
+  .ds-picker{max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:4px;padding:8px;}
+  .ds-item{padding:10px 8px;border-bottom:1px solid var(--border);font-size:13px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;}
+  .ds-item:last-child{border-bottom:none;}
+  .ds-item button{white-space:nowrap;}
+  .ds-photo{width:80px;height:80px;border-radius:4px;object-fit:cover;background:var(--bg);border:2px solid var(--border);flex-shrink:0;}
+  .ds-name-row{display:flex;align-items:center;gap:10px;flex-basis:100%;}
+  .ds-name-row span{font-size:13px;line-height:1.35;}
+  details{margin-bottom:8px;}
+  summary{cursor:pointer;font-size:13px;padding:10px 8px;min-height:44px;display:flex;align-items:center;color:var(--text-sec);font-family:var(--display-font);letter-spacing:0.03em;text-transform:uppercase;}
+  .statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font-size:11px;margin:6px 0;}
+  .statbox{background:var(--bg);border-radius:4px;padding:6px;text-align:center;border:1px solid var(--border);}
+  .statbox .v{font-size:16px;font-weight:700;color:var(--text);}
+  .wpn{font-size:12px;color:var(--text-sec);padding:5px 0;border-top:1px dashed var(--border);}
+  .wpn b{color:var(--text);}
+  .kw{display:inline-block;background:var(--bg);color:var(--gold);border:1px solid var(--border);border-radius:3px;padding:2px 6px;font-size:9px;margin-left:3px;letter-spacing:0.03em;}
+  .step-hint{font-size:12px;color:var(--text-sec);margin-bottom:8px;line-height:1.45;}
+  .result{
+    background:var(--sm-red);color:#fff;border-radius:4px;padding:16px;text-align:center;
+    font-family:var(--display-font);font-size:22px;letter-spacing:0.03em;margin:10px 0;text-transform:uppercase;
+  }
+  .result.final{background:var(--ork-green);}
+  .diegrid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:8px;}
+  .diegrid button{padding:0;font-size:18px;font-weight:700;min-height:48px;font-family:var(--display-font);}
+  .diegrid button.hit{background:var(--ork-green);border-color:var(--ork-green);color:#fff;}
+  .tally{font-size:12px;color:var(--text-sec);margin-top:6px;}
+  .toggle-mode{font-size:12px;color:var(--gold);text-decoration:underline;cursor:pointer;text-align:right;margin-top:6px;padding:6px 0;}
+  .allocgroup{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;}
+  .empty{color:var(--text-sec);font-size:12px;text-align:center;padding:20px 0;}
+  .filebtns{display:flex;gap:8px;}
+  .filebtns > *{flex:1;}
+  table{width:100%;font-size:13px;border-collapse:collapse;}
+  td{padding:6px 0;border-top:1px solid var(--border);}
+  /* --- Elemento assinatura: Phase Track (marcador físico de fase/ronda) --- */
+  .round-dial{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:10px;}
+  .round-dial .num{font-family:var(--display-font);font-size:34px;color:var(--gold);letter-spacing:0.02em;line-height:1;}
+  .round-pips{display:flex;gap:6px;}
+  .round-pips .pip{width:11px;height:11px;border-radius:50%;background:var(--border);border:1px solid var(--border);}
+  .round-pips .pip.done{background:var(--gold);border-color:var(--gold);}
+  .phase-track{display:flex;gap:5px;margin-bottom:10px;}
+  .phase-token{
+    flex:1;min-height:58px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    clip-path:polygon(12% 0,100% 0,88% 100%,0% 100%);
+    background:var(--surface2);color:var(--text-sec);border:none;padding:6px 2px;
+    font-family:var(--display-font);font-size:11px;letter-spacing:0.03em;cursor:pointer;text-transform:uppercase;
+  }
+  .phase-token .n{font-size:15px;}
+  .phase-token.current{background:var(--sm-red);color:#fff;box-shadow:0 3px 0 rgba(0,0,0,0.45);transform:translateY(-3px);}
+  .phase-token.done{
+    background:var(--bg);color:var(--text-sec);
+    background-image:repeating-linear-gradient(135deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 4px);
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+// ===========================================================================
+// DEMO ISOLADA — Setup + Ciclo de Ataque (Shooting Phase)
+// Vanilla JS (sem dependências externas) para pré-visualizar estas duas
+// peças antes de construir a app completa em React + Vite.
+// Faltam de propósito: Command/Movement/Charge/Fight, Command Points,
+// log de pontuação, localStorage, PWA e input por voz.
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// Dados brutos das 17 datasheets do Armageddon (armageddon_units.json colado
+// diretamente para esta demo correr sem servidor / fetch).
+// ---------------------------------------------------------------------------
+const RAW_UNITS = {
+  space_marines: [
+    {"name":"Captain with Relic Shield","points":80,"stats":{"M":"6\"","T":4,"SV":"3+","InvSV":"4+","W":5,"LD":"6+","OC":1},
+      "ranged_weapons":[{"name":"Heavy bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"18\"","A":1,"BS":"2+","S":4,"AP":-1,"D":1}],
+      "melee_weapons":[{"name":"Master-crafted power weapon","range":"Melee","A":6,"WS":"2+","S":5,"AP":-2,"D":2}],
+      "defaultCount":1, "leader_for":["Intercessor Squad"]},
+    {"name":"Librarian","points":70,"stats":{"M":"6\"","T":4,"SV":"3+","InvSV":"4+","W":4,"LD":"6+","OC":1},
+      "ranged_weapons":[
+        {"name":"Bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"3+","S":4,"AP":0,"D":1},
+        {"name":"Smite - witchfire","keywords":["PSYCHIC"],"range":"24\"","A":"D6","BS":"3+","S":5,"AP":-1,"D":"D3"},
+        {"name":"Smite - focused witchfire","keywords":["DEVASTATING WOUNDS","HAZARDOUS","PSYCHIC"],"range":"24\"","A":"D6","BS":"3+","S":6,"AP":-2,"D":"D3"}
+      ],
+      "melee_weapons":[{"name":"Force weapon","keywords":["PSYCHIC"],"range":"Melee","A":4,"WS":"3+","S":6,"AP":-1,"D":"D3"}],
+      "defaultCount":1, "leader_for":["Intercessor Squad"]},
+    {"name":"Chaplain with Jump Pack","points":75,"stats":{"M":"12\"","T":4,"SV":"3+","InvSV":"4+","W":4,"LD":"5+","OC":1},
+      "ranged_weapons":[{"name":"Absolvor bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"3+","S":5,"AP":-1,"D":1}],
+      "melee_weapons":[{"name":"Crozius arcanum","range":"Melee","A":5,"WS":"2+","S":6,"AP":-1,"D":2}],
+      "defaultCount":1, "leader_for":["Vanguard Veteran Squad with Jump Packs"]},
+    {"name":"Ancient","points":40,"stats":{"M":"6\"","T":4,"SV":"3+","W":4,"LD":"6+","OC":1},
+      "ranged_weapons":[
+        {"name":"Bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"3+","S":4,"AP":0,"D":1},
+        {"name":"Bolt rifle","keywords":["ASSAULT","HEAVY"],"range":"24\"","A":2,"BS":"3+","S":4,"AP":-1,"D":1}
+      ],
+      "melee_weapons":[{"name":"Close-combat weapon","range":"Melee","A":5,"WS":"2+","S":4,"AP":0,"D":1}],
+      "defaultCount":1, "support_for":["Intercessor Squad"]},
+    {"name":"Intercessor Squad","points":150,"stats":{"M":"6\"","T":4,"SV":"3+","W":2,"LD":"6+","OC":2},
+      "ranged_weapons":[
+        {"name":"Bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"3+","S":4,"AP":0,"D":1},
+        {"name":"Bolt rifle","keywords":["ASSAULT","HEAVY"],"range":"24\"","A":2,"BS":"3+","S":4,"AP":-1,"D":1},
+        {"name":"Grenade launcher - frag","keywords":["BLAST"],"range":"24\"","A":"D3","BS":"3+","S":4,"AP":0,"D":1},
+        {"name":"Grenade launcher - krak","range":"24\"","A":1,"BS":"3+","S":9,"AP":-2,"D":"D3"}
+      ],
+      "melee_weapons":[
+        {"name":"Chainsword","range":"Melee","A":5,"WS":"3+","S":4,"AP":-1,"D":1},
+        {"name":"Close-combat weapon","keywords":["PRECISION"],"range":"Melee","A":3,"WS":"3+","S":4,"AP":0,"D":1}
+      ],
+      "defaultCount":10},
+    {"name":"Vanguard Veteran Squad with Jump Packs","points":105,"stats":{"M":"12\"","T":4,"SV":"3+","W":2,"LD":"6+","OC":1},
+      "ranged_weapons":[
+        {"name":"Heavy bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"18\"","A":1,"BS":"3+","S":4,"AP":-1,"D":1},
+        {"name":"Plasma pistol - standard","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"3+","S":7,"AP":-2,"D":1},
+        {"name":"Plasma pistol - supercharge","keywords":["CLOSE-QUARTERS","HAZARDOUS"],"range":"12\"","A":"D3","BS":"3+","S":8,"AP":-3,"D":2}
+      ],
+      "melee_weapons":[{"name":"Master-crafted power weapon","range":"Melee","A":3,"WS":"3+","S":5,"AP":-2,"D":2}],
+      "defaultCount":5},
+    {"name":"Eradicator Squad with Heavy Bolters","points":80,"stats":{"M":"5\"","T":6,"SV":"3+","W":3,"LD":"6+","OC":1},
+      "ranged_weapons":[
+        {"name":"Bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"3+","S":4,"AP":0,"D":1},
+        {"name":"Heavy bolter","keywords":["HEAVY","SUSTAINED HITS 1"],"range":"36\"","A":3,"BS":"3+","S":5,"AP":-1,"D":2}
+      ],
+      "melee_weapons":[{"name":"Close-combat weapon","range":"Melee","A":3,"WS":"3+","S":4,"AP":0,"D":1}],
+      "defaultCount":3},
+    {"name":"Land Speeder","points":105,"stats":{"M":"14\"","T":8,"SV":"3+","W":9,"LD":"6+","OC":3},
+      "ranged_weapons":[
+        {"name":"Heavy Flamer","keywords":["TORRENT"],"range":"12\"","A":"D6","BS":"N/A","S":5,"AP":-1,"D":1},
+        {"name":"Multi-melta","keywords":["MELTA 2"],"range":"18\"","A":2,"BS":"3+","S":9,"AP":-4,"D":"D6"},
+        {"name":"Onslaught gatling cannon","keywords":["DEVASTATING WOUNDS"],"range":"24\"","A":8,"BS":"3+","S":5,"AP":0,"D":1},
+        {"name":"Stormfury missile launcher","range":"48\"","A":1,"BS":"3+","S":12,"AP":-3,"D":"D6+1"}
+      ],
+      "melee_weapons":[{"name":"Close-combat weapon","range":"Melee","A":4,"WS":"3+","S":4,"AP":0,"D":1}],
+      "defaultCount":1}
+  ],
+  orks: [
+    {"name":"Warboss","points":85,"stats":{"M":"6\"","T":5,"SV":"4+","InvSV":"5+","W":6,"LD":"6+","OC":1},
+      "ranged_weapons":[{"name":"Kustom shoota","keywords":["RAPID FIRE 2"],"range":"18\"","A":4,"BS":"5+","S":4,"AP":0,"D":1}],
+      "melee_weapons":[{"name":"Kustom choppa","keywords":["CLEAVE 1"],"range":"Melee","A":6,"WS":"2+","S":8,"AP":-2,"D":2}],
+      "defaultCount":1, "leader_for":["Boyz"]},
+    {"name":"Bigboss","points":55,"stats":{"M":"6\"","T":5,"SV":"4+","W":5,"LD":"7+","OC":1},
+      "ranged_weapons":[{"name":"Slugga","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"5+","S":4,"AP":0,"D":1}],
+      "melee_weapons":[{"name":"Two-handed big choppa","keywords":["CLEAVE 1"],"range":"Melee","A":5,"WS":"3+","S":7,"AP":-1,"D":2}],
+      "defaultCount":1, "leader_for":["Boyz"]},
+    {"name":"Bannernob","points":50,"stats":{"M":"6\"","T":5,"SV":"4+","InvSV":"5+","W":4,"LD":"7+","OC":6},
+      "ranged_weapons":[{"name":"Shoota","keywords":["RAPID FIRE 1"],"range":"18\"","A":2,"BS":"5+","S":4,"AP":0,"D":1}],
+      "melee_weapons":[{"name":"Choppa","range":"Melee","A":5,"WS":"3+","S":4,"AP":-1,"D":1}],
+      "defaultCount":1, "support_for":["Boyz"]},
+    {"name":"Painboy","points":90,"stats":{"M":"6\"","T":5,"SV":"5+","W":3,"LD":"7+","OC":1},
+      "ranged_weapons":[],
+      "melee_weapons":[
+        {"name":"Dok's toolz","range":"Melee","A":3,"WS":"4+","S":9,"AP":-2,"D":2},
+        {"name":"'Urty syringe","keywords":["ANTI-INFANTRY 4+","EXTRA ATTACKS","PRECISION"],"range":"Melee","A":1,"WS":"3+","S":2,"AP":0,"D":1}
+      ],
+      "defaultCount":1, "support_for":["Boyz"]},
+    {"name":"Weirdboy","points":65,"stats":{"M":"6\"","T":5,"SV":"5+","W":4,"LD":"7+","OC":1},
+      "ranged_weapons":[{"name":"'Eadbanger","keywords":["PRECISION","PSYCHIC"],"range":"24\"","A":1,"BS":"4+","S":6,"AP":-3,"D":1}],
+      "melee_weapons":[{"name":"Waaagh! staff","keywords":["PSYCHIC"],"range":"Melee","A":3,"WS":"3+","S":8,"AP":-1,"D":"D3"}],
+      "defaultCount":1, "leader_for":["Boyz"]},
+    {"name":"Boyz","points":75,
+      "multiProfile":[
+        {"key":"boss_nob","label":"Boss Nob","stats":{"M":"6\"","T":5,"SV":"5+","W":2,"LD":"7+","OC":2},"count":1},
+        {"key":"boyz","label":"Boyz","stats":{"M":"6\"","T":5,"SV":"5+","W":1,"LD":"7+","OC":2},"count":9}
+      ],
+      "ranged_weapons":[
+        {"name":"Slugga","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"5+","S":4,"AP":0,"D":1},
+        {"name":"Shoota","keywords":["RAPID FIRE 1"],"range":"18\"","A":2,"BS":"5+","S":4,"AP":0,"D":1},
+        {"name":"Kombi-shoota","range":"24\"","A":2,"BS":"5+","S":4,"AP":0,"D":1},
+        {"name":"Kombi-rokkit","range":"24\"","A":1,"BS":"5+","S":10,"AP":-2,"D":3},
+        {"name":"Kustom shoota","keywords":["RAPID FIRE 2"],"range":"18\"","A":4,"BS":"5+","S":4,"AP":0,"D":1}
+      ],
+      "melee_weapons":[
+        {"name":"Choppa","range":"Melee","A":3,"WS":"3+","S":4,"AP":-1,"D":1},
+        {"name":"Big choppa","range":"Melee","A":3,"WS":"3+","S":7,"AP":-1,"D":2}
+      ]},
+    {"name":"Gretchin","points":45,"stats":{"M":"6\"","T":2,"SV":"7+","W":1,"LD":"8+","OC":2},
+      "ranged_weapons":[{"name":"Blasta","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"4+","S":3,"AP":0,"D":1}],
+      "melee_weapons":[{"name":"Close-combat weapon","range":"Melee","A":1,"WS":"5+","S":2,"AP":0,"D":1}],
+      "defaultCount":10},
+    {"name":"Wartrakk","points":60,"stats":{"M":"12\"","T":6,"SV":"4+","InvSV":"6+","W":7,"LD":"7+","OC":3},
+      "ranged_weapons":[
+        {"name":"Kustom shoota","keywords":["RAPID FIRE 2"],"range":"18\"","A":2,"BS":"5+","S":4,"AP":0,"D":1},
+        {"name":"Rokkit launcha","range":"24\"","A":"D3+3","BS":"5+","S":10,"AP":-2,"D":3}
+      ],
+      "melee_weapons":[{"name":"Choppas","range":"Melee","A":5,"WS":"3+","S":4,"AP":-1,"D":1}],
+      "defaultCount":1},
+    {"name":"Big Mek Dakkarig","points":115,"stats":{"M":"8\"","T":8,"SV":"3+","InvSV":"5+","W":11,"LD":"7+","OC":3},
+      "ranged_weapons":[
+        {"name":"Blitzkannon","keywords":["HEAVY","SUSTAINED HITS 1"],"range":"24\"","A":8,"BS":"5+","S":7,"AP":-2,"D":2},
+        {"name":"Rokkit launcha","keywords":["HEAVY"],"range":"24\"","A":6,"BS":"5+","S":10,"AP":-2,"D":3}
+      ],
+      "melee_weapons":[{"name":"Stompy feet","range":"Melee","A":4,"WS":"3+","S":6,"AP":-1,"D":1}],
+      "defaultCount":1}
+  ]
+};
+
+// ---------------------------------------------------------------------------
+// Normalização: cada datasheet passa a ter sempre um array `profiles`
+// (grupos de alocação distintos). Só "Boyz" tem mais que um grupo.
+// ---------------------------------------------------------------------------
+function normalizeDatasheet(ds, faction) {
+  let profiles;
+  if (ds.multiProfile) {
+    profiles = ds.multiProfile.map(p => ({ key: p.key, label: p.label, count: p.count, stats: Object.assign({}, p.stats) }));
+  } else {
+    profiles = [{ key: "main", label: ds.name, count: ds.defaultCount || 1, stats: Object.assign({}, ds.stats) }];
+  }
+  return Object.assign({}, ds, { faction, profiles });
+}
+function buildLibrary() {
+  return {
+    space_marines: RAW_UNITS.space_marines.map(d => normalizeDatasheet(d, "Space Marines")),
+    orks: RAW_UNITS.orks.map(d => normalizeDatasheet(d, "Orks")),
+  };
+}
+function allDatasheets(lib) { return lib.space_marines.concat(lib.orks); }
+function findDatasheet(lib, name) { return allDatasheets(lib).find(d => d.name === name); }
+function rangedWeaponsFor(instance) {
+  const weapons = [];
+  instance.datasheetNames.forEach(name => {
+    const ds = findDatasheet(library, name);
+    if (ds) ds.ranged_weapons.forEach(w => weapons.push(Object.assign({ sourceDatasheet: name }, w)));
+  });
+  return weapons;
+}
+function meleeWeaponsFor(instance) {
+  const weapons = [];
+  instance.datasheetNames.forEach(name => {
+    const ds = findDatasheet(library, name);
+    if (ds) ds.melee_weapons.forEach(w => weapons.push(Object.assign({ sourceDatasheet: name }, w)));
+  });
+  return weapons;
+}
+function weaponsForPhase(instance, phaseKey) {
+  return phaseKey === "fight" ? meleeWeaponsFor(instance) : rangedWeaponsFor(instance);
+}
+function toHitValue(weapon, phaseKey) {
+  return phaseKey === "fight" ? weapon.WS : weapon.BS;
+}
+
+// ---------------------------------------------------------------------------
+// Core Stratagems (core_rules_reference.md secção 12) — só referência, a app
+// nunca ativa um stratagem sozinha nem decide se é usado.
+// ---------------------------------------------------------------------------
+const STRATAGEMS = [
+  { name: "Command Re-roll", cost: 1, phases: ["command", "movement", "shooting", "charge", "fight"],
+    when: "Qualquer fase, logo depois de rolares um advance/charge/damage/hazard/hit/save/wound roll (ou nº de ataques de uma arma) para uma unidade amiga",
+    effect: "Rerolas esse resultado (se forem vários dados, escolhes um; charge rolls rerolam-se sempre por inteiro)." },
+  { name: "Epic Challenge", cost: 1, phases: ["fight"],
+    when: "Fight phase, quando uma unidade CHARACTER amiga é escolhida para lutar",
+    effect: "Um modelo CHARACTER dessa unidade ganha [PRECISION] nas armas de combate até ao fim da fase." },
+  { name: "Insane Bravery", cost: 1, phases: ["command"],
+    when: "Battle-shock step da tua Command phase, mesmo antes de rolares o teste",
+    effect: "Esse battle-shock roll passa automaticamente.",
+    note: "Só pode ser usado 1 vez por batalha." },
+  { name: "Explosives", cost: 1, phases: ["shooting"],
+    when: "A tua Shooting phase",
+    effect: "Unidade amiga com keyword EXPLOSIVES/GRENADES, unengaged, elegível para disparar, que não avançou: escolhe um modelo com essa keyword, escolhe uma unidade inimiga unengaged a 8\" e visível, rola 6D6 — cada 4+ causa 1 mortal wound.",
+    note: "Só unidades com keyword EXPLOSIVES ou GRENADES (Captain, Chaplain, Ancient e Intercessor Squad têm esta keyword)." },
+  { name: "Crushing Impact", cost: 1, phases: ["charge"],
+    when: "A tua Charge phase, logo depois de uma unidade MONSTER/VEHICLE terminar um charge",
+    effect: "Escolhes a unidade inimiga engaged e um modelo teu engaged com ela; rolas dados = Toughness desse modelo — cada 1 causa 1 mortal wound à tua unidade, cada 5+ causa 1 mortal wound ao inimigo (máx. 6).",
+    note: "Só unidades MONSTER/VEHICLE (Big Mek Dakkarig, Wartrakk e Land Speeder qualificam-se)." },
+  { name: "Rapid Ingress", cost: 1, phases: ["movement"],
+    when: "Fim da Movement phase do adversário",
+    effect: "Uma unidade amiga em strategic reserves (exceto AIRCRAFT) faz um ingress move.",
+    note: "Não pode ser usado na 1ª ronda." },
+  { name: "Smokescreen", cost: 1, phases: ["shooting"],
+    when: "Início da Shooting phase do adversário",
+    effect: "Unidade amiga com keyword SMOKE: até ao fim da fase, ataques contra ela (ou contra unidades que ela bloqueia visualmente) têm benefício de cover." },
+  { name: "Fire Overwatch", cost: 1, phases: ["movement"],
+    when: "Fim da Movement phase do adversário",
+    effect: "Unidade amiga unengaged (exceto TITANIC) dispara em \"snap shooting\": só um alvo visível a 24\", só acerta com 6 não modificado, sem reroll de hits; depois não pode iniciar ações nessa fase." },
+  { name: "Heroic Intervention", cost: 1, phases: ["charge"],
+    when: "Fim da Charge phase do adversário",
+    effect: "Unidade amiga unengaged a 12\" de um inimigo (VEHICLE só se for CHARACTER/WALKER) faz uma carga. Modo \"Leap to Defend\": só pode alvejar quem carregou nesta fase. Modo \"Into the Fray\" (+1CP): resultado de carga acima de 6 passa a 6, e pode alvejar qualquer inimigo a 6\"." },
+  { name: "Counteroffensive", cost: 2, phases: ["fight"],
+    when: "Fight step da fase de combate do adversário, logo depois de uma unidade inimiga resolver os ataques dela",
+    effect: "Uma unidade amiga elegível para lutar ganha Fights First e tem de ser a próxima a lutar." },
+];
+function renderStratagemsCard(phaseKey) {
+  const list = STRATAGEMS.filter(s => s.phases.includes(phaseKey));
+  if (list.length === 0) return null;
+  const card = el("div", { class: "card" });
+  const key = "stratOpen" + phaseKey;
+  const isOpen = !!state.ui[key];
+  const toggle = el("h2", { text: "Stratagems desta fase (" + list.length + ") " + (isOpen ? "▲" : "▼"), style: "cursor:pointer;" });
+  toggle.onclick = () => { state.ui[key] = !isOpen; render(); };
+  card.appendChild(toggle);
+  if (!isOpen) return card;
+  card.appendChild(el("div", { class: "step-hint", text: "Referência do core_rules_reference.md — decides tu se e quando usar; a app nunca ativa nem escolhe por ti." }));
+  list.forEach(s => {
+    const item = el("div", { class: "unit-instance" });
+    const head = el("div", { class: "row" });
+    head.appendChild(el("b", { text: s.name }));
+    head.appendChild(el("span", { class: "faction-badge", text: s.cost + "CP" }));
+    item.appendChild(head);
+    item.appendChild(el("div", { text: "Quando: " + s.when, style: "font-size:11px;color:var(--text-sec);margin-top:4px;" }));
+    item.appendChild(el("div", { text: "Efeito: " + s.effect, style: "font-size:12px;margin-top:4px;" }));
+    if (s.note) item.appendChild(el("div", { text: "Nota: " + s.note, style: "font-size:11px;color:var(--accent-text);margin-top:4px;" }));
+    card.appendChild(item);
+  });
+  return card;
+}
+
+// ---------------------------------------------------------------------------
+// Limite de miniaturas físicas da caixa Armageddon (23 Space Marines + 38 Orks)
+// ---------------------------------------------------------------------------
+const BOX_LIMITS = {
+  "Captain with Relic Shield": 1, "Librarian": 1, "Chaplain with Jump Pack": 1, "Ancient": 1,
+  "Intercessor Squad": 10, "Vanguard Veteran Squad with Jump Packs": 5,
+  "Eradicator Squad with Heavy Bolters": 3, "Land Speeder": 1,
+  "Warboss": 1, "Bigboss": 1, "Bannernob": 1, "Painboy": 1, "Weirdboy": 1,
+  "Boyz": 20, "Gretchin": 10, "Wartrakk": 1, "Big Mek Dakkarig": 1,
+};
+function unitsUsedCount(dsName) {
+  let used = 0;
+  [state.setup.playerA, state.setup.playerB].forEach(player => {
+    player.units.forEach(u => u.groups.forEach(g => { if (g.datasheetName === dsName) used += g.initialCount; }));
+  });
+  return used;
+}
+function remainingCount(ds) {
+  const limit = BOX_LIMITS[ds.name];
+  if (limit === undefined) return Infinity;
+  return limit - unitsUsedCount(ds.name);
+}
+
+// Tamanho ajustável de um esquadrão: perfis com count=1 (ex: Boss Nob) ficam
+// sempre fixos a 1; o perfil "em massa" (count>1, ex: Boyz, Intercessors)
+// escala com o campo de quantidade no picker. Datasheets sem perfil >1
+// (characters solo, veículos) não são ajustáveis.
+function squadSizing(ds) {
+  const scalable = ds.profiles.find(p => p.count > 1) || null;
+  const fixedTotal = ds.profiles.filter(p => p !== scalable).reduce((s, p) => s + p.count, 0);
+  const defaultTotal = ds.profiles.reduce((s, p) => s + p.count, 0);
+  return { scalable, fixedTotal, defaultTotal, adjustable: !!scalable };
+}
+
+// ---------------------------------------------------------------------------
+// Fotos das unidades — o utilizador coloca as suas próprias fotos das
+// miniaturas em demo/unit_photos/<slug>.jpg. Sem foto, mostra um placeholder
+// discreto (nunca a arte oficial da datasheet — ver conversa sobre copyright).
+// ---------------------------------------------------------------------------
+function unitPhotoSlug(name) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+const PLACEHOLDER_PHOTO = "data:image/svg+xml;utf8," + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44">' +
+  '<rect width="44" height="44" fill="#232426"/>' +
+  '<path d="M22 10a7 7 0 100 14 7 7 0 000-14zM9 37c0-8 6-13 13-13s13 5 13 13" fill="none" stroke="#555" stroke-width="2"/>' +
+  '</svg>'
+);
+const PHOTO_EXTENSIONS = ["jpg", "jpeg", "png", "webp"];
+function renderUnitPhoto(ds) {
+  const img = el("img", { class: "ds-photo" });
+  const slug = "unit_photos/" + unitPhotoSlug(ds.name);
+  let extIdx = 0;
+  img.src = slug + "." + PHOTO_EXTENSIONS[extIdx];
+  img.alt = ds.name;
+  img.onerror = () => {
+    extIdx += 1;
+    if (extIdx < PHOTO_EXTENSIONS.length) img.src = slug + "." + PHOTO_EXTENSIONS[extIdx];
+    else { img.onerror = null; img.src = PLACEHOLDER_PHOTO; }
+  };
+  return img;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers de regras (core_rules_reference.md)
+// ---------------------------------------------------------------------------
+function parseThreshold(v) {
+  if (v === undefined || v === null || v === "N/A") return null;
+  if (typeof v === "number") return v;
+  const m = String(v).match(/(\d+)/);
+  return m ? parseInt(m[1], 10) : null;
+}
+function woundThreshold(s, t) {
+  if (s >= t * 2) return 2;
+  if (s > t) return 3;
+  if (s === t) return 4;
+  if (s * 2 <= t) return 6;
+  return 5;
+}
+function parseDamage(d) {
+  if (typeof d === "number") return { fixed: true, value: d };
+  return { fixed: false, label: String(d) };
+}
+function hasKeyword(weapon, kw) {
+  return (weapon.keywords || []).some(k => k.toUpperCase().indexOf(kw.toUpperCase()) === 0);
+}
+let uidCounter = 1;
+const nextId = () => uidCounter++;
+function el(tag, props, children) {
+  const e = document.createElement(tag);
+  if (props) for (const k in props) {
+    if (k === "class") e.className = props[k];
+    else if (k === "text") e.textContent = props[k];
+    else if (k === "html") e.innerHTML = props[k];
+    else if (k.indexOf("on") === 0 && typeof props[k] === "function") e[k] = props[k];
+    else e.setAttribute(k, props[k]);
+  }
+  (children || []).forEach(c => { if (c) e.appendChild(c); });
+  return e;
+}
+
+// ---------------------------------------------------------------------------
+// Estado global
+// ---------------------------------------------------------------------------
+const library = buildLibrary();
+const PHASES = [
+  { key: "command", label: "Comando" },
+  { key: "movement", label: "Movimento" },
+  { key: "shooting", label: "Tiro" },
+  { key: "charge", label: "Carga" },
+  { key: "fight", label: "Combate" },
+];
+const state = {
+  tab: "setup",
+  setup: {
+    playerA: { name: "", units: [], cp: 0 },
+    playerB: { name: "", units: [], cp: 0 },
+    missionText: "",
+    deploymentText: "",
+  },
+  cycle: emptyCycle(),
+  ui: { pickerOpenA: false, pickerOpenB: false, pickerFactionA: "all", pickerFactionB: "all" },
+  game: {
+    round: 1,
+    activePlayerKey: "playerA",
+    phase: "command",
+    ended: false,
+    checklist: {},
+    battleshockRolls: {},
+    advanceRoll: { unitId: "", die: null },
+    chargeRoll: { unitId: "", dice: [] },
+  },
+};
+
+function emptyCycle() {
+  return {
+    attackerId: "", weaponIdx: "", targetId: "",
+    step: 0, // 0=picking,1=hit,2=wound,3=save,4.5=manualDamage,5=result
+    hits: null, wounds: null, failedSaves: null,
+    allocOrder: null, manualDamage: null, deadByGroup: null,
+    inputMode: {}, diceRolls: {},
+    // Usados só quando os grupos de alocação do alvo têm saves efetivos
+    // diferentes (ex: líder com InvSv vs esquadrão sem) — nesse caso os
+    // saves têm de ser resolvidos grupo a grupo, não com um número só.
+    groupFlow: null, groupCursor: 0, woundsPool: 0, groupResults: {},
+  };
+}
+
+function render() {
+  const root = document.getElementById("root");
+  root.innerHTML = "";
+  root.appendChild(el("h1", { text: "⚔ W40K TRACKER — ARMAGEDDON" }));
+  root.appendChild(el("div", { class: "subtitle", text: "Pré-visualização: Setup + sequência do turno (Command → Movement → Shooting → Charge → Fight)" }));
+  root.appendChild(el("div", { class: "devbanner", text:
+    "⚠ Pré-visualização em JavaScript puro para validar o fluxo antes de construir a app completa em React+Vite (é preciso instalar Node.js para esse passo). " +
+    "Faltam de propósito: log de pontuação, PWA e input por voz. O estado grava-se sozinho neste dispositivo (localStorage). Cada fase mostra os Core Stratagems relevantes (referência — a app nunca os ativa sozinha)."
+  }));
+
+  const tabs = el("div", { class: "tabs" });
+  const tabSetup = el("div", { class: "tab" + (state.tab === "setup" ? " active" : ""), text: "1. Setup", onclick: () => { state.tab = "setup"; render(); } });
+  const tabTurno = el("div", { class: "tab" + (state.tab === "turno" ? " active" : ""), text: "2. Turno", onclick: () => { state.tab = "turno"; render(); } });
+  tabs.appendChild(tabSetup); tabs.appendChild(tabTurno);
+  root.appendChild(tabs);
+
+  if (state.tab === "setup") root.appendChild(renderSetup());
+  else root.appendChild(renderTurno());
+
+  saveStateToLocalStorage();
+}
+
+// ---------------------------------------------------------------------------
+// Persistência local — sobrevive a fechar a página ou bloquear o telemóvel.
+// Guarda-se sozinho a seguir a cada render(); carrega-se uma vez no arranque.
+// ---------------------------------------------------------------------------
+const LOCAL_STORAGE_KEY = "w40k_tracker_armageddon_state_v1";
+function saveStateToLocalStorage() {
+  try {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({
+      setup: state.setup, game: state.game, tab: state.tab, uidCounter: uidCounter,
+    }));
+  } catch (e) { /* localStorage indisponível (ex: modo privado) — ignora silenciosamente */ }
+}
+function loadStateFromLocalStorage() {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    if (saved.setup) Object.assign(state.setup, saved.setup);
+    if (saved.game) Object.assign(state.game, saved.game);
+    if (saved.tab) state.tab = saved.tab;
+    if (saved.uidCounter) uidCounter = Math.max(uidCounter, saved.uidCounter);
+  } catch (e) { /* estado gravado corrompido/antigo — arranca do zero em vez de partir */ }
+}
+
+// "Novo jogo": limpa ronda/fase/CP/baixas/battle-shock, mas mantém os
+// jogadores, as unidades escolhidas e o texto de missão (ver prompt original).
+function startNewGame() {
+  [state.setup.playerA, state.setup.playerB].forEach(player => {
+    player.cp = 0;
+    player.units.forEach(u => {
+      u.battleshocked = false;
+      u.groups.forEach(g => { g.liveCount = g.initialCount; });
+    });
+  });
+  state.game = { round: 1, activePlayerKey: "playerA", phase: "command", ended: false, checklist: {}, battleshockRolls: {}, advanceRoll: { unitId: "", die: null }, chargeRoll: { unitId: "", dice: [] } };
+  state.cycle = emptyCycle();
+}
+
+// ---------------------------------------------------------------------------
+// SEQUÊNCIA DO TURNO — Battle Round = 2 turnos, 5 fases cada (core_rules_reference.md)
+// ---------------------------------------------------------------------------
+function activePlayer() { return state.setup[state.game.activePlayerKey]; }
+function activePlayerName() {
+  const p = activePlayer();
+  return p.name || (state.game.activePlayerKey === "playerA" ? "Jogador A" : "Jogador B");
+}
+function unitsOf(playerKey) {
+  return state.setup[playerKey].units;
+}
+function totalLive(u) { return u.groups.reduce((s, g) => s + g.liveCount, 0); }
+function totalInitial(u) { return u.groups.reduce((s, g) => s + g.initialCount, 0); }
+
+function resetPhaseTransientState() {
+  state.game.checklist[state.game.phase] = {};
+  state.game.advanceRoll = { unitId: "", die: null };
+  state.game.chargeRoll = { unitId: "", dice: [] };
+  state.cycle = emptyCycle();
+}
+
+function advancePhase() {
+  const idx = PHASES.findIndex(p => p.key === state.game.phase);
+  if (idx < PHASES.length - 1) {
+    state.game.phase = PHASES[idx + 1].key;
+  } else if (state.game.activePlayerKey === "playerA") {
+    state.game.activePlayerKey = "playerB";
+    state.game.phase = "command";
+  } else if (state.game.round < 5) {
+    state.game.activePlayerKey = "playerA";
+    state.game.phase = "command";
+    state.game.round += 1;
+  } else {
+    state.game.ended = true;
+  }
+  resetPhaseTransientState();
+}
+
+function retreatPhase() {
+  if (state.game.ended) {
+    state.game.ended = false;
+    resetPhaseTransientState();
+    return;
+  }
+  const idx = PHASES.findIndex(p => p.key === state.game.phase);
+  if (idx > 0) {
+    state.game.phase = PHASES[idx - 1].key;
+  } else if (state.game.activePlayerKey === "playerB") {
+    state.game.activePlayerKey = "playerA";
+    state.game.phase = "fight";
+  } else if (state.game.round > 1) {
+    state.game.activePlayerKey = "playerB";
+    state.game.phase = "fight";
+    state.game.round -= 1;
+  } else {
+    return; // já no início da batalha, nada antes disto
+  }
+  resetPhaseTransientState();
+}
+
+function renderTurno() {
+  const wrap = el("div");
+
+  const cpBar = el("div", { class: "card row" });
+  const cpA = el("div");
+  cpA.appendChild(el("label", { text: "CP " + (state.setup.playerA.name || "Jogador A") }));
+  const cpARow = el("div", { class: "row" });
+  cpARow.appendChild(el("button", { class: "small", text: "-", onclick: () => { state.setup.playerA.cp = Math.max(0, state.setup.playerA.cp - 1); render(); } }));
+  cpARow.appendChild(el("span", { class: "big-num", text: String(state.setup.playerA.cp), style: "font-size:18px;font-weight:600;margin:0 8px;" }));
+  cpARow.appendChild(el("button", { class: "small", text: "+", onclick: () => { state.setup.playerA.cp += 1; render(); } }));
+  cpA.appendChild(cpARow);
+  const cpB = el("div");
+  cpB.appendChild(el("label", { text: "CP " + (state.setup.playerB.name || "Jogador B") }));
+  const cpBRow = el("div", { class: "row" });
+  cpBRow.appendChild(el("button", { class: "small", text: "-", onclick: () => { state.setup.playerB.cp = Math.max(0, state.setup.playerB.cp - 1); render(); } }));
+  cpBRow.appendChild(el("span", { class: "big-num", text: String(state.setup.playerB.cp), style: "font-size:18px;font-weight:600;margin:0 8px;" }));
+  cpBRow.appendChild(el("button", { class: "small", text: "+", onclick: () => { state.setup.playerB.cp += 1; render(); } }));
+  cpB.appendChild(cpBRow);
+  cpBar.appendChild(cpA); cpBar.appendChild(cpB);
+  wrap.appendChild(cpBar);
+
+  if (state.game.ended) {
+    const card = el("div", { class: "card" });
+    card.appendChild(el("h2", { text: "Fim da batalha" }));
+    card.appendChild(el("div", { class: "step-hint", text: "As 5 rondas terminaram. Consulta o teu log de pontuação físico para apurar o vencedor." }));
+    const restartBtn = el("button", { class: "primary", text: "Recomeçar batalha (mantém unidades)" });
+    restartBtn.style.width = "100%";
+    restartBtn.onclick = () => { startNewGame(); render(); };
+    card.appendChild(restartBtn);
+    const backBtn = el("button", { text: "← Recuar para a Fight Phase da última ronda" });
+    backBtn.style.cssText = "width:100%;margin-top:8px;";
+    backBtn.onclick = () => { retreatPhase(); render(); };
+    card.appendChild(backBtn);
+    wrap.appendChild(card);
+    return wrap;
+  }
+
+  const header = el("div", { class: "card" });
+  header.style.background = "var(--surface2)";
+
+  const dial = el("div", { class: "round-dial" });
+  dial.appendChild(el("span", { class: "num", text: state.game.round + "/5" }));
+  const pips = el("div", { class: "round-pips" });
+  for (let i = 1; i <= 5; i++) {
+    pips.appendChild(el("span", { class: "pip" + (i < state.game.round ? " done" : "") }));
+  }
+  dial.appendChild(pips);
+  header.appendChild(dial);
+  header.appendChild(el("div", {
+    text: "Turno de " + activePlayerName(),
+    style: "font-family:var(--display-font);text-align:center;letter-spacing:0.05em;font-size:15px;color:var(--text);margin-bottom:10px;text-transform:uppercase;",
+  }));
+
+  const phaseTrackEl = el("div", { class: "phase-track" });
+  const currentPhaseIdx = PHASES.findIndex(p => p.key === state.game.phase);
+  PHASES.forEach((p, i) => {
+    const cls = "phase-token" + (i === currentPhaseIdx ? " current" : i < currentPhaseIdx ? " done" : "");
+    const tok = el("div", { class: cls });
+    tok.appendChild(el("div", { class: "n", text: String(i + 1) }));
+    tok.appendChild(el("div", { text: p.label }));
+    tok.onclick = () => { state.game.phase = p.key; state.cycle = emptyCycle(); render(); };
+    phaseTrackEl.appendChild(tok);
+  });
+  header.appendChild(phaseTrackEl);
+
+  const navRow = el("div", { class: "row" });
+  navRow.style.marginTop = "8px";
+  const atVeryStart = !state.game.ended && state.game.round === 1 && state.game.activePlayerKey === "playerA" && state.game.phase === "command";
+  const backBtn = el("button", { text: "← Recuar" });
+  backBtn.style.flex = "1";
+  backBtn.disabled = atVeryStart;
+  backBtn.onclick = () => { retreatPhase(); render(); };
+  navRow.appendChild(backBtn);
+  const nextBtn = el("button", { class: "primary", text: "Avançar →" });
+  nextBtn.style.flex = "1";
+  nextBtn.onclick = () => { advancePhase(); render(); };
+  navRow.appendChild(nextBtn);
+  header.appendChild(navRow);
+  wrap.appendChild(header);
+
+  if (state.game.phase === "command") wrap.appendChild(renderCommandPhase());
+  else if (state.game.phase === "movement") wrap.appendChild(renderMovementPhase());
+  else if (state.game.phase === "shooting") wrap.appendChild(renderAttackCycle("shooting"));
+  else if (state.game.phase === "charge") wrap.appendChild(renderChargePhase());
+  else if (state.game.phase === "fight") wrap.appendChild(renderAttackCycle("fight"));
+
+  return wrap;
+}
+
+function renderChecklist(phaseKey, items) {
+  const card = el("div", { class: "card" });
+  if (!state.game.checklist[phaseKey]) state.game.checklist[phaseKey] = {};
+  const done = state.game.checklist[phaseKey];
+  items.forEach((item, i) => {
+    const row = el("label", { style: "display:flex;align-items:center;gap:8px;font-size:13px;padding:5px 0;cursor:pointer;" });
+    const cb = el("input", { type: "checkbox" });
+    cb.checked = !!done[i];
+    cb.onchange = e => { done[i] = e.target.checked; render(); };
+    row.appendChild(cb);
+    row.appendChild(el("span", { text: item }));
+    card.appendChild(row);
+  });
+  return card;
+}
+
+function renderCommandPhase() {
+  const wrap = el("div");
+  const p = activePlayer();
+
+  wrap.appendChild(renderStratagemsCard("command"));
+  wrap.appendChild(renderChecklist("command", [
+    "Ganhar 1 CP (ambos os jogadores)",
+    "Testar battle-shock (unidades battle-shocked ou a metade força ou menos)",
+    "Ativar habilidades de exército / comando",
+    "Marcar pontos primários (a partir da ronda 2)",
+  ]));
+
+  const bsCard = el("div", { class: "card" });
+  bsCard.appendChild(el("h2", { text: "Battle-shock — " + activePlayerName() }));
+  const needsTest = p.units.filter(u => u.battleshocked || totalLive(u) * 2 <= totalInitial(u));
+  if (needsTest.length === 0) {
+    bsCard.appendChild(el("div", { class: "empty", text: "Nenhuma unidade precisa de testar (todas acima de metade força e não battle-shocked)." }));
+  }
+  needsTest.forEach(u => {
+    const repGroup = u.groups.reduce((best, g) => (g.liveCount > (best ? best.liveCount : -1) ? g : best), null);
+    const ld = parseThreshold(repGroup ? repGroup.stats.LD : null) || 7;
+    const row = el("div", { class: "unit-instance" });
+    row.appendChild(el("div", { text: u.label + " — " + totalLive(u) + "/" + totalInitial(u) + " modelos" + (u.battleshocked ? " (já battle-shocked)" : ""), style: "font-size:13px;margin-bottom:6px;" }));
+    row.appendChild(el("div", { class: "step-hint", text: "LD usada: " + (repGroup ? repGroup.stats.LD : "?") + " (grupo " + (repGroup ? repGroup.label : "?") + "). Rola 2D6 — precisas de " + ld + "+ para passar." }));
+    const rollKey = String(u.id);
+    const val = state.game.battleshockRolls[rollKey] || 0;
+    const inp = el("input", { type: "number" });
+    inp.value = val; inp.min = "2"; inp.max = "12";
+    inp.oninput = e => { state.game.battleshockRolls[rollKey] = Math.max(0, parseInt(e.target.value) || 0); };
+    row.appendChild(inp);
+    const btn = el("button", { class: "primary", text: "Confirmar resultado" });
+    btn.style.cssText = "width:100%;margin-top:6px;";
+    btn.onclick = () => {
+      const roll = state.game.battleshockRolls[rollKey] || 0;
+      u.battleshocked = roll < ld;
+      delete state.game.battleshockRolls[rollKey];
+      render();
+    };
+    row.appendChild(btn);
+    bsCard.appendChild(row);
+  });
+  wrap.appendChild(bsCard);
+
+  return wrap;
+}
+
+function renderMovementPhase() {
+  const wrap = el("div");
+  wrap.appendChild(renderStratagemsCard("movement"));
+  wrap.appendChild(renderChecklist("movement", [
+    "Escolher por unidade: parada / normal / advance (+1D6) / fall back",
+    "Advance: não pode disparar (exceto ASSAULT) nem carregar depois",
+    "Fall-back: só se engaged; não pode disparar, carregar ou fazer ações",
+    "Verificar coerência (2\" entre modelos)",
+    "Trazer reservas se aplicável",
+  ]));
+
+  const card = el("div", { class: "card" });
+  card.appendChild(el("h2", { text: "Rolo de Advance" }));
+  const p = activePlayer();
+  const sel = el("select");
+  sel.appendChild(el("option", { value: "", text: "— escolher unidade —" }));
+  p.units.forEach(u => {
+    const o = el("option", { value: u.id, text: u.label });
+    if (String(u.id) === String(state.game.advanceRoll.unitId)) o.selected = true;
+    sel.appendChild(o);
+  });
+  sel.onchange = e => { state.game.advanceRoll = { unitId: e.target.value, die: null }; render(); };
+  card.appendChild(sel);
+
+  const unit = p.units.find(u => String(u.id) === String(state.game.advanceRoll.unitId));
+  if (unit) {
+    const m = parseThreshold(unit.groups[0].stats.M) || 0;
+    const grid = el("div", { class: "diegrid" }); grid.style.marginTop = "8px";
+    for (let n = 1; n <= 6; n++) {
+      const b = el("button", { text: String(n) });
+      b.onclick = () => { state.game.advanceRoll.die = n; render(); };
+      grid.appendChild(b);
+    }
+    card.appendChild(grid);
+    if (state.game.advanceRoll.die !== null) {
+      card.appendChild(el("div", { class: "result final", text: "Move total: " + m + "\" + " + state.game.advanceRoll.die + " = " + (m + state.game.advanceRoll.die) + "\"" }));
+    }
+  }
+  wrap.appendChild(card);
+  return wrap;
+}
+
+function renderChargePhase() {
+  const wrap = el("div");
+  wrap.appendChild(renderStratagemsCard("charge"));
+  wrap.appendChild(renderChecklist("charge", [
+    "Elegível: unengaged, não moveu/avançou/recuou este turno, ≤12\" de um inimigo",
+    "Rolar 2D6 = distância máxima do charge move",
+    "Um resultado de 2 (dois 1) nunca é suficiente para completar o charge",
+    "Terminar dentro de 1\" do alvo se possível, ou pelo menos engaged",
+    "Sucesso → unidade ganha Fights First até ao fim do turno",
+  ]));
+
+  const card = el("div", { class: "card" });
+  card.appendChild(el("h2", { text: "Rolo de Carga (2D6)" }));
+  const p = activePlayer();
+  const sel = el("select");
+  sel.appendChild(el("option", { value: "", text: "— escolher unidade —" }));
+  p.units.forEach(u => {
+    const o = el("option", { value: u.id, text: u.label });
+    if (String(u.id) === String(state.game.chargeRoll.unitId)) o.selected = true;
+    sel.appendChild(o);
+  });
+  sel.onchange = e => { state.game.chargeRoll = { unitId: e.target.value, dice: [] }; render(); };
+  card.appendChild(sel);
+
+  if (state.game.chargeRoll.unitId) {
+    const dice = state.game.chargeRoll.dice;
+    const grid = el("div", { class: "diegrid" }); grid.style.marginTop = "8px";
+    for (let n = 1; n <= 6; n++) {
+      const b = el("button", { text: String(n) });
+      b.disabled = dice.length >= 2;
+      b.onclick = () => { if (dice.length < 2) { dice.push(n); render(); } };
+      grid.appendChild(b);
+    }
+    card.appendChild(grid);
+    const tally = el("div", { class: "tally" });
+    tally.appendChild(document.createTextNode(dice.join(" + ") || "0 dados"));
+    if (dice.length > 0) {
+      const undo = el("button", { class: "small", text: "desfazer" }); undo.style.marginLeft = "8px";
+      undo.onclick = () => { dice.pop(); render(); };
+      tally.appendChild(undo);
+    }
+    card.appendChild(tally);
+    if (dice.length === 2) {
+      const total = dice[0] + dice[1];
+      const isSnakeEyes = dice[0] === 1 && dice[1] === 1;
+      card.appendChild(el("div", {
+        class: "result final",
+        text: "Distância de carga: " + total + "\"" + (isSnakeEyes ? " — dois 1s: nunca é suficiente para completar o charge" : ""),
+      }));
+    }
+  }
+  wrap.appendChild(card);
+  return wrap;
+}
+
+// ---------------------------------------------------------------------------
+// SETUP SCREEN
+// ---------------------------------------------------------------------------
+function renderSetup() {
+  const wrap = el("div");
+
+  const grid = el("div", { class: "grid2" });
+  grid.appendChild(renderPlayerColumn("A", state.setup.playerA));
+  grid.appendChild(renderPlayerColumn("B", state.setup.playerB));
+  wrap.appendChild(grid);
+
+  // Biblioteca de datasheets — só referência (stats/armas), não adiciona nada
+  const libCard = el("div", { class: "card" });
+  libCard.appendChild(el("h2", { text: "Biblioteca de datasheets (referência)" }));
+  libCard.appendChild(el("div", { class: "step-hint", text: "8 Space Marines + 9 Orks — consulta stats e armas aqui. Para meter uma unidade em jogo usa o botão \"+ Escolher unidade\" de cada jogador acima." }));
+  libCard.appendChild(renderFactionDetails("Space Marines", library.space_marines));
+  libCard.appendChild(renderFactionDetails("Orks", library.orks));
+  wrap.appendChild(libCard);
+
+  const missionCard = el("div", { class: "card" });
+  missionCard.appendChild(el("h2", { text: "Missão (só referência visual)" }));
+  const f1 = el("div", { class: "field" });
+  f1.appendChild(el("label", { text: "Missão Primária" }));
+  const ta1 = el("textarea", { placeholder: "Ex: Take and Hold" });
+  ta1.value = state.setup.missionText;
+  ta1.oninput = e => { state.setup.missionText = e.target.value; };
+  f1.appendChild(ta1);
+  missionCard.appendChild(f1);
+  const f2 = el("div", { class: "field" });
+  f2.appendChild(el("label", { text: "Deployment / Twist" }));
+  const ta2 = el("textarea", { placeholder: "Ex: Hammer and Anvil, Sabotage" });
+  ta2.value = state.setup.deploymentText;
+  ta2.oninput = e => { state.setup.deploymentText = e.target.value; };
+  f2.appendChild(ta2);
+  missionCard.appendChild(f2);
+  wrap.appendChild(missionCard);
+
+  const ioCard = el("div", { class: "card" });
+  ioCard.appendChild(el("h2", { text: "Exportar / Importar" }));
+  const fb = el("div", { class: "filebtns" });
+  fb.appendChild(el("button", { text: "⬇ Exportar JSON", onclick: exportJSON }));
+  const fileInput = el("input", { type: "file", accept: "application/json" });
+  fileInput.style.display = "none";
+  fileInput.onchange = importJSON;
+  const importBtn = el("button", { text: "⬆ Importar JSON", onclick: () => fileInput.click() });
+  fb.appendChild(importBtn);
+  fb.appendChild(fileInput);
+  ioCard.appendChild(fb);
+  wrap.appendChild(ioCard);
+
+  const newGameCard = el("div", { class: "card" });
+  newGameCard.appendChild(el("h2", { text: "Novo jogo" }));
+  newGameCard.appendChild(el("div", { class: "step-hint", text: "Repõe ronda, fase, CP, modelos vivos e battle-shock a zero — mantém jogadores, unidades escolhidas e texto de missão." }));
+  const newGameBtn = el("button", { class: "primary", text: "Começar novo jogo" });
+  newGameBtn.style.width = "100%";
+  newGameBtn.onclick = () => {
+    if (confirm("Repor ronda, CP e modelos vivos para um novo jogo? As unidades escolhidas mantêm-se.")) {
+      startNewGame();
+      state.tab = "turno";
+      render();
+    }
+  };
+  newGameCard.appendChild(newGameBtn);
+  wrap.appendChild(newGameCard);
+
+  return wrap;
+}
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(state.setup, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "w40k_setup.json"; a.click();
+  URL.revokeObjectURL(url);
+}
+function importJSON(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      state.setup = JSON.parse(reader.result);
+      render();
+    } catch (err) {
+      alert("JSON inválido: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function renderFactionDetails(label, list) {
+  const d = el("details");
+  d.appendChild(el("summary", { text: label + " (" + list.length + ")" }));
+  list.forEach(ds => d.appendChild(renderDatasheetCard(ds)));
+  return d;
+}
+
+function renderDatasheetCard(ds) {
+  const dd = el("details");
+  const summaryText = ds.name + " " + (ds.profiles.length > 1
+    ? "(" + ds.profiles.map(p => p.label + " x" + p.count).join(" + ") + ")"
+    : "(x" + ds.profiles[0].count + ")");
+  dd.appendChild(el("summary", { text: summaryText }));
+  const inner = el("div", { class: "card" });
+  inner.style.margin = "0 0 8px";
+
+  ds.profiles.forEach(p => {
+    if (ds.profiles.length > 1) {
+      const lbl = el("div", { text: p.label });
+      lbl.style.cssText = "font-size:11px;color:var(--accent-text);margin-bottom:4px;";
+      inner.appendChild(lbl);
+    }
+    const sg = el("div", { class: "statgrid" });
+    const boxes = [["M", p.stats.M || "-"], ["T", p.stats.T], ["SV", p.stats.SV], ["InvSV", p.stats.InvSV || "-"], ["W", p.stats.W], ["LD", p.stats.LD], ["OC", p.stats.OC], ["Modelos", p.count]];
+    boxes.forEach(([k, v]) => {
+      const box = el("div", { class: "statbox" });
+      box.appendChild(el("div", { text: k }));
+      box.appendChild(el("div", { class: "v", text: String(v) }));
+      sg.appendChild(box);
+    });
+    inner.appendChild(sg);
+  });
+
+  if (ds.ranged_weapons.length > 0) {
+    const t = el("div", { text: "Armas de tiro:" });
+    t.style.cssText = "font-size:11px;color:var(--text-sec);margin-top:4px;";
+    inner.appendChild(t);
+  }
+  ds.ranged_weapons.forEach(w => inner.appendChild(renderWeaponLine(w)));
+
+  dd.appendChild(inner);
+  return dd;
+}
+
+function renderWeaponLine(w) {
+  const line = el("div", { class: "wpn" });
+  line.appendChild(el("b", { text: w.name }));
+  line.appendChild(document.createTextNode(" — A:" + w.A + " BS:" + w.BS + " S:" + w.S + " AP:" + w.AP + " D:" + w.D + " "));
+  (w.keywords || []).forEach(k => line.appendChild(el("span", { class: "kw", text: k })));
+  return line;
+}
+
+function leadersFor(ds) {
+  return allDatasheets(library).filter(l =>
+    l.faction === ds.faction && (l.leader_for || []).includes(ds.name) && remainingCount(l) > 0
+  );
+}
+function supportersFor(ds) {
+  return allDatasheets(library).filter(l =>
+    l.faction === ds.faction && (l.support_for || []).includes(ds.name) && remainingCount(l) > 0
+  );
+}
+
+function addUnitToPlayer(playerKey, ds, opts) {
+  opts = opts || {};
+  const player = state.setup[playerKey];
+  const leaderDs = opts.leaderDs || null;
+  const supportDs = opts.supportDs || null;
+  const sizing = squadSizing(ds);
+  const requestedCount = (sizing.adjustable && opts.count != null) ? Math.max(sizing.fixedTotal + 1, opts.count) : null;
+  const count = requestedCount != null ? Math.min(requestedCount, Math.max(0, remainingCount(ds))) : null;
+  const neededTotal = count != null ? count : sizing.defaultTotal;
+  if (neededTotal <= 0 || remainingCount(ds) < neededTotal || (leaderDs && remainingCount(leaderDs) <= 0) || (supportDs && remainingCount(supportDs) <= 0)) return;
+
+  const groups = [];
+  if (leaderDs) {
+    groups.push({ key: "leader", label: leaderDs.name, datasheetName: leaderDs.name, stats: Object.assign({}, leaderDs.profiles[0].stats), liveCount: 1, initialCount: 1 });
+  }
+  if (supportDs) {
+    groups.push({ key: "support", label: supportDs.name, datasheetName: supportDs.name, stats: Object.assign({}, supportDs.profiles[0].stats), liveCount: 1, initialCount: 1 });
+  }
+  ds.profiles.forEach(p => {
+    let liveCount = p.count;
+    if (count != null && p === sizing.scalable) liveCount = count - sizing.fixedTotal;
+    groups.push({ key: p.key, label: p.label, datasheetName: ds.name, stats: Object.assign({}, p.stats), liveCount, initialCount: liveCount });
+  });
+
+  const datasheetNames = [leaderDs, supportDs, ds].filter(Boolean).map(d => d.name);
+  let baseLabel = [leaderDs, supportDs, ds].filter(Boolean).map(d => d.name).join(" + ");
+  const customCount = count != null && count !== sizing.defaultTotal;
+  if (customCount) baseLabel += " (" + count + ")";
+
+  const dedupeKey = datasheetNames.join("|");
+  const existing = player.units.filter(u => u.datasheetNames.join("|") === dedupeKey).length;
+  const isSquadLike = leaderDs != null || supportDs != null || sizing.defaultTotal > 1;
+  const needsNumber = existing > 0 || isSquadLike;
+
+  const points = (leaderDs ? leaderDs.points : 0) + (supportDs ? supportDs.points : 0) + ds.points;
+
+  const inst = {
+    id: nextId(),
+    datasheetNames,
+    faction: ds.faction,
+    label: baseLabel + (needsNumber ? " #" + (existing + 1) : ""),
+    points,
+    pointsApprox: customCount,
+    battleshocked: false,
+    groups,
+  };
+  player.units.push(inst);
+}
+
+function renderPlayerColumn(side, player) {
+  const card = el("div", { class: "card" });
+  const pickerKey = "pickerOpen" + side;
+  const factionKey = "pickerFaction" + side;
+
+  const f = el("div", { class: "field" });
+  f.appendChild(el("label", { text: "Nome do jogador (" + side + ")" }));
+  const nameInput = el("input", { type: "text", placeholder: "Jogador " + side });
+  nameInput.value = player.name;
+  nameInput.oninput = e => { player.name = e.target.value; };
+  f.appendChild(nameInput);
+  card.appendChild(f);
+
+  const factions = new Set(player.units.map(u => u.faction));
+  let detected = "—";
+  if (factions.size === 1) detected = [...factions][0];
+  else if (factions.size > 1) detected = "Mista";
+  card.classList.add("player-card");
+  if (detected === "Space Marines") card.classList.add("sm");
+  else if (detected === "Orks") card.classList.add("ork");
+  const row = el("div", { class: "row" });
+  row.style.marginBottom = "10px";
+  row.appendChild(el("label", { text: "Facção detetada", style: "margin:0" }));
+  row.appendChild(el("span", { class: "faction-badge " + (detected === "Space Marines" ? "sm" : detected === "Orks" ? "ork" : ""), text: detected }));
+  card.appendChild(row);
+
+  const totalPoints = player.units.reduce((sum, u) => sum + u.points, 0);
+  const listRow = el("div", { class: "row" });
+  listRow.appendChild(el("label", { text: "Unidades escolhidas para o campo de batalha (" + player.units.length + ")", style: "margin:0" }));
+  if (player.units.length > 0) listRow.appendChild(el("span", { class: "faction-badge", text: totalPoints + " pts" }));
+  card.appendChild(listRow);
+  if (player.units.length === 0) card.appendChild(el("div", { class: "empty", text: "Nenhuma unidade escolhida ainda" }));
+  player.units.forEach(u => {
+    const ui = el("div", { class: "unit-instance " + (u.faction === "Space Marines" ? "sm" : u.faction === "Orks" ? "ork" : "") });
+    const r = el("div", { class: "row" });
+    const nameField = el("input", { type: "text" });
+    nameField.value = u.label; nameField.style.fontSize = "13px";
+    nameField.oninput = e => { u.label = e.target.value; };
+    r.appendChild(nameField);
+    r.appendChild(el("span", { text: u.points + " pts" + (u.pointsApprox ? "*" : ""), style: "font-size:11px;color:var(--text-sec);white-space:nowrap;" }));
+    r.appendChild(el("button", { class: "small", text: "✕", onclick: () => { player.units = player.units.filter(x => x.id !== u.id); render(); } }));
+    ui.appendChild(r);
+    if (u.pointsApprox) {
+      ui.appendChild(el("div", { text: "*pontos listados para a composição padrão da datasheet, não escalam com o nº de modelos ajustado", style: "font-size:10px;color:var(--text-sec);margin-bottom:4px;" }));
+    }
+    u.groups.forEach(g => {
+      const gr = el("div", { class: "row" }); gr.style.marginBottom = "4px";
+      const span = el("span", { text: (u.groups.length > 1 ? g.label : "Modelos vivos") + " (de " + g.initialCount + ")" });
+      span.style.cssText = "font-size:11px;color:var(--text-sec);";
+      gr.appendChild(span);
+      const numIn = el("input", { type: "number" }); numIn.style.width = "60px";
+      numIn.value = g.liveCount;
+      numIn.min = "0"; numIn.max = String(g.initialCount);
+      numIn.oninput = e => { g.liveCount = Math.max(0, Math.min(g.initialCount, parseInt(e.target.value) || 0)); };
+      gr.appendChild(numIn);
+      ui.appendChild(gr);
+    });
+    ui.appendChild(el("div", { text: "Este número regista baixas durante o jogo — para mudar o tamanho do esquadrão, remove (✕) e adiciona de novo com a quantidade certa.", style: "font-size:10px;color:var(--text-sec);margin-top:2px;" }));
+    card.appendChild(ui);
+  });
+
+  const toggleBtn = el("button", { class: "primary", text: state.ui[pickerKey] ? "Fechar seleção" : "+ Escolher unidade" });
+  toggleBtn.style.cssText = "width:100%;margin-top:8px;";
+  toggleBtn.onclick = () => { state.ui[pickerKey] = !state.ui[pickerKey]; render(); };
+  card.appendChild(toggleBtn);
+
+  if (state.ui[pickerKey]) {
+    card.appendChild(renderUnitPicker(side, player, factionKey, detected));
+  }
+
+  return card;
+}
+
+function renderUnitPicker(side, player, factionKey, lockedFaction) {
+  const wrap = el("div");
+  wrap.style.marginTop = "8px";
+
+  const isLocked = lockedFaction === "Space Marines" || lockedFaction === "Orks";
+
+  if (isLocked) {
+    wrap.appendChild(el("div", { class: "step-hint", text: "A mostrar só " + lockedFaction + " — a facção deste jogador já ficou definida pela primeira unidade escolhida." }));
+  } else {
+    const filterRow = el("div", { class: "row" });
+    filterRow.style.marginBottom = "6px";
+    const filterSelect = el("select");
+    [["all", "Todas as facções"], ["Space Marines", "Space Marines"], ["Orks", "Orks"]].forEach(([val, label]) => {
+      const o = el("option", { value: val, text: label });
+      if (state.ui[factionKey] === val) o.selected = true;
+      filterSelect.appendChild(o);
+    });
+    filterSelect.onchange = e => { state.ui[factionKey] = e.target.value; render(); };
+    filterRow.appendChild(filterSelect);
+    wrap.appendChild(filterRow);
+  }
+
+  const picker = el("div", { class: "ds-picker" });
+  const filter = isLocked ? lockedFaction : state.ui[factionKey];
+  const list = allDatasheets(library).filter(ds => filter === "all" || ds.faction === filter);
+  const playerKey = player === state.setup.playerA ? "playerA" : "playerB";
+  list.forEach(ds => picker.appendChild(renderDsPickerItem(ds, player, playerKey)));
+  wrap.appendChild(picker);
+
+  return wrap;
+}
+
+function renderDsPickerItem(ds, player, playerKey) {
+  const sizing = squadSizing(ds);
+  const remaining = remainingCount(ds);
+  const hasLimit = BOX_LIMITS[ds.name] !== undefined;
+  const minViable = sizing.adjustable ? (sizing.fixedTotal + 1) : sizing.defaultTotal;
+  const exhausted = remaining < minViable;
+
+  const item = el("div", { class: "ds-item" });
+  item.style.flexWrap = "wrap";
+  const sizeLabel = ds.profiles.length > 1
+    ? ds.profiles.map(p => p.label + " x" + p.count).join(" + ")
+    : "x" + sizing.defaultTotal;
+  const availabilityText = hasLimit ? (!exhausted ? ", " + remaining + " disponível(eis) na caixa" : ", esgotado na caixa") : "";
+  const nameRow = el("div", { class: "ds-name-row" });
+  nameRow.appendChild(renderUnitPhoto(ds));
+  const nameSpan = el("span", { text: ds.name + " (" + sizeLabel + availabilityText + ")" });
+  if (exhausted) nameSpan.style.color = "var(--text-sec)";
+  nameRow.appendChild(nameSpan);
+  item.appendChild(nameRow);
+
+  if (exhausted) {
+    item.appendChild(el("span", { text: "Esgotado", class: "faction-badge", style: "font-size:11px;" }));
+    return item;
+  }
+
+  const eligibleLeaders = leadersFor(ds);
+  const eligibleSupports = supportersFor(ds);
+  let leaderName = "";
+  let supportName = "";
+  let count = Math.min(sizing.defaultTotal, remaining);
+
+  if (eligibleLeaders.length > 0) {
+    const leaderSelect = el("select");
+    leaderSelect.style.width = "auto";
+    leaderSelect.appendChild(el("option", { value: "", text: "Sem líder" }));
+    eligibleLeaders.forEach(l => leaderSelect.appendChild(el("option", { value: l.name, text: "+ " + l.name })));
+    leaderSelect.onchange = e => { leaderName = e.target.value; };
+    item.appendChild(leaderSelect);
+  }
+
+  if (eligibleSupports.length > 0) {
+    const supportSelect = el("select");
+    supportSelect.style.width = "auto";
+    supportSelect.appendChild(el("option", { value: "", text: "Sem suporte" }));
+    eligibleSupports.forEach(l => supportSelect.appendChild(el("option", { value: l.name, text: "+ " + l.name + " (suporte)" })));
+    supportSelect.onchange = e => { supportName = e.target.value; };
+    item.appendChild(supportSelect);
+  }
+
+  if (sizing.adjustable) {
+    const minCount = sizing.fixedTotal + 1;
+    const countInput = el("input", { type: "number" });
+    countInput.style.width = "56px";
+    countInput.value = count;
+    countInput.min = String(minCount);
+    countInput.max = String(remaining);
+    countInput.oninput = e => { count = Math.max(minCount, Math.min(remaining, parseInt(e.target.value) || minCount)); };
+    item.appendChild(countInput);
+  }
+
+  const addBtn = el("button", { class: "small primary", text: "Adicionar" });
+  addBtn.onclick = () => {
+    const leaderDs = leaderName ? findDatasheet(library, leaderName) : null;
+    const supportDs = supportName ? findDatasheet(library, supportName) : null;
+    addUnitToPlayer(playerKey, ds, { leaderDs, supportDs, count: sizing.adjustable ? count : null });
+    render();
+  };
+  item.appendChild(addBtn);
+
+  return item;
+}
+
+// ---------------------------------------------------------------------------
+// SHOOTING PHASE — ciclo de ataque (steps 1-11 do prompt)
+// ---------------------------------------------------------------------------
+function allInstances() {
+  const a = state.setup.playerA.units.map(u => Object.assign({}, u, { owner: "A", ownerName: state.setup.playerA.name || "Jogador A" }));
+  const b = state.setup.playerB.units.map(u => Object.assign({}, u, { owner: "B", ownerName: state.setup.playerB.name || "Jogador B" }));
+  return a.concat(b);
+}
+function findInstance(id) { return allInstances().find(u => String(u.id) === String(id)); }
+
+function renderAttackCycle(phaseKey) {
+  const wrap = el("div");
+  const c = state.cycle;
+  const instances = allInstances();
+  const hitStat = phaseKey === "fight" ? "WS" : "BS";
+  const weaponLabel = phaseKey === "fight" ? "arma (combate)" : "arma (tiro)";
+
+  wrap.appendChild(renderStratagemsCard(phaseKey));
+
+  if (instances.length === 0 && c.step === 0) {
+    wrap.appendChild(el("div", { class: "empty", text: 'Ainda não há unidades configuradas. Vai ao separador "Setup" e adiciona unidades aos dois jogadores primeiro.' }));
+  }
+
+  if (c.step === 0) {
+    wrap.appendChild(renderPicker(instances, phaseKey));
+    return wrap;
+  }
+
+  const attacker = findInstance(c.attackerId);
+  const attackerWeapons = attacker ? weaponsForPhase(attacker, phaseKey) : [];
+  const weapon = attacker && c.weaponIdx !== "" ? attackerWeapons[c.weaponIdx] : null;
+  const target = findInstance(c.targetId);
+  if (!attacker || !weapon || !target) { c.step = 0; return renderAttackCycle(phaseKey); }
+
+  const banner = el("div", { class: "card" });
+  banner.style.cssText = "background:var(--surface2);font-size:12px;";
+  banner.appendChild(document.createTextNode(""));
+  const b1 = el("b", { text: attacker.label });
+  banner.appendChild(b1);
+  banner.appendChild(document.createTextNode(" (" + weapon.name + ") atinge "));
+  banner.appendChild(el("b", { text: target.label }));
+  const resetBtn = el("button", { class: "small", text: "reiniciar" });
+  resetBtn.style.float = "right";
+  resetBtn.onclick = () => { state.cycle = emptyCycle(); render(); };
+  banner.appendChild(resetBtn);
+  wrap.appendChild(banner);
+
+  const isTorrent = phaseKey === "shooting" && hasKeyword(weapon, "TORRENT");
+  const hitThreshold = parseThreshold(toHitValue(weapon, phaseKey));
+  const targetT = target.groups[0].stats.T;
+  const woundT = woundThreshold(weapon.S, targetT);
+
+  function effSaveFor(group) {
+    const sv = parseThreshold(group.stats.SV);
+    const inv = parseThreshold(group.stats.InvSV);
+    const ap = Math.abs(weapon.AP || 0);
+    let eff = sv + ap;
+    if (inv !== null && inv < eff) eff = inv;
+    return eff;
+  }
+  const liveGroups = target.groups.filter(g => g.liveCount > 0);
+  const defaultSaveGroup = liveGroups[0] || target.groups[0];
+  const saveThreshold = effSaveFor(defaultSaveGroup);
+  const dmgInfo = parseDamage(weapon.D);
+
+  if (c.step === 1) {
+    if (isTorrent) {
+      wrap.appendChild(renderNumberStep({
+        title: "Quantos hits (TORRENT — acerta sempre)?",
+        hint: "🎯 Arma TORRENT: acerta automaticamente, não há hit roll. Introduz quantos ataques rolaste.",
+        threshold: null, stepKey: "hits",
+        onConfirm: n => { c.hits = n; c.step = 2; render(); },
+        confirmLabel: "Confirmar hits →",
+      }));
+    } else {
+      wrap.appendChild(renderNumberStep({
+        title: "Precisas de " + hitThreshold + "+ para acertar",
+        hint: hitStat + " da arma: " + toHitValue(weapon, phaseKey),
+        threshold: hitThreshold, stepKey: "hits",
+        onConfirm: n => { c.hits = n; c.step = 2; render(); },
+        confirmLabel: "Confirmar hits →",
+      }));
+    }
+    return wrap;
+  }
+
+  if (c.step === 2) {
+    wrap.appendChild(renderNumberStep({
+      title: "Precisas de " + woundT + "+ para ferir",
+      hint: "S " + weapon.S + " vs T " + targetT + " (" + target.label + ")",
+      threshold: woundT, stepKey: "wounds",
+      onConfirm: n => { c.wounds = n; c.step = 3; render(); },
+      confirmLabel: "Confirmar wounds →",
+    }));
+    return wrap;
+  }
+
+  if (c.step === 3) {
+    if (target.groups.length > 1 && !c.allocOrder) {
+      const card = el("div", { class: "card" });
+      card.appendChild(el("h2", { text: "Ordem de alocação (grupos)" }));
+      card.appendChild(el("div", { class: "step-hint", text: target.label + " tem mais que um grupo de alocação. Declara a ordem — grupos já feridos primeiro, characters sempre por último." }));
+      card.appendChild(renderAllocOrderPicker(target.groups, order => { c.allocOrder = order; render(); }));
+      wrap.appendChild(card);
+      return wrap;
+    }
+
+    const distinctSaves = new Set(liveGroups.map(g => effSaveFor(g)));
+    const needsPerGroup = distinctSaves.size > 1;
+
+    if (!needsPerGroup) {
+      const svText = saveThreshold > 6 ? "auto-falha" : (saveThreshold + "+");
+      const hintParts = ["SV " + defaultSaveGroup.stats.SV];
+      if (defaultSaveGroup.stats.InvSV) hintParts.push("InvSV " + defaultSaveGroup.stats.InvSV + " (nunca modificado por AP)");
+      hintParts.push("vs AP " + weapon.AP);
+      wrap.appendChild(renderNumberStep({
+        title: "O adversário precisa de " + svText + " para salvar",
+        hint: hintParts.join(" / "),
+        threshold: saveThreshold > 6 ? 999 : saveThreshold, stepKey: "saves",
+        onConfirm: n => {
+          c.failedSaves = n;
+          if (dmgInfo.fixed) {
+            const total = n * dmgInfo.value;
+            allocateDamage(target, total);
+            c.manualDamage = null;
+            c.step = 5;
+          } else {
+            c.step = 4.5;
+          }
+          render();
+        },
+        confirmLabel: "Confirmar saves falhados →",
+      }));
+      return wrap;
+    }
+
+    // --- Grupos com saves efetivos diferentes: resolve grupo a grupo -------
+    if (!c.groupFlow) {
+      c.groupFlow = "assign";
+      c.groupCursor = 0;
+      c.woundsPool = c.wounds;
+      c.groupResults = {};
+    }
+    const order = c.allocOrder.filter(key => {
+      const g = target.groups.find(gr => gr.key === key);
+      return g && g.liveCount > 0;
+    });
+
+    if (c.groupCursor >= order.length || c.woundsPool <= 0) {
+      const deadByGroup = {};
+      let totalDamage = 0;
+      order.forEach(key => {
+        const r = c.groupResults[key];
+        if (r) { deadByGroup[key] = r.dead || 0; totalDamage += r.damage || 0; }
+      });
+      c.deadByGroup = deadByGroup;
+      c.manualDamage = totalDamage;
+      c.step = 5;
+      return renderAttackCycle(phaseKey);
+    }
+
+    const currentKey = order[c.groupCursor];
+    const currentGroup = target.groups.find(g => g.key === currentKey);
+    const isLastGroup = c.groupCursor === order.length - 1;
+    const progressLabel = "Grupo " + (c.groupCursor + 1) + "/" + order.length + " da ordem de alocação — restam " + c.woundsPool + " wound(s) por atribuir";
+
+    if (c.groupFlow === "next") {
+      c.groupCursor += 1;
+      c.groupFlow = "assign";
+      return renderAttackCycle(phaseKey);
+    }
+
+    if (c.groupFlow === "assign") {
+      if (isLastGroup) {
+        c.groupResults[currentKey] = { assignedWounds: c.woundsPool };
+        c.groupFlow = c.woundsPool > 0 ? "save" : "next";
+        return renderAttackCycle(phaseKey);
+      }
+      const card = el("div", { class: "card" });
+      card.appendChild(el("div", { class: "step-hint", text: progressLabel }));
+      card.appendChild(el("h3", { text: "Quantos wounds atribuis a " + currentGroup.label + "?" }));
+      let v = Math.min(c.woundsPool, currentGroup.liveCount);
+      const inp = el("input", { type: "number" }); inp.value = v; inp.min = "0"; inp.max = String(c.woundsPool);
+      inp.oninput = e => { v = Math.max(0, Math.min(c.woundsPool, parseInt(e.target.value) || 0)); };
+      card.appendChild(inp);
+      const btn = el("button", { class: "primary", text: "Confirmar wounds deste grupo →" });
+      btn.style.cssText = "width:100%;margin-top:8px;";
+      btn.onclick = () => {
+        c.groupResults[currentKey] = { assignedWounds: v };
+        c.woundsPool -= v;
+        c.groupFlow = v > 0 ? "save" : "next";
+        render();
+      };
+      card.appendChild(btn);
+      wrap.appendChild(card);
+      return wrap;
+    }
+
+    if (c.groupFlow === "save") {
+      const gSave = effSaveFor(currentGroup);
+      const svText = gSave > 6 ? "auto-falha" : (gSave + "+");
+      const hintParts = [progressLabel, "SV " + currentGroup.stats.SV];
+      if (currentGroup.stats.InvSV) hintParts.push("InvSV " + currentGroup.stats.InvSV + " (nunca modificado por AP)");
+      hintParts.push("vs AP " + weapon.AP);
+      wrap.appendChild(renderNumberStep({
+        title: currentGroup.label + " (" + c.groupResults[currentKey].assignedWounds + " wound(s)): precisa de " + svText + " para salvar",
+        hint: hintParts.join(" / "),
+        threshold: gSave > 6 ? 999 : gSave, stepKey: "save-" + currentKey,
+        onConfirm: n => {
+          c.groupResults[currentKey].failedSaves = n;
+          if (dmgInfo.fixed) {
+            const dmg = n * dmgInfo.value;
+            c.groupResults[currentKey].damage = dmg;
+            c.groupResults[currentKey].dead = Math.min(currentGroup.liveCount, Math.floor(dmg / currentGroup.stats.W));
+            c.groupFlow = "next";
+          } else {
+            c.groupFlow = "damage";
+          }
+          render();
+        },
+        confirmLabel: "Confirmar saves falhados deste grupo →",
+      }));
+      return wrap;
+    }
+
+    if (c.groupFlow === "damage") {
+      const card = el("div", { class: "card" });
+      card.appendChild(el("div", { class: "step-hint", text: progressLabel }));
+      card.appendChild(el("h3", { text: currentGroup.label + " — dano total (arma com dano variável: " + weapon.D + ")" }));
+      card.appendChild(el("div", { class: "step-hint", text: "Rola fisicamente " + c.groupResults[currentKey].failedSaves + " vez(es) e soma o total." }));
+      let v = 0;
+      const inp = el("input", { type: "number" }); inp.value = 0; inp.min = "0";
+      inp.oninput = e => { v = Math.max(0, parseInt(e.target.value) || 0); };
+      card.appendChild(inp);
+      const btn = el("button", { class: "primary", text: "Confirmar dano deste grupo →" });
+      btn.style.cssText = "width:100%;margin-top:8px;";
+      btn.onclick = () => {
+        c.groupResults[currentKey].damage = v;
+        c.groupResults[currentKey].dead = Math.min(currentGroup.liveCount, Math.floor(v / currentGroup.stats.W));
+        c.groupFlow = "next";
+        render();
+      };
+      card.appendChild(btn);
+      wrap.appendChild(card);
+      return wrap;
+    }
+
+    return wrap;
+  }
+
+  if (c.step === 4.5) {
+    const card = el("div", { class: "card" });
+    card.appendChild(el("h2", { text: "Dano total (arma com dano variável: " + weapon.D + ")" }));
+    card.appendChild(el("div", { class: "step-hint", text: "Esta arma tem Damage em dados (" + weapon.D + "). Rola fisicamente " + c.failedSaves + " vez(es) e soma o total." }));
+    const inp = el("input", { type: "number" }); inp.value = 0;
+    let v = 0;
+    inp.oninput = e => { v = Math.max(0, parseInt(e.target.value) || 0); };
+    card.appendChild(inp);
+    const btn = el("button", { class: "primary", text: "Confirmar dano total →" });
+    btn.style.width = "100%"; btn.style.marginTop = "8px";
+    btn.onclick = () => { c.manualDamage = v; allocateDamage(target, v); c.step = 5; render(); };
+    card.appendChild(btn);
+    wrap.appendChild(card);
+    return wrap;
+  }
+
+  if (c.step === 5) {
+    const card = el("div", { class: "card" });
+    card.appendChild(el("h2", { text: "Resultado" }));
+    const total = c.manualDamage !== null ? c.manualDamage : c.failedSaves * dmgInfo.value;
+    const totalDead = Object.values(c.deadByGroup || {}).reduce((a, b) => a + b, 0);
+    const res = el("div", { class: "result final", text: total + " dano total → " + totalDead + " modelo(s) morto(s)" });
+    card.appendChild(res);
+    if (target.groups.length > 1) {
+      const table = el("table");
+      const tbody = el("tbody");
+      target.groups.forEach(g => {
+        const tr = el("tr");
+        tr.appendChild(el("td", { text: g.label }));
+        const td2 = el("td", { text: (c.deadByGroup[g.key] || 0) + " morto(s) (de " + g.liveCount + " vivos)" });
+        td2.style.textAlign = "right";
+        tr.appendChild(td2);
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      card.appendChild(table);
+    }
+    const confirmBtn = el("button", { class: "primary", text: "Confirmar e reduzir modelos vivos" });
+    confirmBtn.style.width = "100%";
+    confirmBtn.onclick = () => { applyDeaths(target, c.deadByGroup); state.cycle = emptyCycle(); render(); };
+    card.appendChild(confirmBtn);
+    const another = el("button", { text: "Confirmar e resolver outro ataque" });
+    another.style.cssText = "width:100%;margin-top:8px;";
+    another.onclick = () => { applyDeaths(target, c.deadByGroup); state.cycle = emptyCycle(); render(); };
+    card.appendChild(another);
+    wrap.appendChild(card);
+    return wrap;
+  }
+
+  return wrap;
+}
+
+function allocateDamage(target, totalDamage) {
+  const c = state.cycle;
+  const order = (c.allocOrder && c.allocOrder.length) ? c.allocOrder : target.groups.map(g => g.key);
+  let remaining = totalDamage;
+  const dead = {};
+  order.forEach(key => {
+    const g = target.groups.find(gr => gr.key === key);
+    if (!g) return;
+    const w = g.stats.W;
+    const canDie = Math.min(g.liveCount, Math.floor(remaining / w));
+    dead[key] = canDie;
+    remaining -= canDie * w;
+  });
+  c.deadByGroup = dead;
+}
+
+function applyDeaths(target, deadByGroup) {
+  [state.setup.playerA, state.setup.playerB].forEach(player => {
+    player.units.forEach(u => {
+      if (u.id !== target.id) return;
+      u.groups.forEach(g => { g.liveCount = Math.max(0, g.liveCount - (deadByGroup[g.key] || 0)); });
+    });
+  });
+}
+
+function renderPicker(instances, phaseKey) {
+  const card = el("div", { class: "card" });
+  const hitStat = phaseKey === "fight" ? "WS" : "BS";
+  card.appendChild(el("h2", { text: (phaseKey === "fight" ? "Fight Phase" : "Shooting Phase") + " — Unidade, arma e alvo" }));
+  const c = state.cycle;
+
+  const f1 = el("div", { class: "field" });
+  f1.appendChild(el("label", { text: "Unidade atacante" }));
+  const sel1 = el("select");
+  sel1.appendChild(el("option", { value: "", text: "— escolher —" }));
+  instances.forEach(u => {
+    const o = el("option", { value: u.id, text: u.ownerName + ": " + u.label });
+    if (String(u.id) === String(c.attackerId)) o.selected = true;
+    sel1.appendChild(o);
+  });
+  sel1.onchange = e => { c.attackerId = e.target.value; c.weaponIdx = ""; render(); };
+  f1.appendChild(sel1);
+  card.appendChild(f1);
+
+  const attacker = findInstance(c.attackerId);
+  const attackerWeapons = attacker ? weaponsForPhase(attacker, phaseKey) : [];
+  const showSource = attacker && attacker.datasheetNames.length > 1;
+  if (attacker) {
+    const f2 = el("div", { class: "field" });
+    f2.appendChild(el("label", { text: phaseKey === "fight" ? "Arma (combate)" : "Arma (tiro)" }));
+    if (attackerWeapons.length === 0) {
+      f2.appendChild(el("div", { class: "step-hint", text: phaseKey === "fight" ? "Esta unidade não tem armas de combate." : "Esta unidade não tem armas de tiro." }));
+    } else {
+      const sel2 = el("select");
+      sel2.appendChild(el("option", { value: "", text: "— escolher —" }));
+      attackerWeapons.forEach((w, i) => {
+        const label = w.name + (showSource ? " [" + w.sourceDatasheet + "]" : "") + " (A:" + w.A + " " + hitStat + ":" + toHitValue(w, phaseKey) + " S:" + w.S + " AP:" + w.AP + " D:" + w.D + ")";
+        const o = el("option", { value: i, text: label });
+        if (String(i) === String(c.weaponIdx)) o.selected = true;
+        sel2.appendChild(o);
+      });
+      sel2.onchange = e => { c.weaponIdx = e.target.value; render(); };
+      f2.appendChild(sel2);
+    }
+    card.appendChild(f2);
+  }
+
+  const f3 = el("div", { class: "field" });
+  f3.appendChild(el("label", { text: "Unidade alvo" }));
+  const sel3 = el("select");
+  sel3.appendChild(el("option", { value: "", text: "— escolher —" }));
+  instances.filter(u => !attacker || u.owner !== attacker.owner).forEach(u => {
+    const o = el("option", { value: u.id, text: u.ownerName + ": " + u.label });
+    if (String(u.id) === String(c.targetId)) o.selected = true;
+    sel3.appendChild(o);
+  });
+  sel3.onchange = e => { c.targetId = e.target.value; render(); };
+  f3.appendChild(sel3);
+  card.appendChild(f3);
+
+  const weapon = attacker && c.weaponIdx !== "" ? attackerWeapons[c.weaponIdx] : null;
+  const target = findInstance(c.targetId);
+  const startBtn = el("button", { class: "primary", text: "Iniciar ciclo de ataque →" });
+  startBtn.style.width = "100%";
+  startBtn.disabled = !(attacker && weapon && target);
+  startBtn.onclick = () => {
+    c.step = 1; c.hits = null; c.wounds = null; c.failedSaves = null;
+    c.allocOrder = target.groups.length > 1 ? null : target.groups.map(g => g.key);
+    c.manualDamage = null; c.deadByGroup = null;
+    render();
+  };
+  card.appendChild(startBtn);
+  return card;
+}
+
+function renderNumberStep(opts) {
+  const card = el("div", { class: "card" });
+  card.appendChild(el("div", { class: "step-hint", text: opts.hint }));
+  card.appendChild(el("h3", { text: opts.title }));
+  const c = state.cycle;
+  const mode = c.inputMode[opts.stepKey] || "number";
+
+  const body = el("div");
+  if (mode === "number") {
+    const inp = el("input", { type: "number" }); inp.min = "0";
+    let val = 0;
+    inp.value = 0;
+    inp.oninput = e => { val = Math.max(0, parseInt(e.target.value) || 0); };
+    body.appendChild(inp);
+    const btn = el("button", { class: "primary", text: opts.confirmLabel || "Confirmar" });
+    btn.style.width = "100%"; btn.style.marginTop = "8px";
+    btn.onclick = () => opts.onConfirm(val);
+    body.appendChild(btn);
+  } else {
+    const rolls = c.diceRolls[opts.stepKey] || (c.diceRolls[opts.stepKey] = []);
+    const grid = el("div", { class: "diegrid" });
+    for (let n = 1; n <= 6; n++) {
+      const isHit = opts.threshold !== null && n >= opts.threshold;
+      const btn = el("button", { class: isHit ? "hit" : "", text: String(n) });
+      btn.onclick = () => { rolls.push(n); render(); };
+      grid.appendChild(btn);
+    }
+    body.appendChild(grid);
+    const successes = opts.threshold === null ? rolls.length : rolls.filter(r => r >= opts.threshold).length;
+    const tally = el("div", { class: "tally" });
+    tally.appendChild(document.createTextNode(rolls.length + " dados registados — "));
+    tally.appendChild(el("b", { text: successes + " sucesso(s)", style: "color:var(--text)" }));
+    if (rolls.length > 0) {
+      const undoBtn = el("button", { class: "small", text: "desfazer" });
+      undoBtn.style.marginLeft = "8px";
+      undoBtn.onclick = () => { rolls.pop(); render(); };
+      tally.appendChild(undoBtn);
+    }
+    body.appendChild(tally);
+    const btn = el("button", { class: "primary", text: opts.confirmLabel || "Confirmar" });
+    btn.style.width = "100%"; btn.style.marginTop = "8px";
+    btn.onclick = () => { c.diceRolls[opts.stepKey] = []; opts.onConfirm(successes); };
+    body.appendChild(btn);
+  }
+  card.appendChild(body);
+
+  const toggle = el("div", { class: "toggle-mode", text: mode === "number" ? "usar grelha de dados 1-6 em vez de digitar" : "voltar a digitar o número" });
+  toggle.onclick = () => { c.inputMode[opts.stepKey] = mode === "number" ? "dice" : "number"; render(); };
+  card.appendChild(toggle);
+
+  return card;
+}
+
+function renderAllocOrderPicker(groups, onConfirm) {
+  const wrap = el("div");
+  let order = groups.map(g => g.key);
+  function draw() {
+    wrap.innerHTML = "";
+    order.forEach((key, i) => {
+      const g = groups.find(gr => gr.key === key);
+      const row = el("div", { class: "allocgroup" });
+      row.appendChild(el("span", { text: (i + 1) + ". " + g.label + " (vivos: " + g.liveCount + ", W:" + g.stats.W + ")" }));
+      const btns = el("div", { class: "row" }); btns.style.gap = "4px";
+      const up = el("button", { class: "small", text: "↑" }); up.disabled = i === 0;
+      up.onclick = () => { if (i > 0) { [order[i - 1], order[i]] = [order[i], order[i - 1]]; draw(); } };
+      const down = el("button", { class: "small", text: "↓" }); down.disabled = i === order.length - 1;
+      down.onclick = () => { if (i < order.length - 1) { [order[i], order[i + 1]] = [order[i + 1], order[i]]; draw(); } };
+      btns.appendChild(up); btns.appendChild(down);
+      row.appendChild(btns);
+      wrap.appendChild(row);
+    });
+    const confirmBtn = el("button", { class: "primary", text: "Confirmar ordem →" });
+    confirmBtn.style.width = "100%"; confirmBtn.style.marginTop = "8px";
+    confirmBtn.onclick = () => onConfirm(order);
+    wrap.appendChild(confirmBtn);
+  }
+  draw();
+  return wrap;
+}
+
+loadStateFromLocalStorage();
+render();
+</script>
+</body>
+</html>
