@@ -726,7 +726,7 @@ function emptyCycle() {
     step: 0, // 0=picking,1=hit,2=wound,3=save,4.5=manualDamage,5=result
     hits: null, wounds: null, failedSaves: null,
     allocOrder: null, manualDamage: null, deadByGroup: null,
-    inputMode: {}, diceRolls: {}, voice: {},
+    diceRolls: {}, voice: {},
     // Ajuste manual (+/-) que o jogador aplica ao threshold de acertar/ferir
     // por causa de modificadores da mesa física (cobertura, stratagems...).
     // A app nunca decide o modificador sozinha — só soma/subtrai o que o
@@ -1808,7 +1808,6 @@ function renderAttackCycle(phaseKey) {
         title: "Attacks desta arma (base " + weapon.A + "): quanto rolaste?",
         hint: "Depois soma-se o bónus de +" + attacksBonus + " attacks (" + attacksBonusLabel(weapon, c) + ") antes de perguntar os hits.",
         threshold: null, stepKey: "attacksroll", max: attacksMax, countLabel: "Attacks rolados (base)",
-        disableDiceMode: true,
         onConfirm: n => { c.attacksRolled = n; render(); },
         confirmLabel: "Confirmar attacks →",
       }));
@@ -1823,7 +1822,6 @@ function renderAttackCycle(phaseKey) {
         title: "Quantos hits (TORRENT — acerta sempre)?",
         hint: "🎯 Arma TORRENT: acerta automaticamente, não há hit roll. Introduz quantos ataques rolaste." + attacksBonusSuffix,
         threshold: null, stepKey: "hits", max: effectiveAttacksMax, countLabel: "Hits",
-        disableDiceMode: true,
         onConfirm: n => { c.hits = n; c.step = 2; render(); },
         confirmLabel: "Confirmar hits →",
       }));
@@ -2358,12 +2356,13 @@ function renderNumberStep(opts) {
   card.appendChild(el("div", { class: "step-hint", text: opts.hint }));
   card.appendChild(el("h3", { text: opts.title }));
   const c = state.cycle;
-  // opts.disableDiceMode: passos onde o número pedido é o resultado de UM
-  // dado de notação variável já resolvido (ex: "rolaste D3, saiu quanto?")
-  // não fazem sentido na grelha 1-6, porque essa grelha conta CLIQUES, não
-  // o valor da face — clicar 3 vezes num D3 registaria "3" mesmo que as
-  // faces fossem 6,5,4 (não convertidas). Só digitar o valor já resolvido.
-  const mode = opts.disableDiceMode ? "number" : (c.inputMode[opts.stepKey] || "number");
+  // threshold === null significa "este passo só tem UM valor a introduzir"
+  // (o resultado já resolvido de um dado de notação variável da própria
+  // arma, ex: "rolaste D3, saiu quanto?", ou Damage variável) — não há
+  // sucesso/falha nenhum para comparar. A grelha 1-6 não se aplica: nesse
+  // modo ela contaria CLIQUES, não valores (clicar 3 vezes num D3 registava
+  // "3" mesmo que as faces fossem 6,5,4). Só digitar o número já resolvido.
+  const singleValueStep = opts.threshold === null;
   const max = (typeof opts.max === "number" && isFinite(opts.max)) ? Math.max(0, opts.max) : null;
 
   if (opts.adjust) {
@@ -2380,12 +2379,12 @@ function renderNumberStep(opts) {
   // O ditado por voz dita vários números para SOMAR sucessos (hits/wounds/
   // saves) — não faz sentido para um passo de "diz UM número já resolvido",
   // pela mesma razão que a grelha de dados também fica desligada aí.
-  if (!opts.disableDiceMode) card.appendChild(renderVoiceControl(opts, max));
+  if (!singleValueStep) card.appendChild(renderVoiceControl(opts, max));
   const voiceStatus = (c.voice[opts.stepKey] || {}).status;
   if (voiceStatus === "review") return card;
 
   const body = el("div");
-  if (mode === "number") {
+  if (singleValueStep) {
     const inp = el("input", { type: "number" }); inp.min = "0";
     if (max !== null) inp.max = String(max);
     let val = 0;
@@ -2401,21 +2400,38 @@ function renderNumberStep(opts) {
     btn.onclick = () => opts.onConfirm(val);
     body.appendChild(btn);
   } else {
+    // Campo para digitar + grelha 1-6 sempre visíveis ao mesmo tempo — sem
+    // toggle a esconder um dos dois. No telemóvel costuma ser mais rápido
+    // ir clicando a grelha à medida que lês os dados físicos; o campo
+    // continua ali para quem preferir digitar o total diretamente. Clicar
+    // num dado atualiza sempre o campo para refletir a contagem atual.
     const rolls = c.diceRolls[opts.stepKey] || (c.diceRolls[opts.stepKey] = []);
+    const successesFromRolls = rolls.filter(r => r >= opts.threshold).length;
+    let val = successesFromRolls;
+
+    const inp = el("input", { type: "number" }); inp.min = "0";
+    if (max !== null) inp.max = String(max);
+    inp.value = successesFromRolls;
+    inp.oninput = e => {
+      let n = Math.max(0, parseInt(e.target.value) || 0);
+      if (max !== null && n > max) { n = max; e.target.value = max; }
+      val = n;
+    };
+    body.appendChild(inp);
+
     const atMax = max !== null && rolls.length >= max;
     const grid = el("div", { class: "diegrid" });
     for (let n = 1; n <= 6; n++) {
-      const isHit = opts.threshold !== null && n >= opts.threshold;
+      const isHit = n >= opts.threshold;
       const btn = el("button", { class: isHit ? "hit" : "", text: String(n) });
       btn.disabled = atMax;
       btn.onclick = () => { if (!(max !== null && rolls.length >= max)) { rolls.push(n); render(); } };
       grid.appendChild(btn);
     }
     body.appendChild(grid);
-    const successes = opts.threshold === null ? rolls.length : rolls.filter(r => r >= opts.threshold).length;
     const tally = el("div", { class: "tally" });
     tally.appendChild(document.createTextNode(rolls.length + (max !== null ? "/" + max : "") + " dados registados — "));
-    tally.appendChild(el("b", { text: successes + " sucesso(s)", style: "color:var(--text)" }));
+    tally.appendChild(el("b", { text: successesFromRolls + " sucesso(s)", style: "color:var(--text)" }));
     if (rolls.length > 0) {
       const undoBtn = el("button", { class: "small", text: "desfazer" });
       undoBtn.style.marginLeft = "8px";
@@ -2423,19 +2439,13 @@ function renderNumberStep(opts) {
       tally.appendChild(undoBtn);
     }
     body.appendChild(tally);
-    if (atMax) body.appendChild(el("div", { class: "step-hint", text: "Máximo atingido — usa \"desfazer\" se precisares de corrigir." }));
+    if (atMax) body.appendChild(el("div", { class: "step-hint", text: "Máximo atingido — usa \"desfazer\" para tirar um dado, ou digita o número diretamente." }));
     const btn = el("button", { class: "primary", text: opts.confirmLabel || "Confirmar" });
     btn.style.width = "100%"; btn.style.marginTop = "8px";
-    btn.onclick = () => { c.diceRolls[opts.stepKey] = []; opts.onConfirm(successes); };
+    btn.onclick = () => { c.diceRolls[opts.stepKey] = []; opts.onConfirm(val); };
     body.appendChild(btn);
   }
   card.appendChild(body);
-
-  if (!opts.disableDiceMode) {
-    const toggle = el("div", { class: "toggle-mode", text: mode === "number" ? "usar grelha de dados 1-6 em vez de digitar" : "voltar a digitar o número" });
-    toggle.onclick = () => { c.inputMode[opts.stepKey] = mode === "number" ? "dice" : "number"; render(); };
-    card.appendChild(toggle);
-  }
 
   return card;
 }
