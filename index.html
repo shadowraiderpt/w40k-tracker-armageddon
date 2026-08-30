@@ -713,11 +713,11 @@ function el(tag, props, children) {
 // ---------------------------------------------------------------------------
 const library = buildLibrary();
 const PHASES = [
-  { key: "command", label: "Comando" },
-  { key: "movement", label: "Movimento" },
-  { key: "shooting", label: "Tiro" },
-  { key: "charge", label: "Carga" },
-  { key: "fight", label: "Combate" },
+  { key: "command", label: "Command" },
+  { key: "movement", label: "Movement" },
+  { key: "shooting", label: "Shooting" },
+  { key: "charge", label: "Charge" },
+  { key: "fight", label: "Fight" },
 ];
 const state = {
   tab: "setup",
@@ -2263,11 +2263,17 @@ function renderPicker(instances, phaseKey) {
   card.appendChild(el("h2", { text: (phaseKey === "fight" ? "Fight Phase" : "Shooting Phase") + " — Unidade, arma e alvo" }));
   const c = state.cycle;
 
+  // Shooting Phase: só o jogador ativo dispara, por isso o atacante só pode
+  // ser uma unidade dele. Fight Phase: ambos os jogadores lutam,
+  // alternadamente, dentro da mesma fase — mantém as duas listas juntas.
+  const activeOwner = state.game.activePlayerKey === "playerA" ? "A" : "B";
+  const attackerInstances = phaseKey === "shooting" ? instances.filter(u => u.owner === activeOwner) : instances;
+
   const f1 = el("div", { class: "field" });
-  f1.appendChild(el("label", { text: "Unidade atacante" }));
+  f1.appendChild(el("label", { text: "Unidade atacante" + (phaseKey === "shooting" ? " (" + activePlayerName() + ")" : "") }));
   const sel1 = el("select");
   sel1.appendChild(el("option", { value: "", text: "— escolher —" }));
-  instances.forEach(u => {
+  attackerInstances.forEach(u => {
     const o = el("option", { value: u.id, text: u.ownerName + ": " + u.label });
     if (String(u.id) === String(c.attackerId)) o.selected = true;
     sel1.appendChild(o);
