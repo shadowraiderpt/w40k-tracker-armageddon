@@ -650,6 +650,48 @@ function renderRollerBadge(role, rollerName, why) {
   if (why) wrap.appendChild(el("div", { class: "roller-why", text: why }));
   return wrap;
 }
+// Arma com Damage variável (D3, D6...): cada save falhado rola o SEU
+// PRÓPRIO dado de dano — não um total partilhado. Pede um valor por
+// instância (não uma soma), porque o excesso de UM save nunca se soma a
+// outro (só o dano parcial no MESMO modelo, entre saves consecutivos,
+// persiste — isso resolveGroupDamage já trata). MELTA (se houver) soma-se
+// a cada instância automaticamente, não é preciso o jogador somar à mão.
+function renderDamageInstancesCard(opts) {
+  const card = el("div", { class: "card" });
+  if (opts.onBack) {
+    const backBtn = el("button", { class: "small", text: "← Corrigir passo anterior" });
+    backBtn.style.marginBottom = "10px";
+    backBtn.onclick = opts.onBack;
+    card.appendChild(backBtn);
+  }
+  card.appendChild(renderRollerBadge("attacker", opts.rollerName, "Roll de Dano — quanto dano cada save falhado causa."));
+  if (opts.progressLabel) card.appendChild(el("div", { class: "step-hint", text: opts.progressLabel }));
+  card.appendChild(el("h3", { text: (opts.groupLabel ? opts.groupLabel + " — " : "") + "Dano de cada save falhado (arma com " + statLabel("D") + " variável: " + opts.weaponD + ")" }));
+  const meltaNote = opts.meltaBonus ? (" MELTA já soma +" + opts.meltaBonus + " a cada um automaticamente, não incluas isso no valor abaixo.") : "";
+  card.appendChild(el("div", { class: "step-hint", text: "Cada save falhado rola o seu próprio dado de dano — não somes tudo num só número, introduz o resultado de cada rolo." + meltaNote }));
+  const values = Array(opts.count).fill(1);
+  values.forEach((v, i) => {
+    const row = el("div", { class: "row" });
+    row.style.marginBottom = "6px";
+    row.appendChild(el("label", { text: "Save falhado " + (i + 1) + (opts.maxPerRoll != null ? " (1–" + opts.maxPerRoll + ")" : "") + ":" }));
+    const inp = el("input", { type: "number" });
+    inp.style.width = "70px";
+    inp.value = v; inp.min = "1";
+    if (opts.maxPerRoll != null) inp.max = String(opts.maxPerRoll);
+    inp.oninput = e => {
+      let n = Math.max(1, parseInt(e.target.value) || 1);
+      if (opts.maxPerRoll != null && n > opts.maxPerRoll) n = opts.maxPerRoll;
+      values[i] = n;
+    };
+    row.appendChild(inp);
+    card.appendChild(row);
+  });
+  const btn = el("button", { class: "primary", text: opts.confirmLabel || "Confirmar dano →" });
+  btn.style.width = "100%"; btn.style.marginTop = "8px";
+  btn.onclick = () => opts.onConfirm(values.map(v => v + (opts.meltaBonus || 0)));
+  card.appendChild(btn);
+  return card;
+}
 // Extrai o número X de uma keyword do tipo "SUSTAINED HITS 1", "RAPID FIRE 2",
 // "CLEAVE 1", "MELTA 2" (com ou sem "+" colado ao número). BLAST não leva
 // número nas datasheets reais (é sempre "+1 attack por cada 5 modelos");
@@ -2251,7 +2293,7 @@ function renderAttackCycle(phaseKey) {
               const woundsLeftByGroup = {};
               target.groups.forEach(g => {
                 const critHere = (c.critDeadByGroup && c.critDeadByGroup[g.key]) || 0;
-                const result = resolveGroupDamage(g, critHere, 0);
+                const result = resolveGroupDamage(g, critHere, []);
                 deadByGroup[g.key] = result.dead;
                 woundsLeftByGroup[g.key] = result.woundsLeftAfter;
               });
@@ -2294,8 +2336,11 @@ function renderAttackCycle(phaseKey) {
         onConfirm: n => {
           c.failedSaves = n;
           if (dmgInfo.fixed) {
-            const total = n * (dmgInfo.value + meltaBonus);
-            allocateDamage(target, total, c.critDeadByGroup);
+            // Cada save falhado é uma instância de dano independente — o
+            // excesso de UM save nunca passa para o modelo seguinte nem
+            // para outro save (só o dano parcial no MESMO modelo persiste).
+            const instances = Array(n).fill(dmgInfo.value + meltaBonus);
+            allocateDamage(target, instances, c.critDeadByGroup);
             c.manualDamage = null;
             c.step = 5;
           } else {
@@ -2340,7 +2385,7 @@ function renderAttackCycle(phaseKey) {
         } else {
           // Grupo nunca chegou a "save"/"damage" (0 wounds atribuídos) —
           // só os crits de Devastating Wounds contam aqui, se houver.
-          const result = resolveGroupDamage(g, critDead, 0);
+          const result = resolveGroupDamage(g, critDead, []);
           deadByGroup[key] = result.dead;
           woundsLeftByGroup[key] = result.woundsLeftAfter;
         }
@@ -2413,10 +2458,10 @@ function renderAttackCycle(phaseKey) {
         onConfirm: n => {
           c.groupResults[currentKey].failedSaves = n;
           if (dmgInfo.fixed) {
-            const dmg = n * (dmgInfo.value + meltaBonus);
+            const instances = Array(n).fill(dmgInfo.value + meltaBonus);
             const critDeadHere = (c.critDeadByGroup && c.critDeadByGroup[currentKey]) || 0;
-            const result = resolveGroupDamage(currentGroup, critDeadHere, dmg);
-            c.groupResults[currentKey].damage = dmg;
+            const result = resolveGroupDamage(currentGroup, critDeadHere, instances);
+            c.groupResults[currentKey].damage = n * (dmgInfo.value + meltaBonus);
             c.groupResults[currentKey].dead = result.dead;
             c.groupResults[currentKey].woundsLeftAfter = result.woundsLeftAfter;
             c.groupFlow = "next";
@@ -2431,34 +2476,36 @@ function renderAttackCycle(phaseKey) {
     }
 
     if (c.groupFlow === "damage") {
-      const card = el("div", { class: "card" });
-      const backBtn = el("button", { class: "small", text: "← Corrigir passo anterior" });
-      backBtn.style.marginBottom = "10px";
-      backBtn.onclick = () => { c.groupFlow = "save"; render(); };
-      card.appendChild(backBtn);
-      card.appendChild(renderRollerBadge("attacker", attackerRollerName, "Roll de Dano — quanto dano cada wound que falhou o save causa."));
-      card.appendChild(el("div", { class: "step-hint", text: progressLabel }));
-      card.appendChild(el("h3", { text: currentGroup.label + " — dano total (arma com " + statLabel("D") + " variável: " + weapon.D + ")" }));
-      const meltaNote = meltaBonus ? (" (+" + meltaBonus + " por save falhado de MELTA — a app soma-o a seguir, não incluas no valor abaixo)") : "";
-      card.appendChild(el("div", { class: "step-hint", text: "Rola fisicamente " + c.groupResults[currentKey].failedSaves + " vez(es) e soma o total." + meltaNote }));
-      let v = 0;
-      const inp = el("input", { type: "number" }); inp.value = 0; inp.min = "0";
-      inp.oninput = e => { v = Math.max(0, parseInt(e.target.value) || 0); };
-      card.appendChild(inp);
-      const btn = el("button", { class: "primary", text: "Confirmar dano deste grupo →" });
-      btn.style.cssText = "width:100%;margin-top:8px;";
-      btn.onclick = () => {
-        const critDeadHere = (c.critDeadByGroup && c.critDeadByGroup[currentKey]) || 0;
-        const total = v + meltaBonus * c.groupResults[currentKey].failedSaves;
-        const result = resolveGroupDamage(currentGroup, critDeadHere, total);
-        c.groupResults[currentKey].damage = total;
+      const failedHere = c.groupResults[currentKey].failedSaves;
+      const critDeadHere = (c.critDeadByGroup && c.critDeadByGroup[currentKey]) || 0;
+      if (failedHere === 0) {
+        // Nada a rolar — 0 saves falhados, 0 instâncias de dano normal.
+        const result = resolveGroupDamage(currentGroup, critDeadHere, []);
+        c.groupResults[currentKey].damage = 0;
         c.groupResults[currentKey].dead = result.dead;
         c.groupResults[currentKey].woundsLeftAfter = result.woundsLeftAfter;
         c.groupFlow = "next";
-        render();
-      };
-      card.appendChild(btn);
-      wrap.appendChild(card);
+        return renderAttackCycle(phaseKey);
+      }
+      wrap.appendChild(renderDamageInstancesCard({
+        onBack: () => { c.groupFlow = "save"; render(); },
+        rollerName: attackerRollerName,
+        progressLabel,
+        groupLabel: currentGroup.label,
+        weaponD: weapon.D,
+        meltaBonus,
+        count: failedHere,
+        maxPerRoll: maxOfDiceNotation(weapon.D),
+        confirmLabel: "Confirmar dano deste grupo →",
+        onConfirm: instances => {
+          const result = resolveGroupDamage(currentGroup, critDeadHere, instances);
+          c.groupResults[currentKey].damage = instances.reduce((a, b) => a + b, 0);
+          c.groupResults[currentKey].dead = result.dead;
+          c.groupResults[currentKey].woundsLeftAfter = result.woundsLeftAfter;
+          c.groupFlow = "next";
+          render();
+        },
+      }));
       return wrap;
     }
 
@@ -2466,30 +2513,27 @@ function renderAttackCycle(phaseKey) {
   }
 
   if (c.step === 4.5) {
-    const card = el("div", { class: "card" });
-    const backBtn = el("button", { class: "small", text: "← Corrigir passo anterior" });
-    backBtn.style.marginBottom = "10px";
-    backBtn.onclick = () => { c.step = 3; render(); };
-    card.appendChild(backBtn);
-    card.appendChild(renderRollerBadge("attacker", attackerRollerName, "Roll de Dano — quanto dano cada wound que falhou o save causa."));
-    card.appendChild(el("h2", { text: "Dano total (arma com " + statLabel("D") + " variável: " + weapon.D + ")" }));
-    const meltaNote = meltaBonus ? (" (+" + meltaBonus + " por save falhado de MELTA — a app soma-o a seguir, não incluas no valor abaixo)") : "";
-    card.appendChild(el("div", { class: "step-hint", text: "Esta arma tem " + statLabel("D") + " em dados (" + weapon.D + "). Rola fisicamente " + c.failedSaves + " vez(es) e soma o total." + meltaNote }));
-    const inp = el("input", { type: "number" }); inp.value = 0;
-    let v = 0;
-    inp.oninput = e => { v = Math.max(0, parseInt(e.target.value) || 0); };
-    card.appendChild(inp);
-    const btn = el("button", { class: "primary", text: "Confirmar dano total →" });
-    btn.style.width = "100%"; btn.style.marginTop = "8px";
-    btn.onclick = () => {
-      const total = v + meltaBonus * c.failedSaves;
-      c.manualDamage = total;
-      allocateDamage(target, total, c.critDeadByGroup);
+    if (c.failedSaves === 0) {
+      c.manualDamage = 0;
+      allocateDamage(target, [], c.critDeadByGroup);
       c.step = 5;
-      render();
-    };
-    card.appendChild(btn);
-    wrap.appendChild(card);
+      return renderAttackCycle(phaseKey);
+    }
+    wrap.appendChild(renderDamageInstancesCard({
+      onBack: () => { c.step = 3; render(); },
+      rollerName: attackerRollerName,
+      weaponD: weapon.D,
+      meltaBonus,
+      count: c.failedSaves,
+      maxPerRoll: maxOfDiceNotation(weapon.D),
+      confirmLabel: "Confirmar dano total →",
+      onConfirm: instances => {
+        c.manualDamage = instances.reduce((a, b) => a + b, 0);
+        allocateDamage(target, instances, c.critDeadByGroup);
+        c.step = 5;
+        render();
+      },
+    }));
     return wrap;
   }
 
@@ -2595,50 +2639,56 @@ function renderAttackCycle(phaseKey) {
 }
 
 // Consome primeiro os critKills (Devastating Wounds — cada um mata 1
-// modelo de vez, sem save, seja qual for o Damage da arma) e só depois o
-// normalDamage (saves falhados × Damage), acumulando no modelo "da
-// frente" do grupo (g.woundsRemainingOnCurrent) e transbordando para os
-// seguintes — sem mutar o grupo, só devolve o resultado (usado tanto para
-// pré-visualizar no ecrã de Resultado como para aplicar de vez a seguir).
-// Um vehicle/monster com poucos modelos e W alto (ex: Land Speeder W9) que
-// já tinha dano de um ataque anterior continua desse ponto, não reinicia.
-function resolveGroupDamage(g, critKills, normalDamage) {
+// modelo de vez, sem save, seja qual for o Damage da arma) e DEPOIS
+// damageInstances: um array com o dano de CADA save falhado em separado
+// (não um total já somado) — cada instância é um ataque independente, o
+// excesso de UMA nunca passa para a seguinte nem para o próximo modelo;
+// só o dano parcial que sobra no MESMO modelo, entre instâncias
+// consecutivas, é que persiste (g.woundsRemainingOnCurrent, entre
+// ataques diferentes também). Sem mutar o grupo, só devolve o resultado
+// — usado tanto para pré-visualizar no ecrã de Resultado como para
+// aplicar de vez a seguir. Também devolve quantas instâncias sobraram
+// por consumir (para o resto passar ao próximo grupo na ordem de
+// alocação, se as deste grupo se esgotarem primeiro).
+function resolveGroupDamage(g, critKills, damageInstances) {
   const w = g.stats.W;
   let live = g.liveCount;
   let woundsLeft = (g.woundsRemainingOnCurrent != null) ? g.woundsRemainingOnCurrent : w;
   let dead = 0;
   let crits = critKills || 0;
   while (crits > 0 && live > 0) { live--; dead++; woundsLeft = w; crits--; }
-  let dmg = normalDamage || 0;
-  let damageConsumed = 0;
-  while (dmg > 0 && live > 0) {
-    if (dmg >= woundsLeft) {
-      dmg -= woundsLeft; damageConsumed += woundsLeft;
-      live--; dead++; woundsLeft = w;
-    } else {
-      woundsLeft -= dmg; damageConsumed += dmg; dmg = 0;
-    }
+  const instances = damageInstances || [];
+  let consumed = 0;
+  for (let i = 0; i < instances.length; i++) {
+    if (live <= 0) break;
+    const dmg = instances[i];
+    if (dmg >= woundsLeft) { live--; dead++; woundsLeft = w; }
+    else { woundsLeft -= dmg; }
+    consumed++;
   }
-  return { dead, liveAfter: live, woundsLeftAfter: live > 0 ? woundsLeft : w, damageConsumed };
+  return { dead, liveAfter: live, woundsLeftAfter: live > 0 ? woundsLeft : w, instancesConsumed: consumed };
 }
 
 // preDead (opcional): mortes já decididas antes deste cálculo (ex: mortal
 // wounds diretas de DEVASTATING WOUNDS) — resolveGroupDamage já garante
-// que não conta o mesmo modelo morto duas vezes.
-function allocateDamage(target, totalDamage, preDead) {
+// que não conta o mesmo modelo morto duas vezes. damageInstances: array
+// com o dano de cada save falhado (ver resolveGroupDamage) — instâncias
+// que "sobrem" de um grupo (porque ele ficou sem modelos vivos) passam
+// para o grupo seguinte na ordem de alocação.
+function allocateDamage(target, damageInstances, preDead) {
   const c = state.cycle;
   const order = (c.allocOrder && c.allocOrder.length) ? c.allocOrder : target.groups.map(g => g.key);
-  let remaining = totalDamage;
+  let instances = damageInstances || [];
   const dead = {};
   const woundsLeftByGroup = {};
   order.forEach(key => {
     const g = target.groups.find(gr => gr.key === key);
     if (!g) return;
     const critKillsHere = (preDead && preDead[key]) || 0;
-    const result = resolveGroupDamage(g, critKillsHere, remaining);
+    const result = resolveGroupDamage(g, critKillsHere, instances);
     dead[key] = result.dead;
     woundsLeftByGroup[key] = result.woundsLeftAfter;
-    remaining -= result.damageConsumed;
+    instances = instances.slice(result.instancesConsumed);
   });
   c.deadByGroup = dead;
   c.woundsLeftByGroup = woundsLeftByGroup;
