@@ -896,7 +896,14 @@ function emptyCycle() {
     hitAdjust: 0, woundAdjust: 0,
     // DEVASTATING WOUNDS: quantos dos wounds confirmados foram um 6 não
     // modificado (critical wound) — viram mortal wounds diretas, sem save.
-    critWounds: null, critDeadByGroup: null,
+    // critInstances: array com 1 instância de dano (= weapon.D) por critical
+    // wound, processada pelo MESMO resolveGroupDamage dos saves falhados
+    // normais (sem save, mas respeitando W do alvo e o dano já acumulado no
+    // modelo atual). critInstancesByGroup: essas instâncias já repartidas
+    // por grupo de alocação (cascata igual à dos saves falhados), calculada
+    // assim que os críticos são confirmados — antes de se saber os saves
+    // normais, que continuam a passar por save roll.
+    critWounds: null, critInstances: null, critInstancesByGroup: null,
     // SUSTAINED HITS X: quantos dos hits confirmados foram um 6 não
     // modificado — cada um gera X hits automáticos adicionais.
     sustainedHits: null,
@@ -2104,7 +2111,8 @@ function renderAttackCycle(phaseKey) {
   const backToWounds = () => {
     c.step = 2;
     c.critWounds = null;
-    c.critDeadByGroup = null;
+    c.critInstances = null;
+    c.critInstancesByGroup = null;
     render();
   };
 
@@ -2271,34 +2279,31 @@ function renderAttackCycle(phaseKey) {
     if (isDevWounds && c.critWounds === null) {
       if (c.wounds === 0) {
         c.critWounds = 0;
-        c.critDeadByGroup = {};
+        c.critInstances = [];
+        c.critInstancesByGroup = {};
       } else {
         const critLabel = critThreshold === 6 ? "um 6 não modificado" :
           ("≥" + critThreshold + " — threshold de ANTI-" + antiInfo.targetKeyword + " " + antiInfo.threshold + "+ (um 6 não modificado conta sempre também)");
         wrap.appendChild(renderNumberStep({
           title: "Desses wounds, quantos foram " + critLabel + "?",
-          hint: "⚠️ " + weapon.name + " tem DEVASTATING WOUNDS: cada critical wound vira mortal wound automática (Damage " + weapon.D + "), sem save, máx. 1 modelo morto por critical wound.",
+          hint: "⚠️ " + weapon.name + " tem DEVASTATING WOUNDS: cada critical wound vira mortal wound automática (Damage " + weapon.D + "), sem save — mas continua a respeitar as Wounds (W) e o dano já acumulado no alvo, tal como qualquer outro dano.",
           threshold: critThreshold, stepKey: "critwounds", max: c.wounds, countLabel: "Wounds críticos",
           initialValue: c.critWounds,
           onBack: backToWounds,
           roller: "attacker", rollerName: attackerRollerName, rollWhy: "A contar, dos wounds que já rolaste, quantos foram um critical wound.",
           onConfirm: n => {
             c.critWounds = n;
-            c.critDeadByGroup = resolveDevastatingDeaths(target, n);
+            // Cada critical wound = mais uma instância de dano igual ao D da
+            // arma, sem save — processada pelo MESMO resolveGroupDamage dos
+            // saves falhados normais (nunca "1 crit = 1 modelo morto").
+            const critInstances = Array(n).fill(weapon.D);
+            c.critInstances = critInstances;
+            c.critInstancesByGroup = splitInstancesByGroup(target, critInstances);
             if (c.wounds - n <= 0) {
               // Todos os wounds eram críticos — nada de dano normal a
-              // resolver, mas ainda é preciso passar cada grupo por
-              // resolveGroupDamage para saber quanto sobra no modelo atual.
-              const deadByGroup = {};
-              const woundsLeftByGroup = {};
-              target.groups.forEach(g => {
-                const critHere = (c.critDeadByGroup && c.critDeadByGroup[g.key]) || 0;
-                const result = resolveGroupDamage(g, critHere, []);
-                deadByGroup[g.key] = result.dead;
-                woundsLeftByGroup[g.key] = result.woundsLeftAfter;
-              });
-              c.deadByGroup = deadByGroup;
-              c.woundsLeftByGroup = woundsLeftByGroup;
+              // resolver, mas os críticos ainda têm de passar pela cascata
+              // normal de alocação para saber quanto sobra no modelo atual.
+              allocateDamage(target, critInstances);
               c.manualDamage = 0;
               c.failedSaves = 0;
             }
@@ -2339,8 +2344,10 @@ function renderAttackCycle(phaseKey) {
             // Cada save falhado é uma instância de dano independente — o
             // excesso de UM save nunca passa para o modelo seguinte nem
             // para outro save (só o dano parcial no MESMO modelo persiste).
-            const instances = Array(n).fill(dmgInfo.value + meltaBonus);
-            allocateDamage(target, instances, c.critDeadByGroup);
+            // As instâncias de Devastating Wounds (sem save) resolvem-se
+            // sempre primeiro, seguidas das instâncias dos saves normais.
+            const instances = (c.critInstances || []).concat(Array(n).fill(dmgInfo.value + meltaBonus));
+            allocateDamage(target, instances);
             c.manualDamage = null;
             c.step = 5;
           } else {
@@ -2376,7 +2383,7 @@ function renderAttackCycle(phaseKey) {
       target.groups.forEach(g => {
         const key = g.key;
         const r = c.groupResults[key];
-        const critDead = (c.critDeadByGroup && c.critDeadByGroup[key]) || 0;
+        const critInst = (c.critInstancesByGroup && c.critInstancesByGroup[key]) || [];
         if (r && r.dead != null) {
           // r.dead já inclui os crits deste grupo (calculado via
           // resolveGroupDamage no passo "save"/"damage" abaixo).
@@ -2384,8 +2391,9 @@ function renderAttackCycle(phaseKey) {
           woundsLeftByGroup[key] = r.woundsLeftAfter != null ? r.woundsLeftAfter : g.stats.W;
         } else {
           // Grupo nunca chegou a "save"/"damage" (0 wounds atribuídos) —
-          // só os crits de Devastating Wounds contam aqui, se houver.
-          const result = resolveGroupDamage(g, critDead, []);
+          // só as instâncias de Devastating Wounds já repartidas para este
+          // grupo contam aqui, se houver.
+          const result = resolveGroupDamage(g, critInst, []);
           deadByGroup[key] = result.dead;
           woundsLeftByGroup[key] = result.woundsLeftAfter;
         }
@@ -2459,8 +2467,8 @@ function renderAttackCycle(phaseKey) {
           c.groupResults[currentKey].failedSaves = n;
           if (dmgInfo.fixed) {
             const instances = Array(n).fill(dmgInfo.value + meltaBonus);
-            const critDeadHere = (c.critDeadByGroup && c.critDeadByGroup[currentKey]) || 0;
-            const result = resolveGroupDamage(currentGroup, critDeadHere, instances);
+            const critInstHere = (c.critInstancesByGroup && c.critInstancesByGroup[currentKey]) || [];
+            const result = resolveGroupDamage(currentGroup, critInstHere, instances);
             c.groupResults[currentKey].damage = n * (dmgInfo.value + meltaBonus);
             c.groupResults[currentKey].dead = result.dead;
             c.groupResults[currentKey].woundsLeftAfter = result.woundsLeftAfter;
@@ -2477,10 +2485,10 @@ function renderAttackCycle(phaseKey) {
 
     if (c.groupFlow === "damage") {
       const failedHere = c.groupResults[currentKey].failedSaves;
-      const critDeadHere = (c.critDeadByGroup && c.critDeadByGroup[currentKey]) || 0;
+      const critInstHere = (c.critInstancesByGroup && c.critInstancesByGroup[currentKey]) || [];
       if (failedHere === 0) {
         // Nada a rolar — 0 saves falhados, 0 instâncias de dano normal.
-        const result = resolveGroupDamage(currentGroup, critDeadHere, []);
+        const result = resolveGroupDamage(currentGroup, critInstHere, []);
         c.groupResults[currentKey].damage = 0;
         c.groupResults[currentKey].dead = result.dead;
         c.groupResults[currentKey].woundsLeftAfter = result.woundsLeftAfter;
@@ -2498,7 +2506,7 @@ function renderAttackCycle(phaseKey) {
         maxPerRoll: maxOfDiceNotation(weapon.D),
         confirmLabel: "Confirmar dano deste grupo →",
         onConfirm: instances => {
-          const result = resolveGroupDamage(currentGroup, critDeadHere, instances);
+          const result = resolveGroupDamage(currentGroup, critInstHere, instances);
           c.groupResults[currentKey].damage = instances.reduce((a, b) => a + b, 0);
           c.groupResults[currentKey].dead = result.dead;
           c.groupResults[currentKey].woundsLeftAfter = result.woundsLeftAfter;
@@ -2515,7 +2523,7 @@ function renderAttackCycle(phaseKey) {
   if (c.step === 4.5) {
     if (c.failedSaves === 0) {
       c.manualDamage = 0;
-      allocateDamage(target, [], c.critDeadByGroup);
+      allocateDamage(target, (c.critInstances || []));
       c.step = 5;
       return renderAttackCycle(phaseKey);
     }
@@ -2529,7 +2537,8 @@ function renderAttackCycle(phaseKey) {
       confirmLabel: "Confirmar dano total →",
       onConfirm: instances => {
         c.manualDamage = instances.reduce((a, b) => a + b, 0);
-        allocateDamage(target, instances, c.critDeadByGroup);
+        // Devastating Wounds primeiro, saves normais a seguir.
+        allocateDamage(target, (c.critInstances || []).concat(instances));
         c.step = 5;
         render();
       },
@@ -2568,7 +2577,7 @@ function renderAttackCycle(phaseKey) {
     const normalDamage = c.manualDamage !== null ? c.manualDamage : (dmgInfo.fixed ? (c.failedSaves || 0) * (dmgInfo.value + meltaBonus) : 0);
     const totalDead = Object.values(c.deadByGroup || {}).reduce((a, b) => a + b, 0);
     if (critCount > 0) {
-      card.appendChild(el("div", { class: "step-hint", text: "⚠️ Devastating Wounds: " + critCount + " critical wound(s) → mortal wounds diretas, sem save (máx. 1 modelo morto por critical wound)." }));
+      card.appendChild(el("div", { class: "step-hint", text: "⚠️ Devastating Wounds: " + critCount + " critical wound(s) → " + critCount + "x mortal wound(s) de Damage " + weapon.D + " cada, sem save (respeitando W do alvo, tal como qualquer outro dano)." }));
     }
     if (fnp && c.fnpSuccesses) {
       // rawTotalDead já reflete deadByGroup PÓS-FNP (foi recalculado neste
@@ -2650,14 +2659,17 @@ function renderAttackCycle(phaseKey) {
 // aplicar de vez a seguir. Também devolve quantas instâncias sobraram
 // por consumir (para o resto passar ao próximo grupo na ordem de
 // alocação, se as deste grupo se esgotarem primeiro).
-function resolveGroupDamage(g, critKills, damageInstances) {
+// critInstances: instâncias de Devastating Wounds (1 por critical wound,
+// cada uma com valor = weapon.D) — sem save, mas processadas pelo MESMO
+// mecanismo de instâncias que os saves falhados normais, respeitando W do
+// alvo e o dano já acumulado no modelo atual (nunca "1 crit = 1 modelo
+// morto"). Resolvem-se sempre antes das damageInstances (saves normais).
+function resolveGroupDamage(g, critInstances, damageInstances) {
   const w = g.stats.W;
   let live = g.liveCount;
   let woundsLeft = (g.woundsRemainingOnCurrent != null) ? g.woundsRemainingOnCurrent : w;
   let dead = 0;
-  let crits = critKills || 0;
-  while (crits > 0 && live > 0) { live--; dead++; woundsLeft = w; crits--; }
-  const instances = damageInstances || [];
+  const instances = (critInstances || []).concat(damageInstances || []);
   let consumed = 0;
   for (let i = 0; i < instances.length; i++) {
     if (live <= 0) break;
@@ -2669,13 +2681,12 @@ function resolveGroupDamage(g, critKills, damageInstances) {
   return { dead, liveAfter: live, woundsLeftAfter: live > 0 ? woundsLeft : w, instancesConsumed: consumed };
 }
 
-// preDead (opcional): mortes já decididas antes deste cálculo (ex: mortal
-// wounds diretas de DEVASTATING WOUNDS) — resolveGroupDamage já garante
-// que não conta o mesmo modelo morto duas vezes. damageInstances: array
-// com o dano de cada save falhado (ver resolveGroupDamage) — instâncias
-// que "sobrem" de um grupo (porque ele ficou sem modelos vivos) passam
-// para o grupo seguinte na ordem de alocação.
-function allocateDamage(target, damageInstances, preDead) {
+// damageInstances: array com o dano de cada instância independente (saves
+// falhados normais, e/ou instâncias de Devastating Wounds já concatenadas
+// pelo chamador — ver resolveGroupDamage). Instâncias que "sobrem" de um
+// grupo (porque ele ficou sem modelos vivos) passam para o grupo seguinte
+// na ordem de alocação.
+function allocateDamage(target, damageInstances) {
   const c = state.cycle;
   const order = (c.allocOrder && c.allocOrder.length) ? c.allocOrder : target.groups.map(g => g.key);
   let instances = damageInstances || [];
@@ -2684,8 +2695,7 @@ function allocateDamage(target, damageInstances, preDead) {
   order.forEach(key => {
     const g = target.groups.find(gr => gr.key === key);
     if (!g) return;
-    const critKillsHere = (preDead && preDead[key]) || 0;
-    const result = resolveGroupDamage(g, critKillsHere, instances);
+    const result = resolveGroupDamage(g, [], instances);
     dead[key] = result.dead;
     woundsLeftByGroup[key] = result.woundsLeftAfter;
     instances = instances.slice(result.instancesConsumed);
@@ -2694,28 +2704,26 @@ function allocateDamage(target, damageInstances, preDead) {
   c.woundsLeftByGroup = woundsLeftByGroup;
 }
 
-// DEVASTATING WOUNDS: cada critical wound (6 não modificado no wound roll)
-// vira mortal wounds diretas, sem save, mas mata no máximo 1 modelo por
-// critical wound — independentemente do valor de Damage da arma (ver
-// core_rules_reference.md, glossário de keywords). Por isso o cálculo aqui
-// não precisa do valor de dano, só da contagem de critical wounds. Só
-// decide QUANTOS modelos morrem por grupo (não mexe em wounds parciais —
-// isso é resolveGroupDamage, chamado a seguir com este resultado como
-// preDead).
-function resolveDevastatingDeaths(target, critCount) {
+// Reparte um array de instâncias de dano pelos grupos de alocação, pela
+// mesma cascata de allocateDamage (excesso só passa ao próximo grupo
+// quando o atual fica sem modelos vivos), mas sem mutar nada — usado para
+// saber ANTECIPADAMENTE que instâncias de Devastating Wounds (sem save)
+// tocam a cada grupo, antes de se saber os saves normais (que são
+// resolvidos depois, grupo a grupo, no fluxo de "saves efetivos
+// diferentes").
+function splitInstancesByGroup(target, instances) {
   const c = state.cycle;
   const order = (c.allocOrder && c.allocOrder.length) ? c.allocOrder : target.groups.map(g => g.key);
-  const dead = {};
-  let remaining = critCount;
+  let remaining = instances || [];
+  const byGroup = {};
   order.forEach(key => {
     const g = target.groups.find(gr => gr.key === key);
-    if (!g) return;
-    const alive = Math.max(0, g.liveCount - (dead[key] || 0));
-    const canDie = Math.min(alive, remaining);
-    dead[key] = (dead[key] || 0) + canDie;
-    remaining -= canDie;
+    if (!g) { byGroup[key] = []; return; }
+    const result = resolveGroupDamage(g, [], remaining);
+    byGroup[key] = remaining.slice(0, result.instancesConsumed);
+    remaining = remaining.slice(result.instancesConsumed);
   });
-  return dead;
+  return byGroup;
 }
 
 // woundsLeftByGroup (opcional): quantas wounds ficam no modelo atual de
@@ -2893,7 +2901,7 @@ function renderPicker(instances, phaseKey) {
     c.allocOrder = target.groups.length > 1 ? null : target.groups.map(g => g.key);
     c.manualDamage = null; c.deadByGroup = null;
     c.hitAdjust = 0; c.woundAdjust = 0;
-    c.critWounds = null; c.critDeadByGroup = null;
+    c.critWounds = null; c.critInstances = null; c.critInstancesByGroup = null;
     c.sustainedHits = null; c.fnpSuccesses = null; c.attacksRolled = null;
     c.heavyStationary = null; c.chargedThisTurn = null; c.lethalHitCrits = null;
     c.groupFlow = null; c.groupCursor = 0; c.woundsPool = 0; c.groupResults = {};
