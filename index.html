@@ -746,6 +746,12 @@ const state = {
     // cumprida. Secundárias táticas (secretas) entram só por aqui, nunca
     // no Setup.
     score: { playerA: [], playerB: [] },
+    // Unidades que já "terminaram" a ativação numa dada instância de fase
+    // (Shooting/Fight) — chave "ronda-jogadorAtivo-fase" -> [ids]. Assim
+    // navegar para trás/frente com Recuar/Avançar dentro da MESMA instância
+    // não perde a marcação, mas uma nova ronda ou a próxima vez que esse
+    // jogador chegar a essa fase começa sempre limpa (chave diferente).
+    actedByPhaseInstance: {},
   },
 };
 
@@ -849,7 +855,7 @@ function startNewGame() {
       u.groups.forEach(g => { g.liveCount = g.initialCount; });
     });
   });
-  state.game = { round: 1, activePlayerKey: "playerA", phase: "command", ended: false, checklist: {}, battleshockRolls: {}, advanceRoll: { unitId: "", die: null }, chargeRoll: { unitId: "", dice: [] }, score: { playerA: [], playerB: [] } };
+  state.game = { round: 1, activePlayerKey: "playerA", phase: "command", ended: false, checklist: {}, battleshockRolls: {}, advanceRoll: { unitId: "", die: null }, chargeRoll: { unitId: "", dice: [] }, score: { playerA: [], playerB: [] }, actedByPhaseInstance: {} };
   state.cycle = emptyCycle();
   state.attackLog = [];
 }
@@ -861,6 +867,23 @@ function activePlayer() { return state.setup[state.game.activePlayerKey]; }
 function activePlayerName() {
   const p = activePlayer();
   return p.name || (state.game.activePlayerKey === "playerA" ? "Jogador A" : "Jogador B");
+}
+// Chave desta instância concreta de fase — usada para marcar unidades que
+// já terminaram a ativação (Shooting/Fight). Recuar/Avançar dentro da MESMA
+// instância mantém a marcação; uma nova ronda ou a próxima vez que este
+// jogador chegar a esta fase é uma chave diferente, por isso começa limpa.
+function phaseInstanceKey() {
+  return state.game.round + "-" + state.game.activePlayerKey + "-" + state.game.phase;
+}
+function actedSetForCurrentPhase() {
+  const key = phaseInstanceKey();
+  if (!state.game.actedByPhaseInstance[key]) state.game.actedByPhaseInstance[key] = [];
+  return state.game.actedByPhaseInstance[key];
+}
+function markUnitActedThisPhase(unitId) {
+  const arr = actedSetForCurrentPhase();
+  const idStr = String(unitId);
+  if (!arr.includes(idStr)) arr.push(idStr);
 }
 function unitsOf(playerKey) {
   return state.setup[playerKey].units;
@@ -2190,14 +2213,32 @@ function renderAttackCycle(phaseKey) {
       table.appendChild(tbody);
       card.appendChild(table);
     }
-    const confirmBtn = el("button", { class: "primary", text: "Confirmar e reduzir modelos vivos" });
-    confirmBtn.style.width = "100%";
-    confirmBtn.onclick = () => { logAttack(attacker, weapon, target, totalDead); applyDeaths(target, c.deadByGroup); state.cycle = emptyCycle(); render(); };
-    card.appendChild(confirmBtn);
-    const another = el("button", { text: "Confirmar e resolver outro ataque" });
-    another.style.cssText = "width:100%;margin-top:8px;";
-    another.onclick = () => { logAttack(attacker, weapon, target, totalDead); applyDeaths(target, c.deadByGroup); state.cycle = emptyCycle(); render(); };
-    card.appendChild(another);
+    // Duas ações distintas e não-equivalentes: uma unidade real costuma
+    // disparar/lutar com várias armas diferentes na mesma ativação (Land
+    // Speeder: 3 armas; Big Mek Dakkarig: 2), normalmente contra alvos
+    // diferentes — por isso "continuar com esta unidade" NUNCA pode
+    // acontecer automaticamente a seguir a um só ataque resolvido.
+    const endUnitBtn = el("button", { class: "primary", text: "Confirmar e terminar esta unidade nesta fase" });
+    endUnitBtn.style.width = "100%";
+    endUnitBtn.onclick = () => {
+      logAttack(attacker, weapon, target, totalDead);
+      applyDeaths(target, c.deadByGroup);
+      markUnitActedThisPhase(attacker.id);
+      state.cycle = emptyCycle();
+      render();
+    };
+    card.appendChild(endUnitBtn);
+    const anotherBtn = el("button", { text: "Confirmar e resolver outro ataque com esta unidade" });
+    anotherBtn.style.cssText = "width:100%;margin-top:8px;";
+    anotherBtn.onclick = () => {
+      logAttack(attacker, weapon, target, totalDead);
+      applyDeaths(target, c.deadByGroup);
+      const keepAttackerId = attacker.id;
+      state.cycle = emptyCycle();
+      state.cycle.attackerId = String(keepAttackerId);
+      render();
+    };
+    card.appendChild(anotherBtn);
     wrap.appendChild(card);
     return wrap;
   }
@@ -2263,11 +2304,15 @@ function renderPicker(instances, phaseKey) {
   card.appendChild(el("h2", { text: (phaseKey === "fight" ? "Fight Phase" : "Shooting Phase") + " — Unidade, arma e alvo" }));
   const c = state.cycle;
 
-  // Shooting Phase: só o jogador ativo dispara, por isso o atacante só pode
-  // ser uma unidade dele. Fight Phase: ambos os jogadores lutam,
-  // alternadamente, dentro da mesma fase — mantém as duas listas juntas.
+  // Shooting Phase: só o jogador ativo (activePlayer()) dispara, por isso o
+  // atacante só pode ser uma unidade dele. Fight Phase: ambos os jogadores
+  // lutam, alternadamente, dentro da mesma fase — mantém as duas listas
+  // juntas (filtrar por jogador aqui impediria escolher a unidade certa
+  // quando fosse a vez do adversário lutar).
   const activeOwner = state.game.activePlayerKey === "playerA" ? "A" : "B";
-  const attackerInstances = phaseKey === "shooting" ? instances.filter(u => u.owner === activeOwner) : instances;
+  const actedThisPhase = actedSetForCurrentPhase();
+  const attackerInstances = (phaseKey === "shooting" ? instances.filter(u => u.owner === activeOwner) : instances)
+    .filter(u => !actedThisPhase.includes(String(u.id)));
 
   const f1 = el("div", { class: "field" });
   f1.appendChild(el("label", { text: "Unidade atacante" + (phaseKey === "shooting" ? " (" + activePlayerName() + ")" : "") }));
