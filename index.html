@@ -226,7 +226,9 @@ const RAW_UNITS = {
         {"name":"Close-combat weapon","keywords":["PRECISION"],"range":"Melee","A":3,"WS":"3+","S":4,"AP":0,"D":1}
       ],
       "defaultCount":10},
-    {"name":"Vanguard Veteran Squad with Jump Packs","points":105,"keywords":["INFANTRY","JUMP PACK"],"stats":{"M":"12\"","T":4,"SV":"3+","W":2,"LD":"6+","OC":1},
+    {"name":"Vanguard Veteran Squad with Jump Packs","points":105,"keywords":["INFANTRY","JUMP PACK"],
+      "lethalHitsOnCharge":"Vanguard Assault: melee weapons gain LETHAL HITS in turn this unit made a charge move",
+      "stats":{"M":"12\"","T":4,"SV":"3+","W":2,"LD":"6+","OC":1},
       "ranged_weapons":[
         {"name":"Heavy bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"18\"","A":1,"BS":"3+","S":4,"AP":-1,"D":1},
         {"name":"Plasma pistol - standard","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"3+","S":7,"AP":-2,"D":1},
@@ -447,9 +449,11 @@ function renderFightSequenceCard() {
 // Notas curtas de keywords de arma sem cálculo automático associado —
 // texto reaproveitado tal e qual do glossário do core_rules_reference.md
 // (secção 10). Só informativo, nunca muda um cálculo nem pergunta nada.
+// HEAVY não está aqui porque já tem o seu próprio sub-passo interativo
+// (pergunta a condição e aplica o +1 automaticamente) — repeti-lo aqui
+// seria um aviso duplicado.
 const WEAPON_KEYWORD_NOTES = {
   "PRECISION": "Pode forçar o grupo de alocação a incluir um CHARACTER visível primeiro.",
-  "HEAVY": "+1 ao hit roll se a unidade estiver unengaged, não foi posta em jogo este turno, e nenhum modelo moveu mais de 3\".",
   "ASSAULT": "Permite assault shooting mesmo depois de avançar.",
   "CLOSE-QUARTERS": "Permite close-quarters shooting; idêntico a [PISTOL].",
   "PSYCHIC": "Pode ignorar modificadores ao BS/WS e ao hit roll.",
@@ -595,6 +599,15 @@ function maxOfDiceNotation(v) {
 }
 function hasKeyword(weapon, kw) {
   return (weapon.keywords || []).some(k => k.toUpperCase().indexOf(kw.toUpperCase()) === 0);
+}
+// Lethal Hits condicional a ter carregado este turno é uma ability de
+// UNIDADE (ex: Vanguard Assault), não uma keyword de arma — só se aplica a
+// armas de combate (Fight Phase). Devolve o texto da ability (para mostrar
+// tal e qual) ou null se não se aplicar.
+function chargeLethalHitsAbility(weapon, phaseKey) {
+  if (phaseKey !== "fight") return null;
+  const ds = findDatasheet(library, weapon.sourceDatasheet);
+  return (ds && ds.lethalHitsOnCharge) || null;
 }
 // Aplica um ajuste manual a um threshold base "precisas de X+". O valor
 // introduzido representa o modificador ao ROLL (igual à notação do jogo:
@@ -818,6 +831,15 @@ function emptyCycle() {
     // SUSTAINED HITS X: quantos dos hits confirmados foram um 6 não
     // modificado — cada um gera X hits automáticos adicionais.
     sustainedHits: null,
+    // HEAVY: condição física (a unidade não se moveu mais de 3" este turno)
+    // respondida no passo de hits — se Sim, +1 ao acertar (melhora o
+    // threshold em 1, mesma lógica do ajuste manual de threshold).
+    heavyStationary: null,
+    // Lethal Hits condicional a ter carregado este turno (ex: Vanguard
+    // Assault) — pergunta antes do passo de hits; se Sim, os 6 não
+    // modificados no hit roll tornam-se wounds automáticos (sem wound
+    // roll para esses).
+    chargedThisTurn: null, lethalHitCrits: null,
     // FEEL NO PAIN: sucessos reportados depois do save normal, que cancelam
     // mortes já calculadas (ability de unidade, nunca decidida pela app).
     fnpSuccesses: null,
@@ -1896,6 +1918,14 @@ function renderAttackCycle(phaseKey) {
   const isTorrent = phaseKey === "shooting" && hasKeyword(weapon, "TORRENT");
   const isDevWounds = hasKeyword(weapon, "DEVASTATING WOUNDS");
   const sustainedX = !isTorrent && hasKeyword(weapon, "SUSTAINED HITS") ? keywordValue(weapon, "SUSTAINED HITS") : null;
+  // HEAVY: +1 ao hit roll se a unidade não se moveu mais de 3" este turno —
+  // condição física respondida pelo jogador antes do passo de hits.
+  const isHeavy = !isTorrent && hasKeyword(weapon, "HEAVY");
+  const heavyBonus = (isHeavy && c.heavyStationary === true) ? 1 : 0;
+  // Lethal Hits condicional a ter carregado este turno (ability de
+  // unidade, ex: Vanguard Assault) — só relevante em combate corpo a corpo.
+  const chargeLethalHitsText = chargeLethalHitsAbility(weapon, phaseKey);
+  const lethalHitsActive = !!chargeLethalHitsText && c.chargedThisTurn === true;
   // ANTI-X Y+: se o alvo tiver a keyword X (confirmado automaticamente via
   // datasheet, nunca perguntado — não depende de nada físico na mesa),
   // qualquer wound roll ≥ Y é sempre critical wound, mesmo abaixo do
@@ -1905,7 +1935,7 @@ function renderAttackCycle(phaseKey) {
   const antiApplies = !!(antiInfo && targetHasUnitKeyword(target, antiInfo.targetKeyword));
   const critThreshold = antiApplies ? Math.min(6, antiInfo.threshold) : 6;
   const hitThreshold = parseThreshold(toHitValue(weapon, phaseKey));
-  const effHitThreshold = adjustedThreshold(hitThreshold, c.hitAdjust);
+  const effHitThreshold = adjustedThreshold(hitThreshold, c.hitAdjust + heavyBonus);
   const targetT = target.groups[0].stats.T;
   const rawWoundT = woundThreshold(weapon.S, targetT);
   const woundT = antiApplies ? Math.min(rawWoundT, antiInfo.threshold) : rawWoundT;
@@ -1945,6 +1975,45 @@ function renderAttackCycle(phaseKey) {
       }));
       return wrap;
     }
+
+    // HEAVY: pergunta a condição física (não moveu mais de 3") antes do
+    // passo de hits, com um aviso bem visível — a app nunca decide sozinha
+    // se a unidade se moveu, só aplica o +1 ao acertar depois de confirmado.
+    if (isHeavy && c.heavyStationary === null) {
+      const card = el("div", { class: "card" });
+      card.appendChild(renderRollerBadge("attacker", attackerRollerName, "Condição de HEAVY — confirma antes de rolar os hits."));
+      card.appendChild(el("div", { class: "step-hint", text: "⚠️ " + weapon.name + " tem HEAVY: +1 ao acertar se a unidade não se moveu mais de 3\" este turno.", style: "color:var(--gold);font-weight:600;font-size:13px;" }));
+      card.appendChild(el("h3", { text: "Esta unidade não se moveu mais de 3\" este turno?" }));
+      const sel = el("select");
+      [["", "— escolher —"], ["yes", "Sim"], ["no", "Não"]].forEach(([v, t]) => {
+        const o = el("option", { value: v, text: t });
+        sel.appendChild(o);
+      });
+      sel.onchange = e => { c.heavyStationary = e.target.value === "" ? null : e.target.value === "yes"; render(); };
+      card.appendChild(sel);
+      wrap.appendChild(card);
+      return wrap;
+    }
+
+    // Lethal Hits condicional a ter carregado este turno (ex: Vanguard
+    // Assault) — pergunta antes do passo de hits, já que muda o que os 6
+    // não modificados vão fazer no passo seguinte.
+    if (chargeLethalHitsText && c.chargedThisTurn === null) {
+      const card = el("div", { class: "card" });
+      card.appendChild(renderRollerBadge("attacker", attackerRollerName, "Condição de Lethal Hits — confirma antes de rolar os hits."));
+      card.appendChild(el("div", { class: "step-hint", text: "⚔️ " + chargeLethalHitsText, style: "color:var(--gold);font-weight:600;font-size:13px;" }));
+      card.appendChild(el("h3", { text: "Esta unidade carregou este turno? (ativa Lethal Hits)" }));
+      const sel = el("select");
+      [["", "— escolher —"], ["yes", "Sim"], ["no", "Não"]].forEach(([v, t]) => {
+        const o = el("option", { value: v, text: t });
+        sel.appendChild(o);
+      });
+      sel.onchange = e => { c.chargedThisTurn = e.target.value === "" ? null : e.target.value === "yes"; render(); };
+      card.appendChild(sel);
+      wrap.appendChild(card);
+      return wrap;
+    }
+
     const effectiveAttacksMax = attackIsFixed
       ? weapon.A + attacksBonus
       : (needsAttacksRollStep ? c.attacksRolled + attacksBonus : attacksMax);
@@ -1961,7 +2030,7 @@ function renderAttackCycle(phaseKey) {
     } else {
       wrap.appendChild(renderNumberStep({
         title: "Precisas de " + thresholdText(effHitThreshold) + " para acertar",
-        hint: statLabel(hitStat) + ": " + toHitValue(weapon, phaseKey) + (c.hitAdjust ? " · ajuste manual aplicado: " + (c.hitAdjust > 0 ? "+" : "") + c.hitAdjust : "") + attacksBonusSuffix,
+        hint: statLabel(hitStat) + ": " + toHitValue(weapon, phaseKey) + (c.hitAdjust ? " · ajuste manual aplicado: " + (c.hitAdjust > 0 ? "+" : "") + c.hitAdjust : "") + (heavyBonus ? " · HEAVY: +1 ao acertar (não moveu mais de 3\")" : "") + attacksBonusSuffix,
         threshold: effHitThreshold > 6 ? 999 : effHitThreshold, stepKey: "hits", max: effectiveAttacksMax, countLabel: "Hits",
         adjust: { value: c.hitAdjust, onChange: v => { c.hitAdjust = Math.max(-5, Math.min(5, v)); render(); } },
         roller: "attacker", rollerName: attackerRollerName, rollWhy: "Roll de ataque (hit roll) — ver se acertas no alvo.",
@@ -1985,15 +2054,44 @@ function renderAttackCycle(phaseKey) {
       return wrap;
     }
     const effectiveHits = c.hits + (sustainedX ? (c.sustainedHits || 0) * sustainedX : 0);
+
+    // Lethal Hits (condicional a ter carregado este turno): os 6 não
+    // modificados no hit roll ferem automaticamente, saltando o wound roll
+    // só para esses — tal como o Devastating Wounds salta o save só para
+    // os críticos de ferir.
+    if (lethalHitsActive && c.lethalHitCrits === null) {
+      if (effectiveHits === 0) {
+        c.lethalHitCrits = 0;
+      } else {
+        wrap.appendChild(renderNumberStep({
+          title: "Desses hits, quantos foram um 6 não modificado (Lethal Hits)?",
+          hint: "⚔️ Lethal Hits ativo (esta unidade carregou este turno): cada 6 não modificado no hit roll fere automaticamente, sem wound roll para esses.",
+          threshold: 6, stepKey: "lethalhits", max: effectiveHits, countLabel: "Hits críticos (6 não modificado)",
+          roller: "attacker", rollerName: attackerRollerName, rollWhy: "A contar, dos hits que já rolaste, quantos foram um 6 não modificado.",
+          onConfirm: n => { c.lethalHitCrits = n; render(); },
+          confirmLabel: "Confirmar críticos →",
+        }));
+        return wrap;
+      }
+    }
+    const lethalCrits = lethalHitsActive ? (c.lethalHitCrits || 0) : 0;
+    const hitsForWoundRoll = effectiveHits - lethalCrits;
+    if (lethalHitsActive && hitsForWoundRoll <= 0) {
+      c.wounds = lethalCrits;
+      c.step = 3;
+      return renderAttackCycle(phaseKey);
+    }
+
     const antiSuffix = antiApplies ? " · ANTI-" + antiInfo.targetKeyword + " " + antiInfo.threshold + "+ aplicado (alvo tem a keyword " + antiInfo.targetKeyword + ")" : "";
     const sustainedSuffix = (sustainedX && c.sustainedHits) ? " · +" + (c.sustainedHits * sustainedX) + " hits de Sustained Hits" : "";
+    const lethalSuffix = lethalCrits ? " · " + lethalCrits + " wound(s) automático(s) de Lethal Hits (já não entram neste roll)" : "";
     wrap.appendChild(renderNumberStep({
       title: "Precisas de " + thresholdText(effWoundThreshold) + " para ferir",
-      hint: statLabel("S") + " " + weapon.S + " vs " + statLabel("T") + " " + targetT + " (" + target.label + ")" + (c.woundAdjust ? " · ajuste manual aplicado: " + (c.woundAdjust > 0 ? "+" : "") + c.woundAdjust : "") + antiSuffix + sustainedSuffix,
-      threshold: effWoundThreshold > 6 ? 999 : effWoundThreshold, stepKey: "wounds", max: effectiveHits, countLabel: "Wounds",
+      hint: statLabel("S") + " " + weapon.S + " vs " + statLabel("T") + " " + targetT + " (" + target.label + ")" + (c.woundAdjust ? " · ajuste manual aplicado: " + (c.woundAdjust > 0 ? "+" : "") + c.woundAdjust : "") + antiSuffix + sustainedSuffix + lethalSuffix,
+      threshold: effWoundThreshold > 6 ? 999 : effWoundThreshold, stepKey: "wounds", max: hitsForWoundRoll, countLabel: "Wounds",
       adjust: { value: c.woundAdjust, onChange: v => { c.woundAdjust = Math.max(-5, Math.min(5, v)); render(); } },
       roller: "attacker", rollerName: attackerRollerName, rollWhy: "Roll de ferir (wound roll) — ver se o hit é forte o suficiente para ferir o alvo.",
-      onConfirm: n => { c.wounds = n; c.step = 3; render(); },
+      onConfirm: n => { c.wounds = n + lethalCrits; c.step = 3; render(); },
       confirmLabel: "Confirmar wounds →",
     }));
     return wrap;
@@ -2530,6 +2628,7 @@ function renderPicker(instances, phaseKey) {
     c.hitAdjust = 0; c.woundAdjust = 0;
     c.critWounds = null; c.critDeadByGroup = null;
     c.sustainedHits = null; c.fnpSuccesses = null; c.attacksRolled = null;
+    c.heavyStationary = null; c.chargedThisTurn = null; c.lethalHitCrits = null;
     c.groupFlow = null; c.groupCursor = 0; c.woundsPool = 0; c.groupResults = {};
     render();
   };
