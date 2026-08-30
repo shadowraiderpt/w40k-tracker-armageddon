@@ -570,13 +570,14 @@ function thresholdText(t) {
   return t > 6 ? "auto-falha" : (t + "+");
 }
 // Nome completo de uma estatística abreviada, para mostrar por extenso nos
-// passos do ciclo de ataque em vez de só "S", "T", "SV"... — a abreviatura
-// original fica sempre entre parêntesis para quem já a conhece.
+// passos do ciclo de ataque em vez de só "S", "T", "SV"... Mantido em
+// inglês (nome oficial da keyword no jogo), o resto da app fica em
+// português — a abreviatura original fica sempre entre parêntesis também.
 const STAT_FULL_NAMES = {
-  M: "Movimento", S: "Força", T: "Resistência", SV: "Salvaguarda",
-  InvSV: "Salvaguarda Invulnerável", W: "Feridas", LD: "Liderança",
-  OC: "Controlo de Objetivo", A: "Attacks", BS: "Perícia de Tiro",
-  WS: "Perícia de Combate", AP: "Perfuração de Armadura", D: "Dano",
+  M: "Movement", S: "Strength", T: "Toughness", SV: "Save",
+  InvSV: "Invulnerable Save", W: "Wounds", LD: "Leadership",
+  OC: "Objective Control", A: "Attacks", BS: "Ballistic Skill",
+  WS: "Weapon Skill", AP: "Armour Penetration", D: "Damage",
 };
 function statLabel(abbr) {
   return (STAT_FULL_NAMES[abbr] || abbr) + " (" + abbr + ")";
