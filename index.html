@@ -423,6 +423,46 @@ function renderStratagemsCard(phaseKey) {
   return card;
 }
 
+// Referência fixa da ordem de resolução da Fight Phase — só texto, a app
+// nunca decide de quem é a vez nem quem já lutou. Aberta por defeito (ao
+// contrário dos Stratagems) porque é consultada a toda a hora dentro da
+// fase; o jogador pode fechá-la se achar repetitiva.
+function renderFightSequenceCard() {
+  const card = el("div", { class: "card" });
+  const isOpen = state.ui.fightSequenceOpen !== false;
+  const toggle = el("h2", { text: "Ordem de resolução da Fight Phase " + (isOpen ? "▲" : "▼"), style: "cursor:pointer;" });
+  toggle.onclick = () => { state.ui.fightSequenceOpen = !isOpen; render(); };
+  card.appendChild(toggle);
+  if (!isOpen) return card;
+  card.appendChild(el("div", { class: "step-hint", text: "Referência — a app não decide de quem é a vez, só lembra a regra para aplicares." }));
+  [
+    "1. Pile in (ambos os jogadores)",
+    "2. Fights First — unidades que carregaram ou têm a ability, alternando entre jogadores, começa o jogador ativo",
+    "3. Restantes unidades, alternando, começa quem NÃO jogou a última unidade da fase anterior",
+    "4. Consolidate",
+  ].forEach(text => card.appendChild(el("div", { class: "unit-instance", text, style: "font-size:13px;" })));
+  return card;
+}
+
+// Notas curtas de keywords de arma sem cálculo automático associado —
+// texto reaproveitado tal e qual do glossário do core_rules_reference.md
+// (secção 10). Só informativo, nunca muda um cálculo nem pergunta nada.
+const WEAPON_KEYWORD_NOTES = {
+  "PRECISION": "Pode forçar o grupo de alocação a incluir um CHARACTER visível primeiro.",
+  "HEAVY": "+1 ao hit roll se a unidade estiver unengaged, não foi posta em jogo este turno, e nenhum modelo moveu mais de 3\".",
+  "ASSAULT": "Permite assault shooting mesmo depois de avançar.",
+  "CLOSE-QUARTERS": "Permite close-quarters shooting; idêntico a [PISTOL].",
+  "PSYCHIC": "Pode ignorar modificadores ao BS/WS e ao hit roll.",
+  "TWIN-LINKED": "Pode re-rolar o wound roll.",
+  "EXTRA ATTACKS": "Ataques adicionais a somar aos da arma principal.",
+};
+function weaponKeywordNotes(weapon) {
+  return (weapon.keywords || [])
+    .map(k => k.toUpperCase())
+    .filter(k => WEAPON_KEYWORD_NOTES[k])
+    .map(k => ({ keyword: k, text: WEAPON_KEYWORD_NOTES[k] }));
+}
+
 // ---------------------------------------------------------------------------
 // Limite de miniaturas físicas da caixa Armageddon (23 Space Marines + 38 Orks)
 // ---------------------------------------------------------------------------
@@ -1816,6 +1856,7 @@ function renderAttackCycle(phaseKey) {
   const weaponLabel = phaseKey === "fight" ? "arma (combate)" : "arma (tiro)";
 
   wrap.appendChild(renderStratagemsCard(phaseKey));
+  if (phaseKey === "fight") wrap.appendChild(renderFightSequenceCard());
 
   if (instances.length === 0 && c.step === 0) {
     wrap.appendChild(el("div", { class: "empty", text: 'Ainda não há unidades configuradas. Vai ao separador "Setup" e adiciona unidades aos dois jogadores primeiro.' }));
@@ -1847,6 +1888,9 @@ function renderAttackCycle(phaseKey) {
   resetBtn.style.float = "right";
   resetBtn.onclick = () => { state.cycle = emptyCycle(); render(); };
   banner.appendChild(resetBtn);
+  weaponKeywordNotes(weapon).forEach(n => {
+    banner.appendChild(el("div", { text: "ℹ️ [" + n.keyword + "] " + n.text, style: "font-size:11px;color:var(--text-sec);margin-top:6px;clear:both;" }));
+  });
   wrap.appendChild(banner);
 
   const isTorrent = phaseKey === "shooting" && hasKeyword(weapon, "TORRENT");
