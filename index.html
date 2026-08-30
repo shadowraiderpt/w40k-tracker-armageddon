@@ -752,6 +752,11 @@ const state = {
     // não perde a marcação, mas uma nova ronda ou a próxima vez que esse
     // jogador chegar a essa fase começa sempre limpa (chave diferente).
     actedByPhaseInstance: {},
+    // Armas já usadas por uma unidade dentro da ativação atual — chave
+    // "ronda-jogadorAtivo-fase-idDaUnidade" -> [armas]. Cada arma dispara/
+    // luta uma vez por fase (nenhuma das 17 unidades da Armageddon tem
+    // regra que permita repetir a mesma arma na mesma fase).
+    usedWeaponsByUnit: {},
   },
 };
 
@@ -855,7 +860,7 @@ function startNewGame() {
       u.groups.forEach(g => { g.liveCount = g.initialCount; });
     });
   });
-  state.game = { round: 1, activePlayerKey: "playerA", phase: "command", ended: false, checklist: {}, battleshockRolls: {}, advanceRoll: { unitId: "", die: null }, chargeRoll: { unitId: "", dice: [] }, score: { playerA: [], playerB: [] }, actedByPhaseInstance: {} };
+  state.game = { round: 1, activePlayerKey: "playerA", phase: "command", ended: false, checklist: {}, battleshockRolls: {}, advanceRoll: { unitId: "", die: null }, chargeRoll: { unitId: "", dice: [] }, score: { playerA: [], playerB: [] }, actedByPhaseInstance: {}, usedWeaponsByUnit: {} };
   state.cycle = emptyCycle();
   state.attackLog = [];
 }
@@ -884,6 +889,27 @@ function markUnitActedThisPhase(unitId) {
   const arr = actedSetForCurrentPhase();
   const idStr = String(unitId);
   if (!arr.includes(idStr)) arr.push(idStr);
+}
+// Cada arma dispara/luta uma vez por fase. Identifica-se por datasheet de
+// origem + nome (não por índice, que pode variar consoante a lista de
+// armas da unidade) e fica associada à ativação atual desta unidade nesta
+// instância de fase — continuar com "outro ataque com esta unidade" não
+// limpa isto, mas terminar a unidade ou uma nova instância de fase sim.
+function weaponIdentity(weapon) {
+  return (weapon.sourceDatasheet || "") + "|" + weapon.name;
+}
+function usedWeaponsSetFor(unitId) {
+  const key = phaseInstanceKey() + "-" + unitId;
+  if (!state.game.usedWeaponsByUnit[key]) state.game.usedWeaponsByUnit[key] = [];
+  return state.game.usedWeaponsByUnit[key];
+}
+function markWeaponUsed(unitId, weapon) {
+  const arr = usedWeaponsSetFor(unitId);
+  const wid = weaponIdentity(weapon);
+  if (!arr.includes(wid)) arr.push(wid);
+}
+function isWeaponUsed(unitId, weapon) {
+  return usedWeaponsSetFor(unitId).includes(weaponIdentity(weapon));
 }
 function unitsOf(playerKey) {
   return state.setup[playerKey].units;
@@ -2223,6 +2249,7 @@ function renderAttackCycle(phaseKey) {
     endUnitBtn.onclick = () => {
       logAttack(attacker, weapon, target, totalDead);
       applyDeaths(target, c.deadByGroup);
+      markWeaponUsed(attacker.id, weapon);
       markUnitActedThisPhase(attacker.id);
       state.cycle = emptyCycle();
       render();
@@ -2233,6 +2260,7 @@ function renderAttackCycle(phaseKey) {
     anotherBtn.onclick = () => {
       logAttack(attacker, weapon, target, totalDead);
       applyDeaths(target, c.deadByGroup);
+      markWeaponUsed(attacker.id, weapon);
       const keepAttackerId = attacker.id;
       state.cycle = emptyCycle();
       state.cycle.attackerId = String(keepAttackerId);
@@ -2334,16 +2362,23 @@ function renderPicker(instances, phaseKey) {
 
   const attacker = findInstance(c.attackerId);
   const attackerWeapons = attacker ? weaponsForPhase(attacker, phaseKey) : [];
+  const availableWeaponCount = attacker ? attackerWeapons.filter(w => !isWeaponUsed(attacker.id, w)).length : 0;
   const showSource = attacker && attacker.datasheetNames.length > 1;
   if (attacker) {
     const f2 = el("div", { class: "field" });
     f2.appendChild(el("label", { text: phaseKey === "fight" ? "Arma (combate)" : "Arma (tiro)" }));
     if (attackerWeapons.length === 0) {
       f2.appendChild(el("div", { class: "step-hint", text: phaseKey === "fight" ? "Esta unidade não tem armas de combate." : "Esta unidade não tem armas de tiro." }));
+    } else if (availableWeaponCount === 0) {
+      f2.appendChild(el("div", { class: "step-hint", text: "Esta unidade já usou todas as armas disponíveis nesta fase — escolhe outra unidade, ou confirma \"terminar esta unidade\" no último ataque resolvido." }));
     } else {
       const sel2 = el("select");
       sel2.appendChild(el("option", { value: "", text: "— escolher —" }));
       attackerWeapons.forEach((w, i) => {
+        // Cada arma dispara/luta uma vez por fase — não voltar a oferecer
+        // uma arma já usada nesta ativação enquanto a unidade continuar
+        // selecionada via "resolver outro ataque com esta unidade".
+        if (isWeaponUsed(attacker.id, w)) return;
         const label = w.name + (showSource ? " [" + w.sourceDatasheet + "]" : "") + " (A:" + w.A + " " + hitStat + ":" + toHitValue(w, phaseKey) + " S:" + w.S + " AP:" + w.AP + " D:" + w.D + ")";
         const o = el("option", { value: i, text: label });
         if (String(i) === String(c.weaponIdx)) o.selected = true;
