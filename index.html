@@ -2585,7 +2585,14 @@ function startVoiceListening(stepKey) {
 
 function renderAllocOrderPicker(groups, onConfirm) {
   const wrap = el("div");
-  let order = groups.map(g => g.key);
+  // Ordem sugerida por defeito: corpo do esquadrão primeiro, characters
+  // (líder/support anexados) por último — a regra oficial que já está
+  // escrita na dica acima do picker. O jogador pode sempre reordenar com
+  // as setas se o caso concreto for diferente (ex: grupo já ferido antes).
+  const isCharacterGroup = key => key === "leader" || key === "support";
+  let order = groups
+    .map(g => g.key)
+    .sort((a, b) => (isCharacterGroup(a) === isCharacterGroup(b) ? 0 : isCharacterGroup(a) ? 1 : -1));
   function draw() {
     wrap.innerHTML = "";
     order.forEach((key, i) => {
