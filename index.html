@@ -1529,21 +1529,39 @@ function renderSetup() {
   fb.appendChild(importBtn);
   fb.appendChild(fileInput);
   ioCard.appendChild(fb);
+  if (state.ui.importError) {
+    ioCard.appendChild(el("div", { class: "step-hint", text: state.ui.importError, style: "color:var(--danger);margin-top:6px;" }));
+  }
   wrap.appendChild(ioCard);
 
   const newGameCard = el("div", { class: "card" });
   newGameCard.appendChild(el("h2", { text: "Novo jogo" }));
   newGameCard.appendChild(el("div", { class: "step-hint", text: "Repõe ronda, fase, CP, modelos vivos e battle-shock a zero — mantém jogadores, unidades escolhidas e texto de missão." }));
-  const newGameBtn = el("button", { class: "primary", text: "Começar novo jogo" });
-  newGameBtn.style.width = "100%";
-  newGameBtn.onclick = () => {
-    if (confirm("Repor ronda, CP e modelos vivos para um novo jogo? As unidades escolhidas mantêm-se.")) {
+  // Nunca usar window.confirm() aqui — em PWA instalada (standalone, ex:
+  // iOS "adicionar ao ecrã principal") os diálogos nativos do browser
+  // (confirm/alert/prompt) podem falhar silenciosamente, fazendo o botão
+  // parecer que "não funciona". Confirmação própria, dentro da app.
+  if (!state.ui.confirmNewGame) {
+    const newGameBtn = el("button", { class: "primary", text: "Começar novo jogo" });
+    newGameBtn.style.width = "100%";
+    newGameBtn.onclick = () => { state.ui.confirmNewGame = true; render(); };
+    newGameCard.appendChild(newGameBtn);
+  } else {
+    newGameCard.appendChild(el("div", { class: "step-hint", text: "Tens a certeza? Isto repõe ronda, CP e modelos vivos — as unidades escolhidas mantêm-se.", style: "color:var(--gold);" }));
+    const yesBtn = el("button", { class: "primary", text: "Sim, começar novo jogo" });
+    yesBtn.style.width = "100%";
+    yesBtn.onclick = () => {
       startNewGame();
       state.tab = "turno";
+      state.ui.confirmNewGame = false;
       render();
-    }
-  };
-  newGameCard.appendChild(newGameBtn);
+    };
+    newGameCard.appendChild(yesBtn);
+    const cancelBtn = el("button", { text: "Cancelar" });
+    cancelBtn.style.cssText = "width:100%;margin-top:8px;";
+    cancelBtn.onclick = () => { state.ui.confirmNewGame = false; render(); };
+    newGameCard.appendChild(cancelBtn);
+  }
   wrap.appendChild(newGameCard);
 
   return wrap;
@@ -1563,9 +1581,13 @@ function importJSON(e) {
   reader.onload = () => {
     try {
       state.setup = JSON.parse(reader.result);
+      state.ui.importError = null;
       render();
     } catch (err) {
-      alert("JSON inválido: " + err.message);
+      // Nunca usar window.alert() aqui — mesma razão do confirm() do "Novo
+      // jogo": pode falhar silenciosamente em PWA instalada.
+      state.ui.importError = "JSON inválido: " + err.message;
+      render();
     }
   };
   reader.readAsText(file);
