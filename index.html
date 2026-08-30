@@ -1917,6 +1917,7 @@ function renderAttackCycle(phaseKey) {
         title: "O adversário precisa de " + svText + " para salvar",
         hint: hintParts.join(" / ") + (isDevWounds && c.critWounds ? " · " + c.critWounds + " wound(s) já resolvido(s) como mortal wounds diretas" : ""),
         threshold: saveThreshold > 6 ? 999 : saveThreshold, stepKey: "saves", max: woundsForSave, countLabel: "Saves falhados",
+        invertThreshold: true,
         onConfirm: n => {
           c.failedSaves = n;
           if (dmgInfo.fixed) {
@@ -1946,7 +1947,11 @@ function renderAttackCycle(phaseKey) {
       return g && g.liveCount > 0;
     });
 
-    if (c.groupCursor >= order.length || c.woundsPool <= 0) {
+    // Só finaliza por falta de wounds quando estamos mesmo a decidir a que
+    // grupo atribuir os próximos (groupFlow "assign") — nunca a meio de um
+    // "save"/"damage" já em curso, senão o grupo que recebeu exatamente os
+    // últimos wounds da pool nunca chegava a rolar o save dele.
+    if (c.groupCursor >= order.length || (c.woundsPool <= 0 && c.groupFlow === "assign")) {
       const deadByGroup = {};
       let totalDamage = 0;
       target.groups.forEach(g => {
@@ -2010,6 +2015,7 @@ function renderAttackCycle(phaseKey) {
         hint: hintParts.join(" / "),
         threshold: gSave > 6 ? 999 : gSave, stepKey: "save-" + currentKey,
         max: c.groupResults[currentKey].assignedWounds, countLabel: "Saves falhados",
+        invertThreshold: true,
         onConfirm: n => {
           c.groupResults[currentKey].failedSaves = n;
           if (dmgInfo.fixed) {
@@ -2405,8 +2411,15 @@ function renderNumberStep(opts) {
     // ir clicando a grelha à medida que lês os dados físicos; o campo
     // continua ali para quem preferir digitar o total diretamente. Clicar
     // num dado atualiza sempre o campo para refletir a contagem atual.
+    // opts.invertThreshold: usado nos passos de "saves falhados" — o
+    // threshold aí é o que o ALVO precisa para SALVAR (defender-se), por
+    // isso o que interessa contar é o oposto: quantos resultados ficaram
+    // ABAIXO do threshold (esses é que falham o save e causam dano). Sem
+    // isto, contar ">= threshold" na grelha estaria a somar os saves que
+    // PASSARAM, invertendo o resultado.
     const rolls = c.diceRolls[opts.stepKey] || (c.diceRolls[opts.stepKey] = []);
-    const successesFromRolls = rolls.filter(r => r >= opts.threshold).length;
+    const meetsThreshold = r => opts.invertThreshold ? r < opts.threshold : r >= opts.threshold;
+    const successesFromRolls = rolls.filter(meetsThreshold).length;
     let val = successesFromRolls;
 
     const inp = el("input", { type: "number" }); inp.min = "0";
@@ -2422,7 +2435,7 @@ function renderNumberStep(opts) {
     const atMax = max !== null && rolls.length >= max;
     const grid = el("div", { class: "diegrid" });
     for (let n = 1; n <= 6; n++) {
-      const isHit = n >= opts.threshold;
+      const isHit = meetsThreshold(n);
       const btn = el("button", { class: isHit ? "hit" : "", text: String(n) });
       btn.disabled = atMax;
       btn.onclick = () => { if (!(max !== null && rolls.length >= max)) { rolls.push(n); render(); } };
@@ -2431,7 +2444,7 @@ function renderNumberStep(opts) {
     body.appendChild(grid);
     const tally = el("div", { class: "tally" });
     tally.appendChild(document.createTextNode(rolls.length + (max !== null ? "/" + max : "") + " dados registados — "));
-    tally.appendChild(el("b", { text: successesFromRolls + " sucesso(s)", style: "color:var(--text)" }));
+    tally.appendChild(el("b", { text: successesFromRolls + (opts.invertThreshold ? " falha(s)" : " sucesso(s)"), style: "color:var(--text)" }));
     if (rolls.length > 0) {
       const undoBtn = el("button", { class: "small", text: "desfazer" });
       undoBtn.style.marginLeft = "8px";
@@ -2498,11 +2511,15 @@ function renderVoiceControl(opts, max) {
     const validValues = v.entries.map(e => e.value).filter(x => x !== null);
     const invalidCount = v.entries.length - validValues.length;
     const overMax = max !== null && validValues.length > max;
-    const successes = opts.threshold === null ? validValues.length : validValues.filter(x => x >= opts.threshold).length;
+    // Mesma inversão que a grelha de dados: nos passos de "saves falhados"
+    // (opts.invertThreshold) o que conta é quem ficou ABAIXO do threshold
+    // de salvar, não quem o passou.
+    const meetsThreshold = x => opts.invertThreshold ? x < opts.threshold : x >= opts.threshold;
+    const successes = opts.threshold === null ? validValues.length : validValues.filter(meetsThreshold).length;
     const summary = el("div", { class: "tally" });
     summary.textContent = validValues.length + (max !== null ? "/" + max : "") + " número(s) válido(s)"
       + (invalidCount > 0 ? ", " + invalidCount + " por corrigir/remover" : "")
-      + " — " + successes + (opts.threshold === null ? " no total" : " sucesso(s)");
+      + " — " + successes + (opts.threshold === null ? " no total" : (opts.invertThreshold ? " falha(s)" : " sucesso(s)"));
     panel.appendChild(summary);
 
     const actionRow = el("div", { class: "row" });
