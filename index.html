@@ -633,7 +633,7 @@ function applyFeelNoPain(deadByGroup, order, successes) {
 // confirmar uma condição física da mesa (alcance, contagem de modelos do
 // alvo) — a app nunca decide essa condição sozinha, só soma o bónus depois.
 function computeAttacksBonus(weapon, c) {
-  let bonus = 0;
+  let bonus = c.abilityAttacksAdjust || 0;
   const rapidFireX = keywordValue(weapon, "RAPID FIRE");
   const cleaveX = keywordValue(weapon, "CLEAVE");
   const blastX = keywordValue(weapon, "BLAST");
@@ -654,6 +654,7 @@ function attacksBonusLabel(weapon, c) {
   if (rapidFireX !== null && c.rapidFireHalfRange === true) parts.push("Rapid Fire " + rapidFireX);
   if (cleaveX !== null && c.blastCleaveModels != null) parts.push("Cleave " + cleaveX);
   if (blastX !== null && c.blastCleaveModels != null) parts.push("Blast " + blastX);
+  if (c.abilityAttacksAdjust) parts.push("ability " + (c.abilityAttacksAdjust > 0 ? "+" : "") + c.abilityAttacksAdjust);
   return parts.join(", ");
 }
 // Perguntas prévias (ecrã de escolha da arma) exigidas por estas keywords —
@@ -745,6 +746,11 @@ function emptyCycle() {
     // de escolha da arma, antes do passo 1. CLEAVE X / BLAST X: contagem de
     // modelos do alvo, também respondida aí (partilhada entre as duas).
     rapidFireHalfRange: null, meltaHalfRange: null, blastCleaveModels: null,
+    // Ajuste manual genérico ao Attacks, para abilities de UNIDADE que o
+    // sistema de keywords (Rapid Fire/Cleave/Melta/Blast) não cobre porque
+    // não estão na arma (ex: Dakkablitz, Hail of Bolts, Da Biggest and da
+    // Best) — o jogador confirma o valor, a app nunca decide a condição.
+    abilityAttacksAdjust: 0,
     // Attacks base rolados fisicamente quando a arma tem A variável (ex:
     // D3) E um bónus de Rapid Fire/Cleave/Blast a somar — só usado nesse
     // caso; com A fixo o bónus soma-se diretamente, sem perguntar nada.
@@ -2226,6 +2232,7 @@ function renderPicker(instances, phaseKey) {
   sel1.onchange = e => {
     c.attackerId = e.target.value; c.weaponIdx = "";
     c.rapidFireHalfRange = null; c.meltaHalfRange = null; c.blastCleaveModels = null;
+    c.abilityAttacksAdjust = 0;
     render();
   };
   f1.appendChild(sel1);
@@ -2251,6 +2258,7 @@ function renderPicker(instances, phaseKey) {
       sel2.onchange = e => {
         c.weaponIdx = e.target.value;
         c.rapidFireHalfRange = null; c.meltaHalfRange = null;
+        c.abilityAttacksAdjust = 0;
         render();
       };
       f2.appendChild(sel2);
@@ -2270,6 +2278,7 @@ function renderPicker(instances, phaseKey) {
   sel3.onchange = e => {
     c.targetId = e.target.value;
     c.rapidFireHalfRange = null; c.meltaHalfRange = null; c.blastCleaveModels = null;
+    c.abilityAttacksAdjust = 0;
     render();
   };
   f3.appendChild(sel3);
@@ -2324,6 +2333,18 @@ function renderPicker(instances, phaseKey) {
       f.appendChild(inp);
       card.appendChild(f);
     }
+
+    // Ajuste manual genérico ao Attacks — para abilities de UNIDADE que o
+    // sistema de keywords acima não cobre porque não estão na arma (ex:
+    // Dakkablitz +6A no Blitzkannon, Hail of Bolts +2A nos Bolt Rifles,
+    // Da Biggest and da Best +4A durante o Waaagh!). Fica sempre visível,
+    // independente da arma escolhida; o jogador confirma o valor que sabe
+    // que se aplica — a app nunca decide a condição sozinha.
+    const abilityField = el("div", { class: "field" });
+    abilityField.appendChild(el("label", { text: "Ajuste manual de Attacks (ability de unidade)" }));
+    abilityField.appendChild(el("div", { class: "step-hint", text: "Para bónus não cobertos acima — ex: Dakkablitz +6A, Hail of Bolts +2A, Da Biggest and da Best +4A. Confirma só o que sabes que se aplica agora." }));
+    abilityField.appendChild(renderAdjustControl(c.abilityAttacksAdjust, v => { c.abilityAttacksAdjust = Math.max(-20, Math.min(20, v)); render(); }));
+    card.appendChild(abilityField);
   }
 
   const startBtn = el("button", { class: "primary", text: "Iniciar ciclo de ataque →" });
