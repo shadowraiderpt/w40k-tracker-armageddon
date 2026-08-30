@@ -265,7 +265,9 @@ const RAW_UNITS = {
       "ranged_weapons":[{"name":"Slugga","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"5+","S":4,"AP":0,"D":1}],
       "melee_weapons":[{"name":"Two-handed big choppa","keywords":["CLEAVE 1"],"range":"Melee","A":5,"WS":"3+","S":7,"AP":-1,"D":2}],
       "defaultCount":1, "leader_for":["Boyz"]},
-    {"name":"Bannernob","points":50,"keywords":["INFANTRY","CHARACTER"],"stats":{"M":"6\"","T":5,"SV":"4+","InvSV":"5+","W":4,"LD":"7+","OC":6},
+    {"name":"Bannernob","points":50,"keywords":["INFANTRY","CHARACTER"],
+      "abilities":["Waaagh! Banner: unit has 5+ InvSv; while Waaagh! active, unit has +1T"],
+      "stats":{"M":"6\"","T":5,"SV":"4+","InvSV":"5+","W":4,"LD":"7+","OC":6},
       "ranged_weapons":[{"name":"Shoota","keywords":["RAPID FIRE 1"],"range":"18\"","A":2,"BS":"5+","S":4,"AP":0,"D":1}],
       "melee_weapons":[{"name":"Choppa","range":"Melee","A":5,"WS":"3+","S":4,"AP":-1,"D":1}],
       "defaultCount":1, "support_for":["Boyz"]},
@@ -699,6 +701,28 @@ function feelNoPainFor(target) {
   });
   return best;
 }
+// Algumas abilities de UNIDADE dão Invulnerable Save a toda a unidade (ex:
+// Bannernob "Waaagh! Banner: unit has 5+ InvSv") — não só ao modelo que já
+// tem InvSV na própria datasheet. Mesmo princípio do Feel No Pain acima:
+// procura em TODOS os grupos do alvo, porque um líder/support anexado
+// propaga a ability à unidade toda enquanto estiver junto dela.
+function findInvSvAura(abilities) {
+  if (!abilities) return null;
+  for (const a of abilities) {
+    const m = a.match(/unit has (\d+)\+\s*InvSv/i);
+    if (m) return { value: parseInt(m[1], 10), label: a };
+  }
+  return null;
+}
+function invSvAuraFor(target) {
+  let best = null;
+  target.groups.forEach(g => {
+    const ds = findDatasheet(library, g.datasheetName);
+    const aura = ds && findInvSvAura(ds.abilities);
+    if (aura && (!best || aura.value < best.value)) best = aura;
+  });
+  return best;
+}
 // Reduz deadByGroup com sucessos de Feel No Pain, um por um, seguindo a
 // ordem de alocação (cada sucesso cancela 1 morte já calculada).
 function applyFeelNoPain(deadByGroup, order, successes) {
@@ -922,7 +946,7 @@ function startNewGame() {
     player.cp = 0;
     player.units.forEach(u => {
       u.battleshocked = false;
-      u.groups.forEach(g => { g.liveCount = g.initialCount; });
+      u.groups.forEach(g => { g.liveCount = g.initialCount; g.woundsRemainingOnCurrent = g.stats.W; });
     });
   });
   state.game = { round: 1, activePlayerKey: "playerA", phase: "command", ended: false, checklist: {}, battleshockRolls: {}, advanceRoll: { unitId: "", die: null }, chargeRoll: { unitId: "", dice: [] }, score: { playerA: [], playerB: [] }, actedByPhaseInstance: {}, usedWeaponsByUnit: {} };
@@ -1121,6 +1145,28 @@ function renderEstadoPlayerSection(player, name, faction) {
       right.appendChild(el("span", { text: "/ " + g.initialCount + " vivos", style: "font-size:12px;color:var(--text-sec);white-space:nowrap;" }));
       row.appendChild(right);
       ui.appendChild(row);
+
+      // Wounds do modelo "da frente" — só faz sentido mostrar/editar para
+      // grupos com W>1 (vehicles/monsters, characters multi-wound) que
+      // ainda tenham modelos vivos; um modelo W1 está sempre cheio ou
+      // morto, não há estado parcial para acompanhar.
+      if (g.liveCount > 0 && g.stats.W > 1) {
+        const wRow = el("div", { class: "row" });
+        wRow.style.marginBottom = "4px";
+        wRow.appendChild(el("span", { class: "estado-group-label", text: "Wounds no modelo atual" }));
+        const wRight = el("div", { style: "display:flex;align-items:center;gap:6px;" });
+        const wInp = el("input", { type: "number" });
+        wInp.style.width = "60px";
+        const currentW = g.woundsRemainingOnCurrent != null ? g.woundsRemainingOnCurrent : g.stats.W;
+        wInp.value = currentW;
+        wInp.min = "1"; wInp.max = String(g.stats.W);
+        wInp.oninput = e => { g.woundsRemainingOnCurrent = Math.max(1, Math.min(g.stats.W, parseInt(e.target.value) || 1)); };
+        wInp.onchange = () => render();
+        wRight.appendChild(wInp);
+        wRight.appendChild(el("span", { text: "/ " + g.stats.W + " wounds", style: "font-size:12px;color:var(--text-sec);white-space:nowrap;" }));
+        wRow.appendChild(wRight);
+        ui.appendChild(wRow);
+      }
     });
     card.appendChild(ui);
   });
@@ -1670,17 +1716,21 @@ function addUnitToPlayer(playerKey, ds, opts) {
   const neededTotal = count != null ? count : sizing.defaultTotal;
   if (neededTotal <= 0 || remainingCount(ds) < neededTotal || (leaderDs && remainingCount(leaderDs) <= 0) || (supportDs && remainingCount(supportDs) <= 0)) return;
 
+  // woundsRemainingOnCurrent: wounds que faltam para matar o modelo "da
+  // frente" do grupo — começa cheio (W) e persiste ENTRE ataques
+  // diferentes, para unidades com W>1 e poucos modelos (vehicles/monsters)
+  // não perderem dano parcial já sofrido de um ataque anterior.
   const groups = [];
   if (leaderDs) {
-    groups.push({ key: "leader", label: leaderDs.name, datasheetName: leaderDs.name, stats: Object.assign({}, leaderDs.profiles[0].stats), liveCount: 1, initialCount: 1 });
+    groups.push({ key: "leader", label: leaderDs.name, datasheetName: leaderDs.name, stats: Object.assign({}, leaderDs.profiles[0].stats), liveCount: 1, initialCount: 1, woundsRemainingOnCurrent: leaderDs.profiles[0].stats.W });
   }
   if (supportDs) {
-    groups.push({ key: "support", label: supportDs.name, datasheetName: supportDs.name, stats: Object.assign({}, supportDs.profiles[0].stats), liveCount: 1, initialCount: 1 });
+    groups.push({ key: "support", label: supportDs.name, datasheetName: supportDs.name, stats: Object.assign({}, supportDs.profiles[0].stats), liveCount: 1, initialCount: 1, woundsRemainingOnCurrent: supportDs.profiles[0].stats.W });
   }
   ds.profiles.forEach(p => {
     let liveCount = p.count;
     if (count != null && p === sizing.scalable) liveCount = count - sizing.fixedTotal;
-    groups.push({ key: p.key, label: p.label, datasheetName: ds.name, stats: Object.assign({}, p.stats), liveCount, initialCount: liveCount });
+    groups.push({ key: p.key, label: p.label, datasheetName: ds.name, stats: Object.assign({}, p.stats), liveCount, initialCount: liveCount, woundsRemainingOnCurrent: p.stats.W });
   });
 
   const datasheetNames = [leaderDs, supportDs, ds].filter(Boolean).map(d => d.name);
@@ -1761,7 +1811,13 @@ function renderPlayerColumn(side, player) {
       const numIn = el("input", { type: "number" }); numIn.style.width = "60px";
       numIn.value = g.liveCount;
       numIn.min = "0"; numIn.max = String(g.initialCount);
-      numIn.oninput = e => { g.liveCount = Math.max(0, Math.min(g.initialCount, parseInt(e.target.value) || 0)); };
+      numIn.oninput = e => {
+        g.liveCount = Math.max(0, Math.min(g.initialCount, parseInt(e.target.value) || 0));
+        // Correção manual aqui não sabe o estado parcial do modelo atual —
+        // repõe a wounds cheias em vez de arriscar um número inconsistente
+        // (para vehicles/monsters, ajusta depois na tab "Estado do Jogo").
+        g.woundsRemainingOnCurrent = g.stats.W;
+      };
       gr.appendChild(numIn);
       ui.appendChild(gr);
     });
@@ -1966,9 +2022,14 @@ function renderAttackCycle(phaseKey) {
   const woundT = antiApplies ? Math.min(rawWoundT, antiInfo.threshold) : rawWoundT;
   const effWoundThreshold = adjustedThreshold(woundT, c.woundAdjust);
 
+  // Abilities de UNIDADE que dão InvSv a toda a unidade (ex: Bannernob)
+  // aplicam-se a TODOS os grupos do alvo, não só ao grupo que já tem InvSV
+  // na própria datasheet — mesmo princípio do Feel No Pain.
+  const invSvAura = invSvAuraFor(target);
   function effSaveFor(group) {
     const sv = parseThreshold(group.stats.SV);
-    const inv = parseThreshold(group.stats.InvSV);
+    let inv = parseThreshold(group.stats.InvSV);
+    if (invSvAura && (inv === null || invSvAura.value < inv)) inv = invSvAura.value;
     const ap = Math.abs(weapon.AP || 0);
     let eff = sv + ap;
     if (inv !== null && inv < eff) eff = inv;
@@ -2183,7 +2244,19 @@ function renderAttackCycle(phaseKey) {
             c.critWounds = n;
             c.critDeadByGroup = resolveDevastatingDeaths(target, n);
             if (c.wounds - n <= 0) {
-              c.deadByGroup = c.critDeadByGroup;
+              // Todos os wounds eram críticos — nada de dano normal a
+              // resolver, mas ainda é preciso passar cada grupo por
+              // resolveGroupDamage para saber quanto sobra no modelo atual.
+              const deadByGroup = {};
+              const woundsLeftByGroup = {};
+              target.groups.forEach(g => {
+                const critHere = (c.critDeadByGroup && c.critDeadByGroup[g.key]) || 0;
+                const result = resolveGroupDamage(g, critHere, 0);
+                deadByGroup[g.key] = result.dead;
+                woundsLeftByGroup[g.key] = result.woundsLeftAfter;
+              });
+              c.deadByGroup = deadByGroup;
+              c.woundsLeftByGroup = woundsLeftByGroup;
               c.manualDamage = 0;
               c.failedSaves = 0;
             }
@@ -2253,15 +2326,28 @@ function renderAttackCycle(phaseKey) {
     // últimos wounds da pool nunca chegava a rolar o save dele.
     if (c.groupCursor >= order.length || (c.woundsPool <= 0 && c.groupFlow === "assign")) {
       const deadByGroup = {};
+      const woundsLeftByGroup = {};
       let totalDamage = 0;
       target.groups.forEach(g => {
         const key = g.key;
         const r = c.groupResults[key];
         const critDead = (c.critDeadByGroup && c.critDeadByGroup[key]) || 0;
-        deadByGroup[key] = critDead + ((r && r.dead) || 0);
+        if (r && r.dead != null) {
+          // r.dead já inclui os crits deste grupo (calculado via
+          // resolveGroupDamage no passo "save"/"damage" abaixo).
+          deadByGroup[key] = r.dead;
+          woundsLeftByGroup[key] = r.woundsLeftAfter != null ? r.woundsLeftAfter : g.stats.W;
+        } else {
+          // Grupo nunca chegou a "save"/"damage" (0 wounds atribuídos) —
+          // só os crits de Devastating Wounds contam aqui, se houver.
+          const result = resolveGroupDamage(g, critDead, 0);
+          deadByGroup[key] = result.dead;
+          woundsLeftByGroup[key] = result.woundsLeftAfter;
+        }
         if (r) totalDamage += r.damage || 0;
       });
       c.deadByGroup = deadByGroup;
+      c.woundsLeftByGroup = woundsLeftByGroup;
       c.manualDamage = totalDamage;
       c.step = 5;
       return renderAttackCycle(phaseKey);
@@ -2329,9 +2415,10 @@ function renderAttackCycle(phaseKey) {
           if (dmgInfo.fixed) {
             const dmg = n * (dmgInfo.value + meltaBonus);
             const critDeadHere = (c.critDeadByGroup && c.critDeadByGroup[currentKey]) || 0;
-            const liveAfterCrit = Math.max(0, currentGroup.liveCount - critDeadHere);
+            const result = resolveGroupDamage(currentGroup, critDeadHere, dmg);
             c.groupResults[currentKey].damage = dmg;
-            c.groupResults[currentKey].dead = Math.min(liveAfterCrit, Math.floor(dmg / currentGroup.stats.W));
+            c.groupResults[currentKey].dead = result.dead;
+            c.groupResults[currentKey].woundsLeftAfter = result.woundsLeftAfter;
             c.groupFlow = "next";
           } else {
             c.groupFlow = "damage";
@@ -2362,10 +2449,11 @@ function renderAttackCycle(phaseKey) {
       btn.style.cssText = "width:100%;margin-top:8px;";
       btn.onclick = () => {
         const critDeadHere = (c.critDeadByGroup && c.critDeadByGroup[currentKey]) || 0;
-        const liveAfterCrit = Math.max(0, currentGroup.liveCount - critDeadHere);
         const total = v + meltaBonus * c.groupResults[currentKey].failedSaves;
+        const result = resolveGroupDamage(currentGroup, critDeadHere, total);
         c.groupResults[currentKey].damage = total;
-        c.groupResults[currentKey].dead = Math.min(liveAfterCrit, Math.floor(total / currentGroup.stats.W));
+        c.groupResults[currentKey].dead = result.dead;
+        c.groupResults[currentKey].woundsLeftAfter = result.woundsLeftAfter;
         c.groupFlow = "next";
         render();
       };
@@ -2446,6 +2534,17 @@ function renderAttackCycle(phaseKey) {
     const totalText = critDamageDisplay !== null ? ((critDamageDisplay + normalDamage) + " dano total") : "dano total variável";
     const res = el("div", { class: "result final", text: totalText + " → " + totalDead + " modelo(s) morto(s)" });
     card.appendChild(res);
+    // Wounds parciais que ficam no modelo atual — só relevante para grupos
+    // com W>1 que sobreviveram (Land Speeder, monsters, etc.); persiste
+    // para o próximo ataque, por isso mostra-se já aqui, não só depois na
+    // tab "Estado do Jogo".
+    target.groups.forEach(g => {
+      const survivingLive = g.liveCount - (c.deadByGroup[g.key] || 0);
+      const wLeft = c.woundsLeftByGroup && c.woundsLeftByGroup[g.key];
+      if (survivingLive > 0 && g.stats.W > 1 && wLeft != null) {
+        card.appendChild(el("div", { class: "step-hint", text: g.label + ": fica com " + wLeft + "/" + g.stats.W + " wounds no modelo atual." }));
+      }
+    });
     if (target.groups.length > 1) {
       const table = el("table");
       const tbody = el("tbody");
@@ -2469,7 +2568,7 @@ function renderAttackCycle(phaseKey) {
     endUnitBtn.style.width = "100%";
     endUnitBtn.onclick = () => {
       logAttack(attacker, weapon, target, totalDead);
-      applyDeaths(target, c.deadByGroup);
+      applyDeaths(target, c.deadByGroup, c.woundsLeftByGroup);
       markWeaponUsed(attacker.id, weapon);
       markUnitActedThisPhase(attacker.id);
       state.cycle = emptyCycle();
@@ -2480,7 +2579,7 @@ function renderAttackCycle(phaseKey) {
     anotherBtn.style.cssText = "width:100%;margin-top:8px;";
     anotherBtn.onclick = () => {
       logAttack(attacker, weapon, target, totalDead);
-      applyDeaths(target, c.deadByGroup);
+      applyDeaths(target, c.deadByGroup, c.woundsLeftByGroup);
       markWeaponUsed(attacker.id, weapon);
       const keepAttackerId = attacker.id;
       state.cycle = emptyCycle();
@@ -2495,33 +2594,64 @@ function renderAttackCycle(phaseKey) {
   return wrap;
 }
 
+// Consome primeiro os critKills (Devastating Wounds — cada um mata 1
+// modelo de vez, sem save, seja qual for o Damage da arma) e só depois o
+// normalDamage (saves falhados × Damage), acumulando no modelo "da
+// frente" do grupo (g.woundsRemainingOnCurrent) e transbordando para os
+// seguintes — sem mutar o grupo, só devolve o resultado (usado tanto para
+// pré-visualizar no ecrã de Resultado como para aplicar de vez a seguir).
+// Um vehicle/monster com poucos modelos e W alto (ex: Land Speeder W9) que
+// já tinha dano de um ataque anterior continua desse ponto, não reinicia.
+function resolveGroupDamage(g, critKills, normalDamage) {
+  const w = g.stats.W;
+  let live = g.liveCount;
+  let woundsLeft = (g.woundsRemainingOnCurrent != null) ? g.woundsRemainingOnCurrent : w;
+  let dead = 0;
+  let crits = critKills || 0;
+  while (crits > 0 && live > 0) { live--; dead++; woundsLeft = w; crits--; }
+  let dmg = normalDamage || 0;
+  let damageConsumed = 0;
+  while (dmg > 0 && live > 0) {
+    if (dmg >= woundsLeft) {
+      dmg -= woundsLeft; damageConsumed += woundsLeft;
+      live--; dead++; woundsLeft = w;
+    } else {
+      woundsLeft -= dmg; damageConsumed += dmg; dmg = 0;
+    }
+  }
+  return { dead, liveAfter: live, woundsLeftAfter: live > 0 ? woundsLeft : w, damageConsumed };
+}
+
 // preDead (opcional): mortes já decididas antes deste cálculo (ex: mortal
-// wounds diretas de DEVASTATING WOUNDS) — reduz a pool de modelos vivos de
-// cada grupo antes de distribuir o dano normal, sem contar o mesmo modelo
-// morto duas vezes.
+// wounds diretas de DEVASTATING WOUNDS) — resolveGroupDamage já garante
+// que não conta o mesmo modelo morto duas vezes.
 function allocateDamage(target, totalDamage, preDead) {
   const c = state.cycle;
   const order = (c.allocOrder && c.allocOrder.length) ? c.allocOrder : target.groups.map(g => g.key);
   let remaining = totalDamage;
   const dead = {};
+  const woundsLeftByGroup = {};
   order.forEach(key => {
     const g = target.groups.find(gr => gr.key === key);
     if (!g) return;
-    const w = g.stats.W;
-    const already = (preDead && preDead[key]) || 0;
-    const liveAfterPre = Math.max(0, g.liveCount - already);
-    const canDie = Math.min(liveAfterPre, Math.floor(remaining / w));
-    dead[key] = already + canDie;
-    remaining -= canDie * w;
+    const critKillsHere = (preDead && preDead[key]) || 0;
+    const result = resolveGroupDamage(g, critKillsHere, remaining);
+    dead[key] = result.dead;
+    woundsLeftByGroup[key] = result.woundsLeftAfter;
+    remaining -= result.damageConsumed;
   });
   c.deadByGroup = dead;
+  c.woundsLeftByGroup = woundsLeftByGroup;
 }
 
 // DEVASTATING WOUNDS: cada critical wound (6 não modificado no wound roll)
 // vira mortal wounds diretas, sem save, mas mata no máximo 1 modelo por
 // critical wound — independentemente do valor de Damage da arma (ver
 // core_rules_reference.md, glossário de keywords). Por isso o cálculo aqui
-// não precisa do valor de dano, só da contagem de critical wounds.
+// não precisa do valor de dano, só da contagem de critical wounds. Só
+// decide QUANTOS modelos morrem por grupo (não mexe em wounds parciais —
+// isso é resolveGroupDamage, chamado a seguir com este resultado como
+// preDead).
 function resolveDevastatingDeaths(target, critCount) {
   const c = state.cycle;
   const order = (c.allocOrder && c.allocOrder.length) ? c.allocOrder : target.groups.map(g => g.key);
@@ -2538,11 +2668,19 @@ function resolveDevastatingDeaths(target, critCount) {
   return dead;
 }
 
-function applyDeaths(target, deadByGroup) {
+// woundsLeftByGroup (opcional): quantas wounds ficam no modelo atual de
+// cada grupo depois deste ataque — persiste para o próximo ataque em vez
+// de reiniciar sempre a "cheio" (ver resolveGroupDamage).
+function applyDeaths(target, deadByGroup, woundsLeftByGroup) {
   [state.setup.playerA, state.setup.playerB].forEach(player => {
     player.units.forEach(u => {
       if (u.id !== target.id) return;
-      u.groups.forEach(g => { g.liveCount = Math.max(0, g.liveCount - (deadByGroup[g.key] || 0)); });
+      u.groups.forEach(g => {
+        g.liveCount = Math.max(0, g.liveCount - (deadByGroup[g.key] || 0));
+        if (woundsLeftByGroup && woundsLeftByGroup[g.key] != null) {
+          g.woundsRemainingOnCurrent = g.liveCount > 0 ? woundsLeftByGroup[g.key] : g.stats.W;
+        }
+      });
     });
   });
 }
