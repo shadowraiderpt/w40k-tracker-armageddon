@@ -174,11 +174,13 @@
 // ---------------------------------------------------------------------------
 const RAW_UNITS = {
   space_marines: [
-    {"name":"Captain with Relic Shield","points":80,"stats":{"M":"6\"","T":4,"SV":"3+","InvSV":"4+","W":5,"LD":"6+","OC":1},
+    {"name":"Captain with Relic Shield","points":80,"keywords":["INFANTRY","CHARACTER"],"stats":{"M":"6\"","T":4,"SV":"3+","InvSV":"4+","W":5,"LD":"6+","OC":1},
       "ranged_weapons":[{"name":"Heavy bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"18\"","A":1,"BS":"2+","S":4,"AP":-1,"D":1}],
       "melee_weapons":[{"name":"Master-crafted power weapon","range":"Melee","A":6,"WS":"2+","S":5,"AP":-2,"D":2}],
       "defaultCount":1, "leader_for":["Intercessor Squad"]},
-    {"name":"Librarian","points":70,"stats":{"M":"6\"","T":4,"SV":"3+","InvSV":"4+","W":4,"LD":"6+","OC":1},
+    {"name":"Librarian","points":70,"keywords":["INFANTRY","CHARACTER"],
+      "abilities":["Psychic Hood: Feel No Pain 4+ vs ataques psíquicos"],
+      "stats":{"M":"6\"","T":4,"SV":"3+","InvSV":"4+","W":4,"LD":"6+","OC":1},
       "ranged_weapons":[
         {"name":"Bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"3+","S":4,"AP":0,"D":1},
         {"name":"Smite - witchfire","keywords":["PSYCHIC"],"range":"24\"","A":"D6","BS":"3+","S":5,"AP":-1,"D":"D3"},
@@ -186,18 +188,20 @@ const RAW_UNITS = {
       ],
       "melee_weapons":[{"name":"Force weapon","keywords":["PSYCHIC"],"range":"Melee","A":4,"WS":"3+","S":6,"AP":-1,"D":"D3"}],
       "defaultCount":1, "leader_for":["Intercessor Squad"]},
-    {"name":"Chaplain with Jump Pack","points":75,"stats":{"M":"12\"","T":4,"SV":"3+","InvSV":"4+","W":4,"LD":"5+","OC":1},
+    {"name":"Chaplain with Jump Pack","points":75,"keywords":["INFANTRY","CHARACTER","JUMP PACK"],"stats":{"M":"12\"","T":4,"SV":"3+","InvSV":"4+","W":4,"LD":"5+","OC":1},
       "ranged_weapons":[{"name":"Absolvor bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"3+","S":5,"AP":-1,"D":1}],
       "melee_weapons":[{"name":"Crozius arcanum","range":"Melee","A":5,"WS":"2+","S":6,"AP":-1,"D":2}],
       "defaultCount":1, "leader_for":["Vanguard Veteran Squad with Jump Packs"]},
-    {"name":"Ancient","points":40,"stats":{"M":"6\"","T":4,"SV":"3+","W":4,"LD":"6+","OC":1},
+    {"name":"Ancient","points":40,"keywords":["INFANTRY","CHARACTER"],
+      "abilities":["Unbreakable Resolve: Feel No Pain 4+ perto de objetivo ou a 6\" do centro"],
+      "stats":{"M":"6\"","T":4,"SV":"3+","W":4,"LD":"6+","OC":1},
       "ranged_weapons":[
         {"name":"Bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"3+","S":4,"AP":0,"D":1},
         {"name":"Bolt rifle","keywords":["ASSAULT","HEAVY"],"range":"24\"","A":2,"BS":"3+","S":4,"AP":-1,"D":1}
       ],
       "melee_weapons":[{"name":"Close-combat weapon","range":"Melee","A":5,"WS":"2+","S":4,"AP":0,"D":1}],
       "defaultCount":1, "support_for":["Intercessor Squad"]},
-    {"name":"Intercessor Squad","points":150,"stats":{"M":"6\"","T":4,"SV":"3+","W":2,"LD":"6+","OC":2},
+    {"name":"Intercessor Squad","points":150,"keywords":["INFANTRY"],"stats":{"M":"6\"","T":4,"SV":"3+","W":2,"LD":"6+","OC":2},
       "ranged_weapons":[
         {"name":"Bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"3+","S":4,"AP":0,"D":1},
         {"name":"Bolt rifle","keywords":["ASSAULT","HEAVY"],"range":"24\"","A":2,"BS":"3+","S":4,"AP":-1,"D":1},
@@ -209,7 +213,7 @@ const RAW_UNITS = {
         {"name":"Close-combat weapon","keywords":["PRECISION"],"range":"Melee","A":3,"WS":"3+","S":4,"AP":0,"D":1}
       ],
       "defaultCount":10},
-    {"name":"Vanguard Veteran Squad with Jump Packs","points":105,"stats":{"M":"12\"","T":4,"SV":"3+","W":2,"LD":"6+","OC":1},
+    {"name":"Vanguard Veteran Squad with Jump Packs","points":105,"keywords":["INFANTRY","JUMP PACK"],"stats":{"M":"12\"","T":4,"SV":"3+","W":2,"LD":"6+","OC":1},
       "ranged_weapons":[
         {"name":"Heavy bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"18\"","A":1,"BS":"3+","S":4,"AP":-1,"D":1},
         {"name":"Plasma pistol - standard","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"3+","S":7,"AP":-2,"D":1},
@@ -217,14 +221,14 @@ const RAW_UNITS = {
       ],
       "melee_weapons":[{"name":"Master-crafted power weapon","range":"Melee","A":3,"WS":"3+","S":5,"AP":-2,"D":2}],
       "defaultCount":5},
-    {"name":"Eradicator Squad with Heavy Bolters","points":80,"stats":{"M":"5\"","T":6,"SV":"3+","W":3,"LD":"6+","OC":1},
+    {"name":"Eradicator Squad with Heavy Bolters","points":80,"keywords":["INFANTRY"],"stats":{"M":"5\"","T":6,"SV":"3+","W":3,"LD":"6+","OC":1},
       "ranged_weapons":[
         {"name":"Bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"3+","S":4,"AP":0,"D":1},
         {"name":"Heavy bolter","keywords":["HEAVY","SUSTAINED HITS 1"],"range":"36\"","A":3,"BS":"3+","S":5,"AP":-1,"D":2}
       ],
       "melee_weapons":[{"name":"Close-combat weapon","range":"Melee","A":3,"WS":"3+","S":4,"AP":0,"D":1}],
       "defaultCount":3},
-    {"name":"Land Speeder","points":105,"stats":{"M":"14\"","T":8,"SV":"3+","W":9,"LD":"6+","OC":3},
+    {"name":"Land Speeder","points":105,"keywords":["VEHICLE"],"stats":{"M":"14\"","T":8,"SV":"3+","W":9,"LD":"6+","OC":3},
       "ranged_weapons":[
         {"name":"Heavy Flamer","keywords":["TORRENT"],"range":"12\"","A":"D6","BS":"N/A","S":5,"AP":-1,"D":1},
         {"name":"Multi-melta","keywords":["MELTA 2"],"range":"18\"","A":2,"BS":"3+","S":9,"AP":-4,"D":"D6"},
@@ -235,30 +239,32 @@ const RAW_UNITS = {
       "defaultCount":1}
   ],
   orks: [
-    {"name":"Warboss","points":85,"stats":{"M":"6\"","T":5,"SV":"4+","InvSV":"5+","W":6,"LD":"6+","OC":1},
+    {"name":"Warboss","points":85,"keywords":["INFANTRY","CHARACTER"],"stats":{"M":"6\"","T":5,"SV":"4+","InvSV":"5+","W":6,"LD":"6+","OC":1},
       "ranged_weapons":[{"name":"Kustom shoota","keywords":["RAPID FIRE 2"],"range":"18\"","A":4,"BS":"5+","S":4,"AP":0,"D":1}],
       "melee_weapons":[{"name":"Kustom choppa","keywords":["CLEAVE 1"],"range":"Melee","A":6,"WS":"2+","S":8,"AP":-2,"D":2}],
       "defaultCount":1, "leader_for":["Boyz"]},
-    {"name":"Bigboss","points":55,"stats":{"M":"6\"","T":5,"SV":"4+","W":5,"LD":"7+","OC":1},
+    {"name":"Bigboss","points":55,"keywords":["INFANTRY","CHARACTER"],"stats":{"M":"6\"","T":5,"SV":"4+","W":5,"LD":"7+","OC":1},
       "ranged_weapons":[{"name":"Slugga","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"5+","S":4,"AP":0,"D":1}],
       "melee_weapons":[{"name":"Two-handed big choppa","keywords":["CLEAVE 1"],"range":"Melee","A":5,"WS":"3+","S":7,"AP":-1,"D":2}],
       "defaultCount":1, "leader_for":["Boyz"]},
-    {"name":"Bannernob","points":50,"stats":{"M":"6\"","T":5,"SV":"4+","InvSV":"5+","W":4,"LD":"7+","OC":6},
+    {"name":"Bannernob","points":50,"keywords":["INFANTRY","CHARACTER"],"stats":{"M":"6\"","T":5,"SV":"4+","InvSV":"5+","W":4,"LD":"7+","OC":6},
       "ranged_weapons":[{"name":"Shoota","keywords":["RAPID FIRE 1"],"range":"18\"","A":2,"BS":"5+","S":4,"AP":0,"D":1}],
       "melee_weapons":[{"name":"Choppa","range":"Melee","A":5,"WS":"3+","S":4,"AP":-1,"D":1}],
       "defaultCount":1, "support_for":["Boyz"]},
-    {"name":"Painboy","points":90,"stats":{"M":"6\"","T":5,"SV":"5+","W":3,"LD":"7+","OC":1},
+    {"name":"Painboy","points":90,"keywords":["INFANTRY","CHARACTER"],
+      "abilities":["Dok's Toolz: Feel No Pain 5+"],
+      "stats":{"M":"6\"","T":5,"SV":"5+","W":3,"LD":"7+","OC":1},
       "ranged_weapons":[],
       "melee_weapons":[
         {"name":"Dok's toolz","range":"Melee","A":3,"WS":"4+","S":9,"AP":-2,"D":2},
         {"name":"'Urty syringe","keywords":["ANTI-INFANTRY 4+","EXTRA ATTACKS","PRECISION"],"range":"Melee","A":1,"WS":"3+","S":2,"AP":0,"D":1}
       ],
       "defaultCount":1, "support_for":["Boyz"]},
-    {"name":"Weirdboy","points":65,"stats":{"M":"6\"","T":5,"SV":"5+","W":4,"LD":"7+","OC":1},
+    {"name":"Weirdboy","points":65,"keywords":["INFANTRY","CHARACTER"],"stats":{"M":"6\"","T":5,"SV":"5+","W":4,"LD":"7+","OC":1},
       "ranged_weapons":[{"name":"'Eadbanger","keywords":["PRECISION","PSYCHIC"],"range":"24\"","A":1,"BS":"4+","S":6,"AP":-3,"D":1}],
       "melee_weapons":[{"name":"Waaagh! staff","keywords":["PSYCHIC"],"range":"Melee","A":3,"WS":"3+","S":8,"AP":-1,"D":"D3"}],
       "defaultCount":1, "leader_for":["Boyz"]},
-    {"name":"Boyz","points":75,
+    {"name":"Boyz","points":75,"keywords":["INFANTRY"],
       "multiProfile":[
         {"key":"boss_nob","label":"Boss Nob","stats":{"M":"6\"","T":5,"SV":"5+","W":2,"LD":"7+","OC":2},"count":1},
         {"key":"boyz","label":"Boyz","stats":{"M":"6\"","T":5,"SV":"5+","W":1,"LD":"7+","OC":2},"count":9}
@@ -274,18 +280,18 @@ const RAW_UNITS = {
         {"name":"Choppa","range":"Melee","A":3,"WS":"3+","S":4,"AP":-1,"D":1},
         {"name":"Big choppa","range":"Melee","A":3,"WS":"3+","S":7,"AP":-1,"D":2}
       ]},
-    {"name":"Gretchin","points":45,"stats":{"M":"6\"","T":2,"SV":"7+","W":1,"LD":"8+","OC":2},
+    {"name":"Gretchin","points":45,"keywords":["INFANTRY"],"stats":{"M":"6\"","T":2,"SV":"7+","W":1,"LD":"8+","OC":2},
       "ranged_weapons":[{"name":"Blasta","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"4+","S":3,"AP":0,"D":1}],
       "melee_weapons":[{"name":"Close-combat weapon","range":"Melee","A":1,"WS":"5+","S":2,"AP":0,"D":1}],
       "defaultCount":10},
-    {"name":"Wartrakk","points":60,"stats":{"M":"12\"","T":6,"SV":"4+","InvSV":"6+","W":7,"LD":"7+","OC":3},
+    {"name":"Wartrakk","points":60,"keywords":["VEHICLE"],"stats":{"M":"12\"","T":6,"SV":"4+","InvSV":"6+","W":7,"LD":"7+","OC":3},
       "ranged_weapons":[
         {"name":"Kustom shoota","keywords":["RAPID FIRE 2"],"range":"18\"","A":2,"BS":"5+","S":4,"AP":0,"D":1},
         {"name":"Rokkit launcha","range":"24\"","A":"D3+3","BS":"5+","S":10,"AP":-2,"D":3}
       ],
       "melee_weapons":[{"name":"Choppas","range":"Melee","A":5,"WS":"3+","S":4,"AP":-1,"D":1}],
       "defaultCount":1},
-    {"name":"Big Mek Dakkarig","points":115,"stats":{"M":"8\"","T":8,"SV":"3+","InvSV":"5+","W":11,"LD":"7+","OC":3},
+    {"name":"Big Mek Dakkarig","points":115,"keywords":["VEHICLE","CHARACTER"],"stats":{"M":"8\"","T":8,"SV":"3+","InvSV":"5+","W":11,"LD":"7+","OC":3},
       "ranged_weapons":[
         {"name":"Blitzkannon","keywords":["HEAVY","SUSTAINED HITS 1"],"range":"24\"","A":8,"BS":"5+","S":7,"AP":-2,"D":2},
         {"name":"Rokkit launcha","keywords":["HEAVY"],"range":"24\"","A":6,"BS":"5+","S":10,"AP":-2,"D":3}
@@ -550,6 +556,106 @@ function adjustedThreshold(base, adjust) {
 function thresholdText(t) {
   return t > 6 ? "auto-falha" : (t + "+");
 }
+// Extrai o número X de uma keyword do tipo "SUSTAINED HITS 1", "RAPID FIRE 2",
+// "CLEAVE 1", "MELTA 2" (com ou sem "+" colado ao número). BLAST não leva
+// número nas datasheets reais (é sempre "+1 attack por cada 5 modelos");
+// se a keyword aparecer sem dígito nenhum, assume-se X=1.
+function keywordValue(weapon, prefix) {
+  const kw = (weapon.keywords || []).find(k => k.toUpperCase().indexOf(prefix.toUpperCase()) === 0);
+  if (!kw) return null;
+  const m = kw.match(/(\d+)\+?\s*$/);
+  return m ? parseInt(m[1], 10) : 1;
+}
+// "ANTI-INFANTRY 4+" -> {targetKeyword:"INFANTRY", threshold:4}
+function parseAntiKeyword(weapon) {
+  const kw = (weapon.keywords || []).find(k => k.toUpperCase().indexOf("ANTI-") === 0);
+  if (!kw) return null;
+  const m = kw.match(/^ANTI-([A-Z\- ]+?)\s+(\d+)\+?$/i);
+  if (!m) return null;
+  return { targetKeyword: m[1].trim().toUpperCase(), threshold: parseInt(m[2], 10) };
+}
+// Keywords de TIPO de unidade (INFANTRY, VEHICLE, CHARACTER...) vêm do campo
+// "keywords" da datasheet (não confundir com weapon.keywords) — usado só
+// para confirmar automaticamente se ANTI-X se aplica a um alvo, nunca para
+// decidir regras de combate.
+function datasheetHasUnitKeyword(datasheetName, kw) {
+  const ds = findDatasheet(library, datasheetName);
+  if (!ds || !ds.keywords) return false;
+  return ds.keywords.map(k => k.toUpperCase()).includes(kw.toUpperCase());
+}
+function targetHasUnitKeyword(target, kw) {
+  return target.groups.some(g => datasheetHasUnitKeyword(g.datasheetName, kw));
+}
+// Feel No Pain é uma ability de UNIDADE (não de arma) — texto livre no campo
+// "abilities" da datasheet, ex: "Dok's Toolz: Feel No Pain 5+". Procura em
+// TODOS os grupos do alvo (um líder anexado como o Painboy propaga a
+// ability à unidade toda enquanto estiver junto dela).
+function findFeelNoPain(abilities) {
+  if (!abilities) return null;
+  for (const a of abilities) {
+    const m = a.match(/Feel No Pain (\d+)\+/i);
+    if (m) return { value: parseInt(m[1], 10), label: a };
+  }
+  return null;
+}
+function feelNoPainFor(target) {
+  let best = null;
+  target.groups.forEach(g => {
+    const ds = findDatasheet(library, g.datasheetName);
+    const fnp = ds && findFeelNoPain(ds.abilities);
+    if (fnp && (!best || fnp.value < best.value)) best = fnp;
+  });
+  return best;
+}
+// Reduz deadByGroup com sucessos de Feel No Pain, um por um, seguindo a
+// ordem de alocação (cada sucesso cancela 1 morte já calculada).
+function applyFeelNoPain(deadByGroup, order, successes) {
+  const result = Object.assign({}, deadByGroup);
+  let remaining = successes;
+  order.forEach(key => {
+    if (remaining <= 0) return;
+    const cur = result[key] || 0;
+    const cancel = Math.min(cur, remaining);
+    result[key] = cur - cancel;
+    remaining -= cancel;
+  });
+  return result;
+}
+// RAPID FIRE X / CLEAVE X / BLAST X só se aplicam depois de o jogador
+// confirmar uma condição física da mesa (alcance, contagem de modelos do
+// alvo) — a app nunca decide essa condição sozinha, só soma o bónus depois.
+function computeAttacksBonus(weapon, c) {
+  let bonus = 0;
+  const rapidFireX = keywordValue(weapon, "RAPID FIRE");
+  const cleaveX = keywordValue(weapon, "CLEAVE");
+  const blastX = keywordValue(weapon, "BLAST");
+  if (rapidFireX !== null && c.rapidFireHalfRange === true) bonus += rapidFireX;
+  if (cleaveX !== null && c.blastCleaveModels != null) bonus += Math.floor(c.blastCleaveModels / 5) * cleaveX;
+  if (blastX !== null && c.blastCleaveModels != null) bonus += Math.floor(c.blastCleaveModels / 5) * blastX;
+  return bonus;
+}
+function computeDamageBonus(weapon, c) {
+  const meltaX = keywordValue(weapon, "MELTA");
+  return (meltaX !== null && c.meltaHalfRange === true) ? meltaX : 0;
+}
+function attacksBonusLabel(weapon, c) {
+  const parts = [];
+  const rapidFireX = keywordValue(weapon, "RAPID FIRE");
+  const cleaveX = keywordValue(weapon, "CLEAVE");
+  const blastX = keywordValue(weapon, "BLAST");
+  if (rapidFireX !== null && c.rapidFireHalfRange === true) parts.push("Rapid Fire " + rapidFireX);
+  if (cleaveX !== null && c.blastCleaveModels != null) parts.push("Cleave " + cleaveX);
+  if (blastX !== null && c.blastCleaveModels != null) parts.push("Blast " + blastX);
+  return parts.join(", ");
+}
+// Perguntas prévias (ecrã de escolha da arma) exigidas por estas keywords —
+// usado para saber se falta responder a alguma antes de iniciar o ciclo.
+function weaponPreCycleQuestionsAnswered(weapon, c) {
+  if (keywordValue(weapon, "RAPID FIRE") !== null && c.rapidFireHalfRange === null) return false;
+  if (keywordValue(weapon, "MELTA") !== null && c.meltaHalfRange === null) return false;
+  if ((keywordValue(weapon, "CLEAVE") !== null || keywordValue(weapon, "BLAST") !== null) && c.blastCleaveModels === null) return false;
+  return true;
+}
 let uidCounter = 1;
 const nextId = () => uidCounter++;
 function el(tag, props, children) {
@@ -613,6 +719,20 @@ function emptyCycle() {
     // DEVASTATING WOUNDS: quantos dos wounds confirmados foram um 6 não
     // modificado (critical wound) — viram mortal wounds diretas, sem save.
     critWounds: null, critDeadByGroup: null,
+    // SUSTAINED HITS X: quantos dos hits confirmados foram um 6 não
+    // modificado — cada um gera X hits automáticos adicionais.
+    sustainedHits: null,
+    // FEEL NO PAIN: sucessos reportados depois do save normal, que cancelam
+    // mortes já calculadas (ability de unidade, nunca decidida pela app).
+    fnpSuccesses: null,
+    // RAPID FIRE X / MELTA X: condição física (alcance) respondida no ecrã
+    // de escolha da arma, antes do passo 1. CLEAVE X / BLAST X: contagem de
+    // modelos do alvo, também respondida aí (partilhada entre as duas).
+    rapidFireHalfRange: null, meltaHalfRange: null, blastCleaveModels: null,
+    // Attacks base rolados fisicamente quando a arma tem A variável (ex:
+    // D3) E um bónus de Rapid Fire/Cleave/Blast a somar — só usado nesse
+    // caso; com A fixo o bónus soma-se diretamente, sem perguntar nada.
+    attacksRolled: null,
     // Usados só quando os grupos de alocação do alvo têm saves efetivos
     // diferentes (ex: líder com InvSv vs esquadrão sem) — nesse caso os
     // saves têm de ser resolvidos grupo a grupo, não com um número só.
@@ -1416,10 +1536,20 @@ function renderAttackCycle(phaseKey) {
 
   const isTorrent = phaseKey === "shooting" && hasKeyword(weapon, "TORRENT");
   const isDevWounds = hasKeyword(weapon, "DEVASTATING WOUNDS");
+  const sustainedX = !isTorrent && hasKeyword(weapon, "SUSTAINED HITS") ? keywordValue(weapon, "SUSTAINED HITS") : null;
+  // ANTI-X Y+: se o alvo tiver a keyword X (confirmado automaticamente via
+  // datasheet, nunca perguntado — não depende de nada físico na mesa),
+  // qualquer wound roll ≥ Y é sempre critical wound, mesmo abaixo do
+  // threshold normal de ferir. Por isso baixa o threshold efetivo de ferir
+  // e (se relevante) o threshold de "o que conta como crítico".
+  const antiInfo = parseAntiKeyword(weapon);
+  const antiApplies = !!(antiInfo && targetHasUnitKeyword(target, antiInfo.targetKeyword));
+  const critThreshold = antiApplies ? Math.min(6, antiInfo.threshold) : 6;
   const hitThreshold = parseThreshold(toHitValue(weapon, phaseKey));
   const effHitThreshold = adjustedThreshold(hitThreshold, c.hitAdjust);
   const targetT = target.groups[0].stats.T;
-  const woundT = woundThreshold(weapon.S, targetT);
+  const rawWoundT = woundThreshold(weapon.S, targetT);
+  const woundT = antiApplies ? Math.min(rawWoundT, antiInfo.threshold) : rawWoundT;
   const effWoundThreshold = adjustedThreshold(woundT, c.woundAdjust);
 
   function effSaveFor(group) {
@@ -1434,22 +1564,44 @@ function renderAttackCycle(phaseKey) {
   const defaultSaveGroup = liveGroups[0] || target.groups[0];
   const saveThreshold = effSaveFor(defaultSaveGroup);
   const dmgInfo = parseDamage(weapon.D);
+  const attackIsFixed = typeof weapon.A === "number";
+  const attacksBonus = computeAttacksBonus(weapon, c);
+  const meltaBonus = computeDamageBonus(weapon, c);
   const attacksMax = maxOfDiceNotation(weapon.A);
 
+  // RAPID FIRE/CLEAVE/BLAST com Attacks variável (ex: D3) precisam de saber
+  // o valor base fisicamente rolado antes de somar o bónus (com A fixo o
+  // bónus soma-se direto ao número, sem perguntar nada de novo).
+  const needsAttacksRollStep = !attackIsFixed && attacksBonus !== 0;
+
   if (c.step === 1) {
+    if (needsAttacksRollStep && c.attacksRolled === null) {
+      wrap.appendChild(renderNumberStep({
+        title: "Attacks desta arma (base " + weapon.A + "): quanto rolaste?",
+        hint: "Depois soma-se o bónus de +" + attacksBonus + " attacks (" + attacksBonusLabel(weapon, c) + ") antes de perguntar os hits.",
+        threshold: null, stepKey: "attacksroll", max: attacksMax, countLabel: "Attacks rolados (base)",
+        onConfirm: n => { c.attacksRolled = n; render(); },
+        confirmLabel: "Confirmar attacks →",
+      }));
+      return wrap;
+    }
+    const effectiveAttacksMax = attackIsFixed
+      ? weapon.A + attacksBonus
+      : (needsAttacksRollStep ? c.attacksRolled + attacksBonus : attacksMax);
+    const attacksBonusSuffix = attacksBonus ? " · +" + attacksBonus + " attacks (" + attacksBonusLabel(weapon, c) + ")" : "";
     if (isTorrent) {
       wrap.appendChild(renderNumberStep({
         title: "Quantos hits (TORRENT — acerta sempre)?",
-        hint: "🎯 Arma TORRENT: acerta automaticamente, não há hit roll. Introduz quantos ataques rolaste.",
-        threshold: null, stepKey: "hits", max: attacksMax, countLabel: "Hits",
+        hint: "🎯 Arma TORRENT: acerta automaticamente, não há hit roll. Introduz quantos ataques rolaste." + attacksBonusSuffix,
+        threshold: null, stepKey: "hits", max: effectiveAttacksMax, countLabel: "Hits",
         onConfirm: n => { c.hits = n; c.step = 2; render(); },
         confirmLabel: "Confirmar hits →",
       }));
     } else {
       wrap.appendChild(renderNumberStep({
         title: "Precisas de " + thresholdText(effHitThreshold) + " para acertar",
-        hint: hitStat + " da arma: " + toHitValue(weapon, phaseKey) + (c.hitAdjust ? " · ajuste manual aplicado: " + (c.hitAdjust > 0 ? "+" : "") + c.hitAdjust : ""),
-        threshold: effHitThreshold > 6 ? 999 : effHitThreshold, stepKey: "hits", max: attacksMax, countLabel: "Hits",
+        hint: hitStat + " da arma: " + toHitValue(weapon, phaseKey) + (c.hitAdjust ? " · ajuste manual aplicado: " + (c.hitAdjust > 0 ? "+" : "") + c.hitAdjust : "") + attacksBonusSuffix,
+        threshold: effHitThreshold > 6 ? 999 : effHitThreshold, stepKey: "hits", max: effectiveAttacksMax, countLabel: "Hits",
         adjust: { value: c.hitAdjust, onChange: v => { c.hitAdjust = Math.max(-5, Math.min(5, v)); render(); } },
         onConfirm: n => { c.hits = n; c.step = 2; render(); },
         confirmLabel: "Confirmar hits →",
@@ -1459,10 +1611,23 @@ function renderAttackCycle(phaseKey) {
   }
 
   if (c.step === 2) {
+    if (sustainedX && c.sustainedHits === null) {
+      wrap.appendChild(renderNumberStep({
+        title: "Desses hits, quantos foram um 6 não modificado (Sustained Hits " + sustainedX + ")?",
+        hint: "⚙️ " + weapon.name + " tem SUSTAINED HITS " + sustainedX + ": cada 6 não modificado no hit roll gera " + sustainedX + " hit(s) automático(s) adicional(is), sem rolar novamente.",
+        threshold: null, stepKey: "sustained", max: c.hits, countLabel: "Hits críticos (6 não modificado)",
+        onConfirm: n => { c.sustainedHits = n; render(); },
+        confirmLabel: "Confirmar críticos →",
+      }));
+      return wrap;
+    }
+    const effectiveHits = c.hits + (sustainedX ? (c.sustainedHits || 0) * sustainedX : 0);
+    const antiSuffix = antiApplies ? " · ANTI-" + antiInfo.targetKeyword + " " + antiInfo.threshold + "+ aplicado (alvo tem a keyword " + antiInfo.targetKeyword + ")" : "";
+    const sustainedSuffix = (sustainedX && c.sustainedHits) ? " · +" + (c.sustainedHits * sustainedX) + " hits de Sustained Hits" : "";
     wrap.appendChild(renderNumberStep({
       title: "Precisas de " + thresholdText(effWoundThreshold) + " para ferir",
-      hint: "S " + weapon.S + " vs T " + targetT + " (" + target.label + ")" + (c.woundAdjust ? " · ajuste manual aplicado: " + (c.woundAdjust > 0 ? "+" : "") + c.woundAdjust : ""),
-      threshold: effWoundThreshold > 6 ? 999 : effWoundThreshold, stepKey: "wounds", max: c.hits, countLabel: "Wounds",
+      hint: "S " + weapon.S + " vs T " + targetT + " (" + target.label + ")" + (c.woundAdjust ? " · ajuste manual aplicado: " + (c.woundAdjust > 0 ? "+" : "") + c.woundAdjust : "") + antiSuffix + sustainedSuffix,
+      threshold: effWoundThreshold > 6 ? 999 : effWoundThreshold, stepKey: "wounds", max: effectiveHits, countLabel: "Wounds",
       adjust: { value: c.woundAdjust, onChange: v => { c.woundAdjust = Math.max(-5, Math.min(5, v)); render(); } },
       onConfirm: n => { c.wounds = n; c.step = 3; render(); },
       confirmLabel: "Confirmar wounds →",
@@ -1485,10 +1650,12 @@ function renderAttackCycle(phaseKey) {
         c.critWounds = 0;
         c.critDeadByGroup = {};
       } else {
+        const critLabel = critThreshold === 6 ? "um 6 não modificado" :
+          ("≥" + critThreshold + " — threshold de ANTI-" + antiInfo.targetKeyword + " " + antiInfo.threshold + "+ (um 6 não modificado conta sempre também)");
         wrap.appendChild(renderNumberStep({
-          title: "Desses wounds, quantos foram um 6 não modificado (critical wound)?",
-          hint: "⚠️ " + weapon.name + " tem DEVASTATING WOUNDS: cada 6 não modificado no wound roll vira mortal wound automática (Damage " + weapon.D + "), sem save, máx. 1 modelo morto por critical wound.",
-          threshold: null, stepKey: "critwounds", max: c.wounds, countLabel: "Wounds críticos (6 não modificado)",
+          title: "Desses wounds, quantos foram " + critLabel + "?",
+          hint: "⚠️ " + weapon.name + " tem DEVASTATING WOUNDS: cada critical wound vira mortal wound automática (Damage " + weapon.D + "), sem save, máx. 1 modelo morto por critical wound.",
+          threshold: null, stepKey: "critwounds", max: c.wounds, countLabel: "Wounds críticos",
           onConfirm: n => {
             c.critWounds = n;
             c.critDeadByGroup = resolveDevastatingDeaths(target, n);
@@ -1525,7 +1692,7 @@ function renderAttackCycle(phaseKey) {
         onConfirm: n => {
           c.failedSaves = n;
           if (dmgInfo.fixed) {
-            const total = n * dmgInfo.value;
+            const total = n * (dmgInfo.value + meltaBonus);
             allocateDamage(target, total, c.critDeadByGroup);
             c.manualDamage = null;
             c.step = 5;
@@ -1618,7 +1785,7 @@ function renderAttackCycle(phaseKey) {
         onConfirm: n => {
           c.groupResults[currentKey].failedSaves = n;
           if (dmgInfo.fixed) {
-            const dmg = n * dmgInfo.value;
+            const dmg = n * (dmgInfo.value + meltaBonus);
             const critDeadHere = (c.critDeadByGroup && c.critDeadByGroup[currentKey]) || 0;
             const liveAfterCrit = Math.max(0, currentGroup.liveCount - critDeadHere);
             c.groupResults[currentKey].damage = dmg;
@@ -1638,7 +1805,8 @@ function renderAttackCycle(phaseKey) {
       const card = el("div", { class: "card" });
       card.appendChild(el("div", { class: "step-hint", text: progressLabel }));
       card.appendChild(el("h3", { text: currentGroup.label + " — dano total (arma com dano variável: " + weapon.D + ")" }));
-      card.appendChild(el("div", { class: "step-hint", text: "Rola fisicamente " + c.groupResults[currentKey].failedSaves + " vez(es) e soma o total." }));
+      const meltaNote = meltaBonus ? (" (+" + meltaBonus + " por save falhado de MELTA — a app soma-o a seguir, não incluas no valor abaixo)") : "";
+      card.appendChild(el("div", { class: "step-hint", text: "Rola fisicamente " + c.groupResults[currentKey].failedSaves + " vez(es) e soma o total." + meltaNote }));
       let v = 0;
       const inp = el("input", { type: "number" }); inp.value = 0; inp.min = "0";
       inp.oninput = e => { v = Math.max(0, parseInt(e.target.value) || 0); };
@@ -1648,8 +1816,9 @@ function renderAttackCycle(phaseKey) {
       btn.onclick = () => {
         const critDeadHere = (c.critDeadByGroup && c.critDeadByGroup[currentKey]) || 0;
         const liveAfterCrit = Math.max(0, currentGroup.liveCount - critDeadHere);
-        c.groupResults[currentKey].damage = v;
-        c.groupResults[currentKey].dead = Math.min(liveAfterCrit, Math.floor(v / currentGroup.stats.W));
+        const total = v + meltaBonus * c.groupResults[currentKey].failedSaves;
+        c.groupResults[currentKey].damage = total;
+        c.groupResults[currentKey].dead = Math.min(liveAfterCrit, Math.floor(total / currentGroup.stats.W));
         c.groupFlow = "next";
         render();
       };
@@ -1664,28 +1833,62 @@ function renderAttackCycle(phaseKey) {
   if (c.step === 4.5) {
     const card = el("div", { class: "card" });
     card.appendChild(el("h2", { text: "Dano total (arma com dano variável: " + weapon.D + ")" }));
-    card.appendChild(el("div", { class: "step-hint", text: "Esta arma tem Damage em dados (" + weapon.D + "). Rola fisicamente " + c.failedSaves + " vez(es) e soma o total." }));
+    const meltaNote = meltaBonus ? (" (+" + meltaBonus + " por save falhado de MELTA — a app soma-o a seguir, não incluas no valor abaixo)") : "";
+    card.appendChild(el("div", { class: "step-hint", text: "Esta arma tem Damage em dados (" + weapon.D + "). Rola fisicamente " + c.failedSaves + " vez(es) e soma o total." + meltaNote }));
     const inp = el("input", { type: "number" }); inp.value = 0;
     let v = 0;
     inp.oninput = e => { v = Math.max(0, parseInt(e.target.value) || 0); };
     card.appendChild(inp);
     const btn = el("button", { class: "primary", text: "Confirmar dano total →" });
     btn.style.width = "100%"; btn.style.marginTop = "8px";
-    btn.onclick = () => { c.manualDamage = v; allocateDamage(target, v, c.critDeadByGroup); c.step = 5; render(); };
+    btn.onclick = () => {
+      const total = v + meltaBonus * c.failedSaves;
+      c.manualDamage = total;
+      allocateDamage(target, total, c.critDeadByGroup);
+      c.step = 5;
+      render();
+    };
     card.appendChild(btn);
     wrap.appendChild(card);
     return wrap;
   }
 
   if (c.step === 5) {
+    // FEEL NO PAIN: ability de UNIDADE (não de arma), detetada no campo
+    // "abilities" da datasheet do alvo — sempre DEPOIS do save normal e das
+    // mortal wounds de Devastating Wounds, nunca antes. Passo adicional, só
+    // aparece se houver mortes já calculadas para cancelar.
+    const fnp = feelNoPainFor(target);
+    const rawTotalDead = Object.values(c.deadByGroup || {}).reduce((a, b) => a + b, 0);
+    if (fnp && c.fnpSuccesses === null && rawTotalDead > 0) {
+      wrap.appendChild(renderNumberStep({
+        title: "Feel No Pain " + thresholdText(fnp.value) + " — quantos passaram?",
+        hint: "⚕️ " + fnp.label + ". Rola 1 dado por cada uma das " + rawTotalDead + " mortes já calculadas (depois do save normal) — cada sucesso cancela 1 morte.",
+        threshold: fnp.value > 6 ? 999 : fnp.value, stepKey: "fnp", max: rawTotalDead, countLabel: "Sucessos de Feel No Pain",
+        onConfirm: n => {
+          c.fnpSuccesses = n;
+          const order = (c.allocOrder && c.allocOrder.length) ? c.allocOrder : target.groups.map(g => g.key);
+          c.deadByGroup = applyFeelNoPain(c.deadByGroup, order, n);
+          render();
+        },
+        confirmLabel: "Confirmar Feel No Pain →",
+      }));
+      return wrap;
+    }
+
     const card = el("div", { class: "card" });
     card.appendChild(el("h2", { text: "Resultado" }));
     const critCount = c.critWounds || 0;
     const critDamageDisplay = dmgInfo.fixed ? critCount * dmgInfo.value : null;
-    const normalDamage = c.manualDamage !== null ? c.manualDamage : (dmgInfo.fixed ? (c.failedSaves || 0) * dmgInfo.value : 0);
+    const normalDamage = c.manualDamage !== null ? c.manualDamage : (dmgInfo.fixed ? (c.failedSaves || 0) * (dmgInfo.value + meltaBonus) : 0);
     const totalDead = Object.values(c.deadByGroup || {}).reduce((a, b) => a + b, 0);
     if (critCount > 0) {
       card.appendChild(el("div", { class: "step-hint", text: "⚠️ Devastating Wounds: " + critCount + " critical wound(s) → mortal wounds diretas, sem save (máx. 1 modelo morto por critical wound)." }));
+    }
+    if (fnp && c.fnpSuccesses) {
+      // rawTotalDead já reflete deadByGroup PÓS-FNP (foi recalculado neste
+      // render); o total pré-FNP é esse mais os sucessos que cancelaram mortes.
+      card.appendChild(el("div", { class: "step-hint", text: "⚕️ Feel No Pain " + thresholdText(fnp.value) + ": " + c.fnpSuccesses + " sucesso(s) cancelaram " + c.fnpSuccesses + " morte(s) (de " + (rawTotalDead + c.fnpSuccesses) + " antes do FNP)." }));
     }
     const totalText = critDamageDisplay !== null ? ((critDamageDisplay + normalDamage) + " dano total") : "dano total variável";
     const res = el("div", { class: "result final", text: totalText + " → " + totalDead + " modelo(s) morto(s)" });
@@ -1786,7 +1989,11 @@ function renderPicker(instances, phaseKey) {
     if (String(u.id) === String(c.attackerId)) o.selected = true;
     sel1.appendChild(o);
   });
-  sel1.onchange = e => { c.attackerId = e.target.value; c.weaponIdx = ""; render(); };
+  sel1.onchange = e => {
+    c.attackerId = e.target.value; c.weaponIdx = "";
+    c.rapidFireHalfRange = null; c.meltaHalfRange = null; c.blastCleaveModels = null;
+    render();
+  };
   f1.appendChild(sel1);
   card.appendChild(f1);
 
@@ -1807,7 +2014,11 @@ function renderPicker(instances, phaseKey) {
         if (String(i) === String(c.weaponIdx)) o.selected = true;
         sel2.appendChild(o);
       });
-      sel2.onchange = e => { c.weaponIdx = e.target.value; render(); };
+      sel2.onchange = e => {
+        c.weaponIdx = e.target.value;
+        c.rapidFireHalfRange = null; c.meltaHalfRange = null;
+        render();
+      };
       f2.appendChild(sel2);
     }
     card.appendChild(f2);
@@ -1822,21 +2033,75 @@ function renderPicker(instances, phaseKey) {
     if (String(u.id) === String(c.targetId)) o.selected = true;
     sel3.appendChild(o);
   });
-  sel3.onchange = e => { c.targetId = e.target.value; render(); };
+  sel3.onchange = e => {
+    c.targetId = e.target.value;
+    c.rapidFireHalfRange = null; c.meltaHalfRange = null; c.blastCleaveModels = null;
+    render();
+  };
   f3.appendChild(sel3);
   card.appendChild(f3);
 
   const weapon = attacker && c.weaponIdx !== "" ? attackerWeapons[c.weaponIdx] : null;
   const target = findInstance(c.targetId);
+
+  // RAPID FIRE X / CLEAVE X / MELTA X / BLAST X: a app nunca decide a
+  // condição (alcance medido, tamanho do alvo) — só pergunta e aplica o
+  // bónus depois de o jogador confirmar. Sem nenhuma destas keywords na
+  // arma escolhida, nada disto aparece e o comportamento fica inalterado.
+  if (weapon) {
+    const rapidFireX = keywordValue(weapon, "RAPID FIRE");
+    const meltaX = keywordValue(weapon, "MELTA");
+    const cleaveX = keywordValue(weapon, "CLEAVE");
+    const blastX = keywordValue(weapon, "BLAST");
+
+    if (rapidFireX !== null) {
+      const f = el("div", { class: "field" });
+      f.appendChild(el("label", { text: "RAPID FIRE " + rapidFireX + " — estás a metade do alcance ou menos?" }));
+      const sel = el("select");
+      [["", "— escolher —"], ["yes", "Sim"], ["no", "Não"]].forEach(([v, t]) => {
+        const o = el("option", { value: v, text: t });
+        if ((v === "yes" && c.rapidFireHalfRange === true) || (v === "no" && c.rapidFireHalfRange === false)) o.selected = true;
+        sel.appendChild(o);
+      });
+      sel.onchange = e => { c.rapidFireHalfRange = e.target.value === "" ? null : e.target.value === "yes"; render(); };
+      f.appendChild(sel);
+      card.appendChild(f);
+    }
+    if (meltaX !== null) {
+      const f = el("div", { class: "field" });
+      f.appendChild(el("label", { text: "MELTA " + meltaX + " — estás a metade do alcance ou menos?" }));
+      const sel = el("select");
+      [["", "— escolher —"], ["yes", "Sim"], ["no", "Não"]].forEach(([v, t]) => {
+        const o = el("option", { value: v, text: t });
+        if ((v === "yes" && c.meltaHalfRange === true) || (v === "no" && c.meltaHalfRange === false)) o.selected = true;
+        sel.appendChild(o);
+      });
+      sel.onchange = e => { c.meltaHalfRange = e.target.value === "" ? null : e.target.value === "yes"; render(); };
+      f.appendChild(sel);
+      card.appendChild(f);
+    }
+    if (cleaveX !== null || blastX !== null) {
+      const f = el("div", { class: "field" });
+      f.appendChild(el("label", { text: (cleaveX !== null ? "CLEAVE " + cleaveX : "BLAST " + blastX) + " — quantos modelos tem a unidade alvo?" }));
+      const inp = el("input", { type: "number" });
+      inp.min = "0";
+      if (c.blastCleaveModels != null) inp.value = c.blastCleaveModels;
+      inp.oninput = e => { c.blastCleaveModels = e.target.value === "" ? null : Math.max(0, parseInt(e.target.value, 10) || 0); render(); };
+      f.appendChild(inp);
+      card.appendChild(f);
+    }
+  }
+
   const startBtn = el("button", { class: "primary", text: "Iniciar ciclo de ataque →" });
   startBtn.style.width = "100%";
-  startBtn.disabled = !(attacker && weapon && target);
+  startBtn.disabled = !(attacker && weapon && target && weaponPreCycleQuestionsAnswered(weapon, c));
   startBtn.onclick = () => {
     c.step = 1; c.hits = null; c.wounds = null; c.failedSaves = null;
     c.allocOrder = target.groups.length > 1 ? null : target.groups.map(g => g.key);
     c.manualDamage = null; c.deadByGroup = null;
     c.hitAdjust = 0; c.woundAdjust = 0;
     c.critWounds = null; c.critDeadByGroup = null;
+    c.sustainedHits = null; c.fnpSuccesses = null; c.attacksRolled = null;
     c.groupFlow = null; c.groupCursor = 0; c.woundsPool = 0; c.groupResults = {};
     render();
   };
