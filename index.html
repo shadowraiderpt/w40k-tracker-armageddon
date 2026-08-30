@@ -120,6 +120,11 @@
   .estado-group-label.dead{text-decoration:line-through;}
   .unit-instance.dead{opacity:0.45;}
   .unit-instance.dead .estado-unit-name{text-decoration:line-through;}
+  .roller-badge{border-radius:4px;padding:8px 10px;margin-bottom:10px;border-left:4px solid;}
+  .roller-badge.attacker{background:rgba(179,42,42,0.15);border-left-color:var(--danger);}
+  .roller-badge.defender{background:rgba(74,85,34,0.2);border-left-color:var(--ork-green);}
+  .roller-who{font-family:var(--display-font);font-size:14px;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);}
+  .roller-why{font-size:11px;color:var(--text-sec);margin-top:2px;}
   .voice-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
   .mic-btn{flex-shrink:0;width:48px;height:48px;min-height:48px;border-radius:50%;font-size:20px;padding:0;display:flex;align-items:center;justify-content:center;}
   .mic-btn.listening{background:var(--danger);border-color:var(--danger);color:#fff;animation:mic-pulse 1.1s ease-in-out infinite;}
@@ -563,6 +568,28 @@ function adjustedThreshold(base, adjust) {
 }
 function thresholdText(t) {
   return t > 6 ? "auto-falha" : (t + "+");
+}
+// Nome completo de uma estatística abreviada, para mostrar por extenso nos
+// passos do ciclo de ataque em vez de só "S", "T", "SV"... — a abreviatura
+// original fica sempre entre parêntesis para quem já a conhece.
+const STAT_FULL_NAMES = {
+  M: "Movimento", S: "Força", T: "Resistência", SV: "Salvaguarda",
+  InvSV: "Salvaguarda Invulnerável", W: "Feridas", LD: "Liderança",
+  OC: "Controlo de Objetivo", A: "Attacks", BS: "Perícia de Tiro",
+  WS: "Perícia de Combate", AP: "Perfuração de Armadura", D: "Dano",
+};
+function statLabel(abbr) {
+  return (STAT_FULL_NAMES[abbr] || abbr) + " (" + abbr + ")";
+}
+// Indica sempre, de forma visível, QUEM fisicamente rola os dados neste
+// passo (atacante ou defensor) e PORQUÊ (que tipo de roll é) — para nunca
+// haver dúvida de quem deve estar com o dado na mão.
+function renderRollerBadge(role, rollerName, why) {
+  const wrap = el("div", { class: "roller-badge " + role });
+  const label = role === "attacker" ? "⚔️ Rola o ATACANTE" : "🛡️ Rola o DEFENSOR";
+  wrap.appendChild(el("div", { class: "roller-who", text: label + (rollerName ? " — " + rollerName : "") }));
+  if (why) wrap.appendChild(el("div", { class: "roller-why", text: why }));
+  return wrap;
 }
 // Extrai o número X de uma keyword do tipo "SUSTAINED HITS 1", "RAPID FIRE 2",
 // "CLEAVE 1", "MELTA 2" (com ou sem "+" colado ao número). BLAST não leva
@@ -1754,6 +1781,10 @@ function renderAttackCycle(phaseKey) {
   const weapon = attacker && c.weaponIdx !== "" ? attackerWeapons[c.weaponIdx] : null;
   const target = findInstance(c.targetId);
   if (!attacker || !weapon || !target) { c.step = 0; return renderAttackCycle(phaseKey); }
+  // Nome a mostrar na badge "quem rola" de cada passo — sempre o jogador
+  // dono da unidade + a unidade em si, para nunca haver dúvida.
+  const attackerRollerName = attacker.ownerName + " (" + attacker.label + ")";
+  const defenderRollerName = target.ownerName + " (" + target.label + ")";
 
   const banner = el("div", { class: "card" });
   banner.style.cssText = "background:var(--surface2);font-size:12px;";
@@ -1814,6 +1845,7 @@ function renderAttackCycle(phaseKey) {
         title: "Attacks desta arma (base " + weapon.A + "): quanto rolaste?",
         hint: "Depois soma-se o bónus de +" + attacksBonus + " attacks (" + attacksBonusLabel(weapon, c) + ") antes de perguntar os hits.",
         threshold: null, stepKey: "attacksroll", max: attacksMax, countLabel: "Attacks rolados (base)",
+        roller: "attacker", rollerName: attackerRollerName, rollWhy: "Roll de Attacks — decide quantos ataques esta arma faz neste ataque.",
         onConfirm: n => { c.attacksRolled = n; render(); },
         confirmLabel: "Confirmar attacks →",
       }));
@@ -1828,15 +1860,17 @@ function renderAttackCycle(phaseKey) {
         title: "Quantos hits (TORRENT — acerta sempre)?",
         hint: "🎯 Arma TORRENT: acerta automaticamente, não há hit roll. Introduz quantos ataques rolaste." + attacksBonusSuffix,
         threshold: null, stepKey: "hits", max: effectiveAttacksMax, countLabel: "Hits",
+        roller: "attacker", rollerName: attackerRollerName, rollWhy: "Roll de ataque (hit roll) — TORRENT acerta sempre, mas contas na mesma quantos ataques fizeste.",
         onConfirm: n => { c.hits = n; c.step = 2; render(); },
         confirmLabel: "Confirmar hits →",
       }));
     } else {
       wrap.appendChild(renderNumberStep({
         title: "Precisas de " + thresholdText(effHitThreshold) + " para acertar",
-        hint: hitStat + " da arma: " + toHitValue(weapon, phaseKey) + (c.hitAdjust ? " · ajuste manual aplicado: " + (c.hitAdjust > 0 ? "+" : "") + c.hitAdjust : "") + attacksBonusSuffix,
+        hint: statLabel(hitStat) + ": " + toHitValue(weapon, phaseKey) + (c.hitAdjust ? " · ajuste manual aplicado: " + (c.hitAdjust > 0 ? "+" : "") + c.hitAdjust : "") + attacksBonusSuffix,
         threshold: effHitThreshold > 6 ? 999 : effHitThreshold, stepKey: "hits", max: effectiveAttacksMax, countLabel: "Hits",
         adjust: { value: c.hitAdjust, onChange: v => { c.hitAdjust = Math.max(-5, Math.min(5, v)); render(); } },
+        roller: "attacker", rollerName: attackerRollerName, rollWhy: "Roll de ataque (hit roll) — ver se acertas no alvo.",
         onConfirm: n => { c.hits = n; c.step = 2; render(); },
         confirmLabel: "Confirmar hits →",
       }));
@@ -1850,6 +1884,7 @@ function renderAttackCycle(phaseKey) {
         title: "Desses hits, quantos foram um 6 não modificado (Sustained Hits " + sustainedX + ")?",
         hint: "⚙️ " + weapon.name + " tem SUSTAINED HITS " + sustainedX + ": cada 6 não modificado no hit roll gera " + sustainedX + " hit(s) automático(s) adicional(is), sem rolar novamente.",
         threshold: 6, stepKey: "sustained", max: c.hits, countLabel: "Hits críticos (6 não modificado)",
+        roller: "attacker", rollerName: attackerRollerName, rollWhy: "A contar, dos hits que já rolaste, quantos foram um 6 não modificado.",
         onConfirm: n => { c.sustainedHits = n; render(); },
         confirmLabel: "Confirmar críticos →",
       }));
@@ -1860,9 +1895,10 @@ function renderAttackCycle(phaseKey) {
     const sustainedSuffix = (sustainedX && c.sustainedHits) ? " · +" + (c.sustainedHits * sustainedX) + " hits de Sustained Hits" : "";
     wrap.appendChild(renderNumberStep({
       title: "Precisas de " + thresholdText(effWoundThreshold) + " para ferir",
-      hint: "S " + weapon.S + " vs T " + targetT + " (" + target.label + ")" + (c.woundAdjust ? " · ajuste manual aplicado: " + (c.woundAdjust > 0 ? "+" : "") + c.woundAdjust : "") + antiSuffix + sustainedSuffix,
+      hint: statLabel("S") + " " + weapon.S + " vs " + statLabel("T") + " " + targetT + " (" + target.label + ")" + (c.woundAdjust ? " · ajuste manual aplicado: " + (c.woundAdjust > 0 ? "+" : "") + c.woundAdjust : "") + antiSuffix + sustainedSuffix,
       threshold: effWoundThreshold > 6 ? 999 : effWoundThreshold, stepKey: "wounds", max: effectiveHits, countLabel: "Wounds",
       adjust: { value: c.woundAdjust, onChange: v => { c.woundAdjust = Math.max(-5, Math.min(5, v)); render(); } },
+      roller: "attacker", rollerName: attackerRollerName, rollWhy: "Roll de ferir (wound roll) — ver se o hit é forte o suficiente para ferir o alvo.",
       onConfirm: n => { c.wounds = n; c.step = 3; render(); },
       confirmLabel: "Confirmar wounds →",
     }));
@@ -1890,6 +1926,7 @@ function renderAttackCycle(phaseKey) {
           title: "Desses wounds, quantos foram " + critLabel + "?",
           hint: "⚠️ " + weapon.name + " tem DEVASTATING WOUNDS: cada critical wound vira mortal wound automática (Damage " + weapon.D + "), sem save, máx. 1 modelo morto por critical wound.",
           threshold: critThreshold, stepKey: "critwounds", max: c.wounds, countLabel: "Wounds críticos",
+          roller: "attacker", rollerName: attackerRollerName, rollWhy: "A contar, dos wounds que já rolaste, quantos foram um critical wound.",
           onConfirm: n => {
             c.critWounds = n;
             c.critDeadByGroup = resolveDevastatingDeaths(target, n);
@@ -1916,14 +1953,15 @@ function renderAttackCycle(phaseKey) {
 
     if (!needsPerGroup) {
       const svText = saveThreshold > 6 ? "auto-falha" : (saveThreshold + "+");
-      const hintParts = ["SV " + defaultSaveGroup.stats.SV];
-      if (defaultSaveGroup.stats.InvSV) hintParts.push("InvSV " + defaultSaveGroup.stats.InvSV + " (nunca modificado por AP)");
-      hintParts.push("vs AP " + weapon.AP);
+      const hintParts = [statLabel("SV") + " " + defaultSaveGroup.stats.SV];
+      if (defaultSaveGroup.stats.InvSV) hintParts.push(statLabel("InvSV") + " " + defaultSaveGroup.stats.InvSV + " (nunca modificado por AP)");
+      hintParts.push("vs " + statLabel("AP") + " " + weapon.AP);
       wrap.appendChild(renderNumberStep({
         title: "O adversário precisa de " + svText + " para salvar",
         hint: hintParts.join(" / ") + (isDevWounds && c.critWounds ? " · " + c.critWounds + " wound(s) já resolvido(s) como mortal wounds diretas" : ""),
         threshold: saveThreshold > 6 ? 999 : saveThreshold, stepKey: "saves", max: woundsForSave, countLabel: "Saves falhados",
         invertThreshold: true,
+        roller: "defender", rollerName: defenderRollerName, rollWhy: "Roll de salvaguarda (save roll) — tenta evitar o dano com a armadura ou InvSv.",
         onConfirm: n => {
           c.failedSaves = n;
           if (dmgInfo.fixed) {
@@ -2013,15 +2051,16 @@ function renderAttackCycle(phaseKey) {
     if (c.groupFlow === "save") {
       const gSave = effSaveFor(currentGroup);
       const svText = gSave > 6 ? "auto-falha" : (gSave + "+");
-      const hintParts = [progressLabel, "SV " + currentGroup.stats.SV];
-      if (currentGroup.stats.InvSV) hintParts.push("InvSV " + currentGroup.stats.InvSV + " (nunca modificado por AP)");
-      hintParts.push("vs AP " + weapon.AP);
+      const hintParts = [progressLabel, statLabel("SV") + " " + currentGroup.stats.SV];
+      if (currentGroup.stats.InvSV) hintParts.push(statLabel("InvSV") + " " + currentGroup.stats.InvSV + " (nunca modificado por AP)");
+      hintParts.push("vs " + statLabel("AP") + " " + weapon.AP);
       wrap.appendChild(renderNumberStep({
         title: currentGroup.label + " (" + c.groupResults[currentKey].assignedWounds + " wound(s)): precisa de " + svText + " para salvar",
         hint: hintParts.join(" / "),
         threshold: gSave > 6 ? 999 : gSave, stepKey: "save-" + currentKey,
         max: c.groupResults[currentKey].assignedWounds, countLabel: "Saves falhados",
         invertThreshold: true,
+        roller: "defender", rollerName: defenderRollerName, rollWhy: "Roll de salvaguarda (save roll) — tenta evitar o dano com a armadura ou InvSv.",
         onConfirm: n => {
           c.groupResults[currentKey].failedSaves = n;
           if (dmgInfo.fixed) {
@@ -2043,8 +2082,9 @@ function renderAttackCycle(phaseKey) {
 
     if (c.groupFlow === "damage") {
       const card = el("div", { class: "card" });
+      card.appendChild(renderRollerBadge("attacker", attackerRollerName, "Roll de Dano — quanto dano cada wound que falhou o save causa."));
       card.appendChild(el("div", { class: "step-hint", text: progressLabel }));
-      card.appendChild(el("h3", { text: currentGroup.label + " — dano total (arma com dano variável: " + weapon.D + ")" }));
+      card.appendChild(el("h3", { text: currentGroup.label + " — dano total (arma com " + statLabel("D") + " variável: " + weapon.D + ")" }));
       const meltaNote = meltaBonus ? (" (+" + meltaBonus + " por save falhado de MELTA — a app soma-o a seguir, não incluas no valor abaixo)") : "";
       card.appendChild(el("div", { class: "step-hint", text: "Rola fisicamente " + c.groupResults[currentKey].failedSaves + " vez(es) e soma o total." + meltaNote }));
       let v = 0;
@@ -2072,9 +2112,10 @@ function renderAttackCycle(phaseKey) {
 
   if (c.step === 4.5) {
     const card = el("div", { class: "card" });
-    card.appendChild(el("h2", { text: "Dano total (arma com dano variável: " + weapon.D + ")" }));
+    card.appendChild(renderRollerBadge("attacker", attackerRollerName, "Roll de Dano — quanto dano cada wound que falhou o save causa."));
+    card.appendChild(el("h2", { text: "Dano total (arma com " + statLabel("D") + " variável: " + weapon.D + ")" }));
     const meltaNote = meltaBonus ? (" (+" + meltaBonus + " por save falhado de MELTA — a app soma-o a seguir, não incluas no valor abaixo)") : "";
-    card.appendChild(el("div", { class: "step-hint", text: "Esta arma tem Damage em dados (" + weapon.D + "). Rola fisicamente " + c.failedSaves + " vez(es) e soma o total." + meltaNote }));
+    card.appendChild(el("div", { class: "step-hint", text: "Esta arma tem " + statLabel("D") + " em dados (" + weapon.D + "). Rola fisicamente " + c.failedSaves + " vez(es) e soma o total." + meltaNote }));
     const inp = el("input", { type: "number" }); inp.value = 0;
     let v = 0;
     inp.oninput = e => { v = Math.max(0, parseInt(e.target.value) || 0); };
@@ -2105,6 +2146,7 @@ function renderAttackCycle(phaseKey) {
         title: "Feel No Pain " + thresholdText(fnp.value) + " — quantos passaram?",
         hint: "⚕️ " + fnp.label + ". Rola 1 dado por cada uma das " + rawTotalDead + " mortes já calculadas (depois do save normal) — cada sucesso cancela 1 morte.",
         threshold: fnp.value > 6 ? 999 : fnp.value, stepKey: "fnp", max: rawTotalDead, countLabel: "Sucessos de Feel No Pain",
+        roller: "defender", rollerName: defenderRollerName, rollWhy: "Roll de Feel No Pain — tenta cancelar uma morte já calculada.",
         onConfirm: n => {
           c.fnpSuccesses = n;
           const order = (c.allocOrder && c.allocOrder.length) ? c.allocOrder : target.groups.map(g => g.key);
@@ -2380,6 +2422,7 @@ function renderAdjustControl(value, onChange) {
 }
 function renderNumberStep(opts) {
   const card = el("div", { class: "card" });
+  if (opts.roller) card.appendChild(renderRollerBadge(opts.roller, opts.rollerName, opts.rollWhy));
   card.appendChild(el("div", { class: "step-hint", text: opts.hint }));
   card.appendChild(el("h3", { text: opts.title }));
   const c = state.cycle;
