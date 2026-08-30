@@ -125,6 +125,9 @@
   .roller-badge.defender{background:rgba(74,85,34,0.2);border-left-color:var(--ork-green);}
   .roller-who{font-family:var(--display-font);font-size:14px;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);}
   .roller-why{font-size:11px;color:var(--text-sec);margin-top:2px;}
+  .threshold-number{font-family:var(--display-font);font-size:34px;letter-spacing:0.04em;color:var(--gold);line-height:1;margin:2px 0 12px;text-shadow:0 0 16px rgba(201,162,39,0.3);}
+  .bonus-chip-row{display:flex;flex-wrap:wrap;gap:6px;margin:-2px 0 12px;}
+  .bonus-chip{display:inline-block;background:var(--gold);color:#1a1400;font-family:var(--display-font);font-size:14px;letter-spacing:0.03em;padding:6px 10px;border-radius:4px;text-transform:uppercase;line-height:1.2;}
   .voice-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
   .mic-btn{flex-shrink:0;width:48px;height:48px;min-height:48px;border-radius:50%;font-size:20px;padding:0;display:flex;align-items:center;justify-content:center;}
   .mic-btn.listening{background:var(--danger);border-color:var(--danger);color:#fff;animation:mic-pulse 1.1s ease-in-out infinite;}
@@ -1985,6 +1988,23 @@ function renderAttackCycle(phaseKey) {
   // bónus soma-se direto ao número, sem perguntar nada de novo).
   const needsAttacksRollStep = !attackIsFixed && attacksBonus !== 0;
 
+  // "Corrigir passo anterior" — nunca apaga o valor já confirmado do passo
+  // a que se volta (fica pré-preenchido para editar), só invalida os
+  // sub-valores que dependem dele (ex: quantos hits eram crítico já não
+  // faz sentido se o nº de hits vai mudar).
+  const backToHits = () => {
+    c.step = 1;
+    c.sustainedHits = null;
+    c.lethalHitCrits = null;
+    render();
+  };
+  const backToWounds = () => {
+    c.step = 2;
+    c.critWounds = null;
+    c.critDeadByGroup = null;
+    render();
+  };
+
   if (c.step === 1) {
     if (needsAttacksRollStep && c.attacksRolled === null) {
       wrap.appendChild(renderNumberStep({
@@ -2052,8 +2072,11 @@ function renderAttackCycle(phaseKey) {
     } else {
       wrap.appendChild(renderNumberStep({
         title: "Precisas de " + thresholdText(effHitThreshold) + " para acertar",
-        hint: statLabel(hitStat) + ": " + toHitValue(weapon, phaseKey) + (c.hitAdjust ? " · ajuste manual aplicado: " + (c.hitAdjust > 0 ? "+" : "") + c.hitAdjust : "") + (heavyBonus ? " · HEAVY: +1 ao acertar (não moveu mais de 3\")" : "") + attacksBonusSuffix,
+        bigNumber: thresholdText(effHitThreshold),
+        bonusChips: heavyBonus ? ["HEAVY: +1 ao acertar"] : [],
+        hint: statLabel(hitStat) + ": " + toHitValue(weapon, phaseKey) + (c.hitAdjust ? " · ajuste manual aplicado: " + (c.hitAdjust > 0 ? "+" : "") + c.hitAdjust : "") + attacksBonusSuffix,
         threshold: effHitThreshold > 6 ? 999 : effHitThreshold, stepKey: "hits", max: effectiveAttacksMax, countLabel: "Hits",
+        initialValue: c.hits,
         adjust: { value: c.hitAdjust, onChange: v => { c.hitAdjust = Math.max(-5, Math.min(5, v)); render(); } },
         roller: "attacker", rollerName: attackerRollerName, rollWhy: "Roll de ataque (hit roll) — ver se acertas no alvo.",
         onConfirm: n => { c.hits = n; c.step = 2; render(); },
@@ -2069,6 +2092,8 @@ function renderAttackCycle(phaseKey) {
         title: "Desses hits, quantos foram um 6 não modificado (Sustained Hits " + sustainedX + ")?",
         hint: "⚙️ " + weapon.name + " tem SUSTAINED HITS " + sustainedX + ": cada 6 não modificado no hit roll gera " + sustainedX + " hit(s) automático(s) adicional(is), sem rolar novamente.",
         threshold: 6, stepKey: "sustained", max: c.hits, countLabel: "Hits críticos (6 não modificado)",
+        initialValue: c.sustainedHits,
+        onBack: backToHits,
         roller: "attacker", rollerName: attackerRollerName, rollWhy: "A contar, dos hits que já rolaste, quantos foram um 6 não modificado.",
         onConfirm: n => { c.sustainedHits = n; render(); },
         confirmLabel: "Confirmar críticos →",
@@ -2089,6 +2114,8 @@ function renderAttackCycle(phaseKey) {
           title: "Desses hits, quantos foram um 6 não modificado (Lethal Hits)?",
           hint: "⚔️ Lethal Hits ativo (esta unidade carregou este turno): cada 6 não modificado no hit roll fere automaticamente, sem wound roll para esses.",
           threshold: 6, stepKey: "lethalhits", max: effectiveHits, countLabel: "Hits críticos (6 não modificado)",
+          initialValue: c.lethalHitCrits,
+          onBack: backToHits,
           roller: "attacker", rollerName: attackerRollerName, rollWhy: "A contar, dos hits que já rolaste, quantos foram um 6 não modificado.",
           onConfirm: n => { c.lethalHitCrits = n; render(); },
           confirmLabel: "Confirmar críticos →",
@@ -2105,12 +2132,21 @@ function renderAttackCycle(phaseKey) {
     }
 
     const antiSuffix = antiApplies ? " · ANTI-" + antiInfo.targetKeyword + " " + antiInfo.threshold + "+ aplicado (alvo tem a keyword " + antiInfo.targetKeyword + ")" : "";
-    const sustainedSuffix = (sustainedX && c.sustainedHits) ? " · +" + (c.sustainedHits * sustainedX) + " hits de Sustained Hits" : "";
-    const lethalSuffix = lethalCrits ? " · " + lethalCrits + " wound(s) automático(s) de Lethal Hits (já não entram neste roll)" : "";
+    const woundBonusChips = [];
+    if (sustainedX && c.sustainedHits) woundBonusChips.push("SUSTAINED HITS: +" + (c.sustainedHits * sustainedX) + " hits automáticos");
+    if (antiApplies) woundBonusChips.push("ANTI-" + antiInfo.targetKeyword + " " + antiInfo.threshold + "+ aplicado");
+    if (lethalCrits) woundBonusChips.push("LETHAL HITS: " + lethalCrits + " wound(s) automático(s)");
+    // wound-roll anterior (sem a parte automática do Lethal Hits) — usado só
+    // para pré-preencher se voltares aqui via "Corrigir passo anterior".
+    const woundsRollPrefill = c.wounds != null ? Math.max(0, c.wounds - lethalCrits) : null;
     wrap.appendChild(renderNumberStep({
       title: "Precisas de " + thresholdText(effWoundThreshold) + " para ferir",
-      hint: statLabel("S") + " " + weapon.S + " vs " + statLabel("T") + " " + targetT + " (" + target.label + ")" + (c.woundAdjust ? " · ajuste manual aplicado: " + (c.woundAdjust > 0 ? "+" : "") + c.woundAdjust : "") + antiSuffix + sustainedSuffix + lethalSuffix,
+      bigNumber: thresholdText(effWoundThreshold),
+      bonusChips: woundBonusChips,
+      hint: statLabel("S") + " " + weapon.S + " vs " + statLabel("T") + " " + targetT + " (" + target.label + ")" + (c.woundAdjust ? " · ajuste manual aplicado: " + (c.woundAdjust > 0 ? "+" : "") + c.woundAdjust : ""),
       threshold: effWoundThreshold > 6 ? 999 : effWoundThreshold, stepKey: "wounds", max: hitsForWoundRoll, countLabel: "Wounds",
+      initialValue: woundsRollPrefill,
+      onBack: backToHits,
       adjust: { value: c.woundAdjust, onChange: v => { c.woundAdjust = Math.max(-5, Math.min(5, v)); render(); } },
       roller: "attacker", rollerName: attackerRollerName, rollWhy: "Roll de ferir (wound roll) — ver se o hit é forte o suficiente para ferir o alvo.",
       onConfirm: n => { c.wounds = n + lethalCrits; c.step = 3; render(); },
@@ -2140,6 +2176,8 @@ function renderAttackCycle(phaseKey) {
           title: "Desses wounds, quantos foram " + critLabel + "?",
           hint: "⚠️ " + weapon.name + " tem DEVASTATING WOUNDS: cada critical wound vira mortal wound automática (Damage " + weapon.D + "), sem save, máx. 1 modelo morto por critical wound.",
           threshold: critThreshold, stepKey: "critwounds", max: c.wounds, countLabel: "Wounds críticos",
+          initialValue: c.critWounds,
+          onBack: backToWounds,
           roller: "attacker", rollerName: attackerRollerName, rollWhy: "A contar, dos wounds que já rolaste, quantos foram um critical wound.",
           onConfirm: n => {
             c.critWounds = n;
@@ -2172,8 +2210,12 @@ function renderAttackCycle(phaseKey) {
       hintParts.push("vs " + statLabel("AP") + " " + weapon.AP);
       wrap.appendChild(renderNumberStep({
         title: "O adversário precisa de " + svText + " para salvar",
-        hint: hintParts.join(" / ") + (isDevWounds && c.critWounds ? " · " + c.critWounds + " wound(s) já resolvido(s) como mortal wounds diretas" : ""),
+        bigNumber: svText,
+        bonusChips: (isDevWounds && c.critWounds) ? ["DEVASTATING WOUNDS: " + c.critWounds + " wound(s) resolvido(s) sem save"] : [],
+        hint: hintParts.join(" / "),
         threshold: saveThreshold > 6 ? 999 : saveThreshold, stepKey: "saves", max: woundsForSave, countLabel: "Saves falhados",
+        initialValue: c.failedSaves,
+        onBack: backToWounds,
         invertThreshold: true,
         roller: "defender", rollerName: defenderRollerName, rollWhy: "Roll de salvaguarda (save roll) — tenta evitar o dano com a armadura ou InvSv.",
         onConfirm: n => {
@@ -2270,9 +2312,16 @@ function renderAttackCycle(phaseKey) {
       hintParts.push("vs " + statLabel("AP") + " " + weapon.AP);
       wrap.appendChild(renderNumberStep({
         title: currentGroup.label + " (" + c.groupResults[currentKey].assignedWounds + " wound(s)): precisa de " + svText + " para salvar",
+        bigNumber: svText,
         hint: hintParts.join(" / "),
         threshold: gSave > 6 ? 999 : gSave, stepKey: "save-" + currentKey,
         max: c.groupResults[currentKey].assignedWounds, countLabel: "Saves falhados",
+        initialValue: c.groupResults[currentKey].failedSaves,
+        onBack: () => {
+          c.woundsPool += c.groupResults[currentKey].assignedWounds;
+          c.groupFlow = "assign";
+          render();
+        },
         invertThreshold: true,
         roller: "defender", rollerName: defenderRollerName, rollWhy: "Roll de salvaguarda (save roll) — tenta evitar o dano com a armadura ou InvSv.",
         onConfirm: n => {
@@ -2296,6 +2345,10 @@ function renderAttackCycle(phaseKey) {
 
     if (c.groupFlow === "damage") {
       const card = el("div", { class: "card" });
+      const backBtn = el("button", { class: "small", text: "← Corrigir passo anterior" });
+      backBtn.style.marginBottom = "10px";
+      backBtn.onclick = () => { c.groupFlow = "save"; render(); };
+      card.appendChild(backBtn);
       card.appendChild(renderRollerBadge("attacker", attackerRollerName, "Roll de Dano — quanto dano cada wound que falhou o save causa."));
       card.appendChild(el("div", { class: "step-hint", text: progressLabel }));
       card.appendChild(el("h3", { text: currentGroup.label + " — dano total (arma com " + statLabel("D") + " variável: " + weapon.D + ")" }));
@@ -2326,6 +2379,10 @@ function renderAttackCycle(phaseKey) {
 
   if (c.step === 4.5) {
     const card = el("div", { class: "card" });
+    const backBtn = el("button", { class: "small", text: "← Corrigir passo anterior" });
+    backBtn.style.marginBottom = "10px";
+    backBtn.onclick = () => { c.step = 3; render(); };
+    card.appendChild(backBtn);
     card.appendChild(renderRollerBadge("attacker", attackerRollerName, "Roll de Dano — quanto dano cada wound que falhou o save causa."));
     card.appendChild(el("h2", { text: "Dano total (arma com " + statLabel("D") + " variável: " + weapon.D + ")" }));
     const meltaNote = meltaBonus ? (" (+" + meltaBonus + " por save falhado de MELTA — a app soma-o a seguir, não incluas no valor abaixo)") : "";
@@ -2674,9 +2731,25 @@ function renderAdjustControl(value, onChange) {
 }
 function renderNumberStep(opts) {
   const card = el("div", { class: "card" });
+  // "Corrigir passo anterior": navega entre PASSOS confirmados (diferente
+  // do "desfazer" da grelha, que só tira o último dado clicado). Mantém a
+  // arma/alvo e todos os outros passos já confirmados — só volta a abrir
+  // este passo para editar, com o valor anterior pré-preenchido.
+  if (opts.onBack) {
+    const backBtn = el("button", { class: "small", text: "← Corrigir passo anterior" });
+    backBtn.style.marginBottom = "10px";
+    backBtn.onclick = opts.onBack;
+    card.appendChild(backBtn);
+  }
   if (opts.roller) card.appendChild(renderRollerBadge(opts.roller, opts.rollerName, opts.rollWhy));
   card.appendChild(el("div", { class: "step-hint", text: opts.hint }));
   card.appendChild(el("h3", { text: opts.title }));
+  if (opts.bigNumber) card.appendChild(el("div", { class: "threshold-number", text: opts.bigNumber }));
+  if (opts.bonusChips && opts.bonusChips.length) {
+    const chipRow = el("div", { class: "bonus-chip-row" });
+    opts.bonusChips.forEach(t => chipRow.appendChild(el("span", { class: "bonus-chip", text: t })));
+    card.appendChild(chipRow);
+  }
   const c = state.cycle;
   // threshold === null significa "este passo só tem UM valor a introduzir"
   // (o resultado já resolvido de um dado de notação variável da própria
@@ -2709,8 +2782,8 @@ function renderNumberStep(opts) {
   if (singleValueStep) {
     const inp = el("input", { type: "number" }); inp.min = "0";
     if (max !== null) inp.max = String(max);
-    let val = 0;
-    inp.value = 0;
+    let val = opts.initialValue != null ? opts.initialValue : 0;
+    inp.value = val;
     inp.oninput = e => {
       let n = Math.max(0, parseInt(e.target.value) || 0);
       if (max !== null && n > max) { n = max; e.target.value = max; }
@@ -2736,11 +2809,14 @@ function renderNumberStep(opts) {
     const rolls = c.diceRolls[opts.stepKey] || (c.diceRolls[opts.stepKey] = []);
     const meetsThreshold = r => opts.invertThreshold ? r < opts.threshold : r >= opts.threshold;
     const successesFromRolls = rolls.filter(meetsThreshold).length;
-    let val = successesFromRolls;
+    // Sem dados clicados ainda (rolls vazio, o caso normal ao (re)entrar
+    // neste passo), usa o valor previamente confirmado se vieres de um
+    // "Corrigir passo anterior" — assim que clicas um dado, a grelha manda.
+    let val = (rolls.length === 0 && opts.initialValue != null) ? opts.initialValue : successesFromRolls;
 
     const inp = el("input", { type: "number" }); inp.min = "0";
     if (max !== null) inp.max = String(max);
-    inp.value = successesFromRolls;
+    inp.value = val;
     inp.oninput = e => {
       let n = Math.max(0, parseInt(e.target.value) || 0);
       if (max !== null && n > max) { n = max; e.target.value = max; }
