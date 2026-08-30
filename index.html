@@ -1808,6 +1808,7 @@ function renderAttackCycle(phaseKey) {
         title: "Attacks desta arma (base " + weapon.A + "): quanto rolaste?",
         hint: "Depois soma-se o bónus de +" + attacksBonus + " attacks (" + attacksBonusLabel(weapon, c) + ") antes de perguntar os hits.",
         threshold: null, stepKey: "attacksroll", max: attacksMax, countLabel: "Attacks rolados (base)",
+        disableDiceMode: true,
         onConfirm: n => { c.attacksRolled = n; render(); },
         confirmLabel: "Confirmar attacks →",
       }));
@@ -1822,6 +1823,7 @@ function renderAttackCycle(phaseKey) {
         title: "Quantos hits (TORRENT — acerta sempre)?",
         hint: "🎯 Arma TORRENT: acerta automaticamente, não há hit roll. Introduz quantos ataques rolaste." + attacksBonusSuffix,
         threshold: null, stepKey: "hits", max: effectiveAttacksMax, countLabel: "Hits",
+        disableDiceMode: true,
         onConfirm: n => { c.hits = n; c.step = 2; render(); },
         confirmLabel: "Confirmar hits →",
       }));
@@ -1843,7 +1845,7 @@ function renderAttackCycle(phaseKey) {
       wrap.appendChild(renderNumberStep({
         title: "Desses hits, quantos foram um 6 não modificado (Sustained Hits " + sustainedX + ")?",
         hint: "⚙️ " + weapon.name + " tem SUSTAINED HITS " + sustainedX + ": cada 6 não modificado no hit roll gera " + sustainedX + " hit(s) automático(s) adicional(is), sem rolar novamente.",
-        threshold: null, stepKey: "sustained", max: c.hits, countLabel: "Hits críticos (6 não modificado)",
+        threshold: 6, stepKey: "sustained", max: c.hits, countLabel: "Hits críticos (6 não modificado)",
         onConfirm: n => { c.sustainedHits = n; render(); },
         confirmLabel: "Confirmar críticos →",
       }));
@@ -1883,7 +1885,7 @@ function renderAttackCycle(phaseKey) {
         wrap.appendChild(renderNumberStep({
           title: "Desses wounds, quantos foram " + critLabel + "?",
           hint: "⚠️ " + weapon.name + " tem DEVASTATING WOUNDS: cada critical wound vira mortal wound automática (Damage " + weapon.D + "), sem save, máx. 1 modelo morto por critical wound.",
-          threshold: null, stepKey: "critwounds", max: c.wounds, countLabel: "Wounds críticos",
+          threshold: critThreshold, stepKey: "critwounds", max: c.wounds, countLabel: "Wounds críticos",
           onConfirm: n => {
             c.critWounds = n;
             c.critDeadByGroup = resolveDevastatingDeaths(target, n);
@@ -2356,7 +2358,12 @@ function renderNumberStep(opts) {
   card.appendChild(el("div", { class: "step-hint", text: opts.hint }));
   card.appendChild(el("h3", { text: opts.title }));
   const c = state.cycle;
-  const mode = c.inputMode[opts.stepKey] || "number";
+  // opts.disableDiceMode: passos onde o número pedido é o resultado de UM
+  // dado de notação variável já resolvido (ex: "rolaste D3, saiu quanto?")
+  // não fazem sentido na grelha 1-6, porque essa grelha conta CLIQUES, não
+  // o valor da face — clicar 3 vezes num D3 registaria "3" mesmo que as
+  // faces fossem 6,5,4 (não convertidas). Só digitar o valor já resolvido.
+  const mode = opts.disableDiceMode ? "number" : (c.inputMode[opts.stepKey] || "number");
   const max = (typeof opts.max === "number" && isFinite(opts.max)) ? Math.max(0, opts.max) : null;
 
   if (opts.adjust) {
@@ -2370,7 +2377,10 @@ function renderNumberStep(opts) {
     card.appendChild(el("div", { class: "step-hint", text: opts.countLabel + " — máximo " + max + " nesta etapa", style: "color:var(--gold);" }));
   }
 
-  card.appendChild(renderVoiceControl(opts, max));
+  // O ditado por voz dita vários números para SOMAR sucessos (hits/wounds/
+  // saves) — não faz sentido para um passo de "diz UM número já resolvido",
+  // pela mesma razão que a grelha de dados também fica desligada aí.
+  if (!opts.disableDiceMode) card.appendChild(renderVoiceControl(opts, max));
   const voiceStatus = (c.voice[opts.stepKey] || {}).status;
   if (voiceStatus === "review") return card;
 
@@ -2421,9 +2431,11 @@ function renderNumberStep(opts) {
   }
   card.appendChild(body);
 
-  const toggle = el("div", { class: "toggle-mode", text: mode === "number" ? "usar grelha de dados 1-6 em vez de digitar" : "voltar a digitar o número" });
-  toggle.onclick = () => { c.inputMode[opts.stepKey] = mode === "number" ? "dice" : "number"; render(); };
-  card.appendChild(toggle);
+  if (!opts.disableDiceMode) {
+    const toggle = el("div", { class: "toggle-mode", text: mode === "number" ? "usar grelha de dados 1-6 em vez de digitar" : "voltar a digitar o número" });
+    toggle.onclick = () => { c.inputMode[opts.stepKey] = mode === "number" ? "dice" : "number"; render(); };
+    card.appendChild(toggle);
+  }
 
   return card;
 }
