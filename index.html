@@ -712,6 +712,11 @@ const state = {
     battleshockRolls: {},
     advanceRoll: { unitId: "", die: null },
     chargeRoll: { unitId: "", dice: [] },
+    // Log de pontuação: entradas livres por jogador (descrição + VP),
+    // editáveis/apagáveis — a app só soma, nunca julga se a missão foi
+    // cumprida. Secundárias táticas (secretas) entram só por aqui, nunca
+    // no Setup.
+    score: { playerA: [], playerB: [] },
   },
 };
 
@@ -758,7 +763,7 @@ function render() {
   root.appendChild(el("div", { class: "subtitle", text: "Pré-visualização: Setup + sequência do turno (Command → Movement → Shooting → Charge → Fight)" }));
   root.appendChild(el("div", { class: "devbanner", text:
     "⚠ Pré-visualização em JavaScript puro para validar o fluxo antes de construir a app completa em React+Vite (é preciso instalar Node.js para esse passo). " +
-    "Faltam de propósito: log de pontuação e PWA completa. O estado grava-se sozinho neste dispositivo (localStorage). Hits/wounds/saves têm ditado por voz (🎤, pt-PT) como alternativa ao clique. Cada fase mostra os Core Stratagems relevantes (referência — a app nunca os ativa sozinha)."
+    "O estado grava-se sozinho neste dispositivo (localStorage) e a app funciona offline depois da primeira visita (service worker). Hits/wounds/saves têm ditado por voz (🎤, pt-PT) como alternativa ao clique. Cada fase mostra os Core Stratagems relevantes (referência — a app nunca os ativa sozinha)."
   }));
 
   const tabs = el("div", { class: "tabs" });
@@ -810,7 +815,7 @@ function startNewGame() {
       u.groups.forEach(g => { g.liveCount = g.initialCount; });
     });
   });
-  state.game = { round: 1, activePlayerKey: "playerA", phase: "command", ended: false, checklist: {}, battleshockRolls: {}, advanceRoll: { unitId: "", die: null }, chargeRoll: { unitId: "", dice: [] } };
+  state.game = { round: 1, activePlayerKey: "playerA", phase: "command", ended: false, checklist: {}, battleshockRolls: {}, advanceRoll: { unitId: "", die: null }, chargeRoll: { unitId: "", dice: [] }, score: { playerA: [], playerB: [] } };
   state.cycle = emptyCycle();
   state.attackLog = [];
 }
@@ -995,6 +1000,93 @@ function renderAttackHistory() {
   return card;
 }
 
+// ---------------------------------------------------------------------------
+// LOG DE PONTUAÇÃO — entradas livres por jogador (descrição + VP), editáveis
+// e apagáveis (erros de leitura/digitação em jogo ao vivo são comuns e sem
+// isso um erro fica permanente no placar). A app só soma, nunca julga se uma
+// missão/secundária foi cumprida. Visível em qualquer fase da tab Turno.
+// ---------------------------------------------------------------------------
+function scoreTotalFor(playerKey) {
+  return (state.game.score[playerKey] || []).reduce((s, e) => s + e.vp, 0);
+}
+function playerDisplayName(playerKey) {
+  return state.setup[playerKey].name || (playerKey === "playerA" ? "Jogador A" : "Jogador B");
+}
+function renderScoreBoard() {
+  const card = el("div", { class: "card" });
+  card.appendChild(el("h2", { text: "🏆 Pontuação" }));
+  const totalsRow = el("div", { class: "row" });
+  ["playerA", "playerB"].forEach(pk => {
+    const box = el("div");
+    box.appendChild(el("label", { text: playerDisplayName(pk) }));
+    box.appendChild(el("div", { text: scoreTotalFor(pk) + " VP", style: "font-family:var(--display-font);font-size:20px;color:var(--gold);" }));
+    totalsRow.appendChild(box);
+  });
+  card.appendChild(totalsRow);
+
+  const isOpen = !!state.ui.scoreLogOpen;
+  const toggle = el("div", { class: "toggle-mode", text: isOpen ? "fechar registo de pontuação" : "adicionar / ver registo de pontuação" });
+  toggle.onclick = () => { state.ui.scoreLogOpen = !isOpen; render(); };
+  card.appendChild(toggle);
+  if (isOpen) {
+    ["playerA", "playerB"].forEach(pk => card.appendChild(renderScorePlayerLog(pk)));
+  }
+  return card;
+}
+function renderScorePlayerLog(playerKey) {
+  const wrap = el("div", { style: "margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);" });
+  wrap.appendChild(el("div", { text: playerDisplayName(playerKey), style: "font-family:var(--display-font);font-size:14px;letter-spacing:0.03em;margin-bottom:6px;" }));
+
+  const entries = state.game.score[playerKey];
+  if (entries.length === 0) {
+    wrap.appendChild(el("div", { class: "step-hint", text: "Ainda sem entradas." }));
+  }
+  entries.slice().reverse().forEach(entry => {
+    const row = el("div", { class: "unit-instance" });
+    const top = el("div", { class: "row" });
+    const descInput = el("input", { type: "text" });
+    descInput.value = entry.description;
+    descInput.style.fontSize = "13px";
+    descInput.oninput = e => { entry.description = e.target.value; };
+    descInput.onchange = () => render();
+    top.appendChild(descInput);
+    const vpInput = el("input", { type: "number" });
+    vpInput.value = entry.vp;
+    vpInput.style.width = "70px";
+    vpInput.oninput = e => { entry.vp = parseInt(e.target.value) || 0; };
+    vpInput.onchange = () => render();
+    top.appendChild(vpInput);
+    const delBtn = el("button", { class: "small", text: "✕" });
+    delBtn.onclick = () => { state.game.score[playerKey] = state.game.score[playerKey].filter(x => x.id !== entry.id); render(); };
+    top.appendChild(delBtn);
+    row.appendChild(top);
+    row.appendChild(el("div", { text: "Ronda " + entry.round, style: "font-size:10px;color:var(--text-sec);margin-top:2px;" }));
+    wrap.appendChild(row);
+  });
+
+  const addRow = el("div", { class: "row" });
+  addRow.style.marginTop = "6px";
+  const newDesc = el("input", { type: "text", placeholder: "Descrição (ex: Missão X completa)" });
+  let descVal = "";
+  newDesc.oninput = e => { descVal = e.target.value; };
+  addRow.appendChild(newDesc);
+  const newVp = el("input", { type: "number", placeholder: "VP" });
+  newVp.style.width = "70px";
+  let vpVal = 0;
+  newVp.oninput = e => { vpVal = parseInt(e.target.value) || 0; };
+  addRow.appendChild(newVp);
+  wrap.appendChild(addRow);
+  const addBtn = el("button", { class: "primary", text: "+ Adicionar entrada" });
+  addBtn.style.cssText = "width:100%;margin-top:6px;";
+  addBtn.onclick = () => {
+    if (!descVal.trim()) return;
+    state.game.score[playerKey].push({ id: nextId(), round: state.game.round, description: descVal.trim(), vp: vpVal });
+    render();
+  };
+  wrap.appendChild(addBtn);
+  return wrap;
+}
+
 function renderTurno() {
   const wrap = el("div");
 
@@ -1015,6 +1107,7 @@ function renderTurno() {
   cpB.appendChild(cpBRow);
   cpBar.appendChild(cpA); cpBar.appendChild(cpB);
   wrap.appendChild(cpBar);
+  wrap.appendChild(renderScoreBoard());
 
   if (state.game.ended) {
     const card = el("div", { class: "card" });
@@ -2519,6 +2612,16 @@ function renderAllocOrderPicker(groups, onConfirm) {
 
 loadStateFromLocalStorage();
 render();
+
+// PWA offline: regista o service worker depois de a página carregar, para
+// não atrasar o primeiro render. Uma falha aqui (ex: a servir de file://
+// sem servidor, onde service workers não correm) nunca deve impedir a app
+// de funcionar normalmente — só perde-se a cache offline.
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+  });
+}
 </script>
 </body>
 </html>
