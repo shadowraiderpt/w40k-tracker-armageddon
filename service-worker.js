@@ -7,7 +7,7 @@
 // ícones, fotos das unidades), com atualização em segundo plano sempre que
 // há rede. Pedidos a outras origens (ex: Google Fonts) passam direto para a
 // rede — nunca guardamos nem interceptamos o que não é nosso.
-const CACHE_NAME = "w40k-tracker-armageddon-v2";
+const CACHE_NAME = "w40k-tracker-armageddon-v3";
 const PRECACHE_URLS = [
   "./",
   "./index.html",
@@ -30,6 +30,7 @@ const PRECACHE_URLS = [
   "./unit_photos/neurogaunts.jpg",
   "./unit_photos/neurotyrant.jpg",
   "./unit_photos/painboy.jpg",
+  "./unit_photos/psychophage.jpg",
   "./unit_photos/ripper-swarms.jpg",
   "./unit_photos/screamer-killer.jpg",
   "./unit_photos/termagants.jpg",

@@ -359,6 +359,17 @@ const RAW_UNITS = {
         "Death Scream: depois de disparar, uma unidade atingida tem de testar Battleshock com -1"
       ],
       "defaultCount":1},
+    {"name":"Psychophage","points":110,"keywords":["MONSTER"],
+      "stats":{"M":"12\"","T":9,"SV":"3+","W":10,"LD":"8+","OC":3},
+      "ranged_weapons":[{"name":"Psychoclastic torrent","keywords":["IGNORES COVER","TORRENT"],"range":"12\"","A":"D6","BS":"N/A","S":6,"AP":-1,"D":1}],
+      "melee_weapons":[{"name":"Talons and betentacled maw","keywords":["ANTI-PSYKER 4+","DEVASTATING WOUNDS"],"range":"Melee","A":6,"WS":"3+","S":6,"AP":-2,"D":2}],
+      "abilities":[
+        "Core: Deadly Demise 1, Feel No Pain 5+",
+        "Faction: Synapse",
+        "Bio-stimulus: depois de disparar, uma unidade inimiga atingida sofre +1 AP em ataques corpo-a-corpo Tyranid contra ela até ao fim do turno (só uma vez por turno)",
+        "Feeding Frenzy: +1 ao hit roll corpo-a-corpo contra alvos Below Starting Strength, +1 ao wound roll também se Below Half-strength"
+      ],
+      "defaultCount":1},
     {"name":"Von Ryan's Leapers","points":70,"keywords":["INFANTRY"],
       "stats":{"M":"10\"","T":5,"SV":"4+","InvSV":"6+","W":3,"LD":"8+","OC":1},
       "ranged_weapons":[],
@@ -386,7 +397,7 @@ const RAW_UNITS = {
         "Skulking Horrors: se um inimigo terminar um movimento a 9\" desta unidade (e ela não estiver em combate), pode fazer um movimento normal de até D6\""
       ],
       "defaultCount":20},
-    {"name":"Ripper Swarms","points":40,"keywords":["INFANTRY"],
+    {"name":"Ripper Swarms","points":40,"keywords":["SWARM"],
       "stats":{"M":"6\"","T":2,"SV":"6+","W":4,"LD":"8+","OC":0},
       "ranged_weapons":[{"name":"Spinemaws","keywords":["PISTOL"],"range":"6\"","A":4,"BS":"5+","S":3,"AP":0,"D":1,"wargear_note":"opcional, qualquer modelo"}],
       "melee_weapons":[{"name":"Chitinous claws and teeth","keywords":["SUSTAINED HITS 1"],"range":"Melee","A":6,"WS":"5+","S":2,"AP":0,"D":1}],
