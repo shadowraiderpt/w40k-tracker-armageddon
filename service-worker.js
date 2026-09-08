@@ -7,7 +7,7 @@
 // ícones, fotos das unidades), com atualização em segundo plano sempre que
 // há rede. Pedidos a outras origens (ex: Google Fonts) passam direto para a
 // rede — nunca guardamos nem interceptamos o que não é nosso.
-const CACHE_NAME = "w40k-tracker-armageddon-v1";
+const CACHE_NAME = "w40k-tracker-armageddon-v2";
 const PRECACHE_URLS = [
   "./",
   "./index.html",
@@ -16,6 +16,7 @@ const PRECACHE_URLS = [
   "./icon-512.png",
   "./unit_photos/ancient.jpg",
   "./unit_photos/bannernob.jpg",
+  "./unit_photos/barbgaunts.jpg",
   "./unit_photos/big-mek-dakkarig.jpg",
   "./unit_photos/bigboss.jpg",
   "./unit_photos/boyz.jpg",
@@ -26,11 +27,18 @@ const PRECACHE_URLS = [
   "./unit_photos/intercessor-squad.jpg",
   "./unit_photos/land-speeder.jpg",
   "./unit_photos/librarian.jpg",
+  "./unit_photos/neurogaunts.jpg",
+  "./unit_photos/neurotyrant.jpg",
   "./unit_photos/painboy.jpg",
+  "./unit_photos/ripper-swarms.jpg",
+  "./unit_photos/screamer-killer.jpg",
+  "./unit_photos/termagants.jpg",
   "./unit_photos/vanguard-veteran-squad-with-jump-packs.jpg",
+  "./unit_photos/von-ryan-s-leapers.jpg",
   "./unit_photos/warboss.jpg",
   "./unit_photos/wartrakk.jpg",
   "./unit_photos/weirdboy.jpg",
+  "./unit_photos/winged-tyranid-prime.jpg",
 ];
 
 self.addEventListener("install", event => {
