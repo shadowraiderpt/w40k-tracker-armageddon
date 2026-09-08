@@ -20,7 +20,7 @@
     --bg:#0d0e0c; --surface:#1a1b16; --surface2:#242619;
     --text:#e8e6de; --text-sec:#8f8f7f;
     --border:#3a3a32;
-    --sm-red:#8a1518; --gold:#c9a227; --ork-green:#4a5522;
+    --sm-red:#8a1518; --gold:#c9a227; --ork-green:#4a5522; --tyr-purple:#5e3a87;
     --accent:var(--sm-red); --accent-text:var(--gold);
     --good:var(--ork-green); --warn:var(--gold); --danger:#b32a2a;
     --display-font:'Bebas Neue','Arial Narrow',sans-serif;
@@ -73,14 +73,12 @@
     display:inline-block;font-size:11px;padding:4px 10px;border-radius:3px;background:var(--surface2);border:1px solid var(--border);
     font-family:var(--display-font);letter-spacing:0.04em;text-transform:uppercase;
   }
-  .faction-badge.sm{color:#fff;background:var(--sm-red);border-color:var(--sm-red);}
-  .faction-badge.ork{color:#fff;background:var(--ork-green);border-color:var(--ork-green);}
+  /* Cor de facção (badge, borda de unit-instance, borda de player-card) já
+     não é aplicada por classe CSS fixa (.sm/.ork) — é inline via JS a partir
+     de FACTIONS (ver factionAccent() e styleFaction*()), para uma N-ésima
+     facção nunca precisar de tocar em CSS, só na lista de dados. */
   .unit-instance{background:var(--surface2);border-radius:4px;padding:10px;margin-bottom:6px;border-left:3px solid var(--border);}
-  .unit-instance.sm{border-left-color:var(--sm-red);}
-  .unit-instance.ork{border-left-color:var(--ork-green);}
   .unit-instance .row{margin-bottom:6px;}
-  .player-card.sm{border-top:3px solid var(--sm-red);}
-  .player-card.ork{border-top:3px solid var(--ork-green);}
   .ds-picker{max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:4px;padding:8px;}
   .ds-item{padding:10px 8px;border-bottom:1px solid var(--border);font-size:13px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;}
   .ds-item:last-child{border-bottom:none;}
@@ -318,8 +316,138 @@ const RAW_UNITS = {
       ],
       "melee_weapons":[{"name":"Stompy feet","range":"Melee","A":4,"WS":"3+","S":6,"AP":-1,"D":1}],
       "defaultCount":1}
+  ],
+  // Tyranids — adicionados via pedido do utilizador (fonte: wahapedia.ru,
+  // cruzado com o Faction Pack oficial v1.2 em Psychophage/Termagants).
+  // "keywords" (tipo de unidade: INFANTRY/MONSTER/CHARACTER) não vinha no
+  // texto colado pelo utilizador — preenchido aqui a partir de conhecimento
+  // geral das datasheets (classificação factual, não uma regra/ability),
+  // só para o ANTI-X continuar a funcionar; convém confirmar/corrigir.
+  tyranids: [
+    {"name":"Winged Tyranid Prime","points":65,"keywords":["INFANTRY","CHARACTER"],
+      "stats":{"M":"12\"","T":5,"SV":"4+","W":6,"LD":"7+","OC":1},
+      "ranged_weapons":[],
+      "melee_weapons":[{"name":"Prime talons","range":"Melee","A":6,"WS":"2+","S":6,"AP":-1,"D":2}],
+      "abilities":[
+        "Core: Deep Strike, Leader",
+        "Faction: Shadow in the Warp, Synapse",
+        "Alpha Warrior: enquanto lidera uma unidade, as armas dessa unidade ganham Sustained Hits 1",
+        "Death Blow: se for destruído em combate antes de ter lutado nesta fase, rola 1D6 — num 4+, não é removido, luta depois do atacante terminar os ataques, e só depois é removido"
+      ],
+      "leader_for":["Termagants","Neurogaunts"],
+      "defaultCount":1},
+    {"name":"Neurotyrant","points":105,"keywords":["MONSTER","CHARACTER"],
+      "stats":{"M":"6\"","T":8,"SV":"4+","InvSV":"4+","W":9,"LD":"7+","OC":3},
+      "ranged_weapons":[{"name":"Psychic scream","keywords":["IGNORES COVER","PSYCHIC","TORRENT"],"range":"18\"","A":"2D6","BS":"N/A","S":5,"AP":-1,"D":2}],
+      "melee_weapons":[{"name":"Neurotyrant claws and lashes","range":"Melee","A":6,"WS":"3+","S":5,"AP":0,"D":1}],
+      "abilities":[
+        "Core: Leader",
+        "Faction: Synapse, Shadow in the Warp",
+        "Node Lash: enquanto lidera uma unidade, +1 ao hit roll dessa unidade; se o alvo estiver Battle-shocked, +1 ao wound roll também",
+        "Psychic Terror: reduz em 1 o teste de Battleshock que os inimigos fazem quando se ativa Shadow in the Warp",
+        "Neuroloids: na Command Phase, até 2 unidades amigas a 18\" ficam sempre dentro do alcance de Synapse até à próxima Command Phase"
+      ],
+      "leader_for":["Neurogaunts"],
+      "defaultCount":1},
+    {"name":"Screamer-Killer","points":125,"keywords":["MONSTER"],
+      "stats":{"M":"8\"","T":9,"SV":"2+","W":10,"LD":"8+","OC":3},
+      "ranged_weapons":[{"name":"Bio-plasmic scream","keywords":["ASSAULT","BLAST"],"range":"18\"","A":"D6+3","BS":"4+","S":8,"AP":-2,"D":1}],
+      "melee_weapons":[{"name":"Screamer-killer talons","range":"Melee","A":10,"WS":"3+","S":10,"AP":-2,"D":3}],
+      "abilities":[
+        "Core: Deadly Demise 1",
+        "Faction: Synapse",
+        "Death Scream: depois de disparar, uma unidade atingida tem de testar Battleshock com -1"
+      ],
+      "defaultCount":1},
+    {"name":"Von Ryan's Leapers","points":70,"keywords":["INFANTRY"],
+      "stats":{"M":"10\"","T":5,"SV":"4+","InvSV":"6+","W":3,"LD":"8+","OC":1},
+      "ranged_weapons":[],
+      "melee_weapons":[{"name":"Leaper's talons","range":"Melee","A":6,"WS":"3+","S":5,"AP":-1,"D":1}],
+      "abilities":[
+        "Core: Fights First, Infiltrators, Stealth",
+        "Faction: Synapse",
+        "Pouncing Leap: pode ser alvo do stratagem Heroic Intervention por 0CP, mesmo que já tenha sido usado noutra unidade nesta fase",
+        "Stealth (nota): ataques à distância contra esta unidade têm -1 ao hit roll — usar o ajuste manual já existente na app"
+      ],
+      "defaultCount":3},
+    {"name":"Termagants","points":120,"keywords":["INFANTRY"],
+      "stats":{"M":"6\"","T":3,"SV":"5+","W":1,"LD":"8+","OC":2},
+      "ranged_weapons":[
+        {"name":"Fleshborer","keywords":["ASSAULT"],"range":"18\"","A":1,"BS":"4+","S":5,"AP":0,"D":1},
+        {"name":"Termagant devourer","range":"18\"","A":2,"BS":"4+","S":4,"AP":0,"D":1,"wargear_note":"substitui o fleshborer de qualquer modelo"},
+        {"name":"Termagant spinefists","keywords":["ASSAULT","PISTOL","TWIN-LINKED"],"range":"12\"","A":2,"BS":"4+","S":3,"AP":0,"D":1,"wargear_note":"substitui o fleshborer de qualquer modelo"},
+        {"name":"Shardlauncher","keywords":["BLAST","HEAVY"],"range":"18\"","A":"D3","BS":"4+","S":5,"AP":0,"D":1,"wargear_note":"1 por cada 10 modelos"},
+        {"name":"Spike rifle","keywords":["HEAVY"],"range":"24\"","A":1,"BS":"4+","S":4,"AP":-1,"D":1,"wargear_note":"1 por cada 10 modelos"},
+        {"name":"Strangleweb","keywords":["ASSAULT","DEVASTATING WOUNDS","TORRENT"],"range":"18\"","A":"D6","BS":"N/A","S":2,"AP":0,"D":1,"wargear_note":"1 por cada 10 modelos"}
+      ],
+      "melee_weapons":[{"name":"Chitinous claws and teeth","range":"Melee","A":1,"WS":"4+","S":3,"AP":0,"D":1}],
+      "abilities":[
+        "Faction: Synapse",
+        "Skulking Horrors: se um inimigo terminar um movimento a 9\" desta unidade (e ela não estiver em combate), pode fazer um movimento normal de até D6\""
+      ],
+      "defaultCount":20},
+    {"name":"Ripper Swarms","points":40,"keywords":["INFANTRY"],
+      "stats":{"M":"6\"","T":2,"SV":"6+","W":4,"LD":"8+","OC":0},
+      "ranged_weapons":[{"name":"Spinemaws","keywords":["PISTOL"],"range":"6\"","A":4,"BS":"5+","S":3,"AP":0,"D":1,"wargear_note":"opcional, qualquer modelo"}],
+      "melee_weapons":[{"name":"Chitinous claws and teeth","keywords":["SUSTAINED HITS 1"],"range":"Melee","A":6,"WS":"5+","S":2,"AP":0,"D":1}],
+      "abilities":[
+        "Core: Deep Strike",
+        "Faction: Synapse",
+        "Chitinous Horrors: enquanto um inimigo estiver em Engagement Range desta unidade, o OC desse inimigo fica reduzido a metade"
+      ],
+      "defaultCount":2},
+    {"name":"Neurogaunts","points":45,"keywords":["INFANTRY"],
+      "stats":{"M":"6\"","T":3,"SV":"6+","W":1,"LD":"8+","OC":1},
+      "ranged_weapons":[],
+      "melee_weapons":[{"name":"Chitinous claws and teeth","range":"Melee","A":1,"WS":"4+","S":3,"AP":0,"D":1}],
+      "abilities":[
+        "Faction: Synapse",
+        "Neurocytes: dentro do alcance de Synapse de outra unidade Tyranid (exceto outros Neurogaunts), esta unidade ganha a keyword Synapse",
+        "Composição: 11 modelos (inclui 1 Neurogaunt Nodebeast)"
+      ],
+      "defaultCount":11},
+    {"name":"Barbgaunts","points":55,"keywords":["INFANTRY"],
+      "stats":{"M":"6\"","T":4,"SV":"4+","W":2,"LD":"8+","OC":1},
+      "ranged_weapons":[{"name":"Barblauncher","keywords":["BLAST","HEAVY"],"range":"24\"","A":"D6","BS":"4+","S":5,"AP":0,"D":1}],
+      "melee_weapons":[{"name":"Chitinous claws and teeth","range":"Melee","A":1,"WS":"4+","S":4,"AP":0,"D":1}],
+      "abilities":[
+        "Faction: Synapse",
+        "Disruption Bombardment: depois de disparar, uma unidade de infantaria inimiga atingida fica 'disrupted' até ao fim do próximo turno do adversário: -2 ao Move e -2 aos rolls de Advance/Charge"
+      ],
+      "defaultCount":5}
   ]
 };
+
+// ---------------------------------------------------------------------------
+// Lista de facções — ponto único de verdade para tudo o que hoje dependia de
+// "Space Marines"/"Orks" escritos à mão (buildLibrary, allDatasheets, cor de
+// facção, filtro de unidades no setup). Uma 4ª facção no futuro só precisa de
+// uma entrada aqui + os dados em RAW_UNITS — nenhum código extra.
+// ---------------------------------------------------------------------------
+const FACTIONS = [
+  { key: "space_marines", label: "Space Marines", color: "var(--sm-red)" },
+  { key: "orks", label: "Orks", color: "var(--ork-green)" },
+  { key: "tyranids", label: "Tyranids", color: "var(--tyr-purple)" },
+];
+// Cor de facção para uso inline (badges, bordas) — null se a facção não
+// estiver na lista (ex: "Mista", "—"), caso em que o elemento fica com o
+// visual neutro por defeito já definido em CSS.
+function factionAccent(faction) {
+  const f = FACTIONS.find(x => x.label === faction);
+  return f ? f.color : null;
+}
+function styleFactionBadge(elm, faction) {
+  const c = factionAccent(faction);
+  if (c) { elm.style.background = c; elm.style.borderColor = c; elm.style.color = "#fff"; }
+}
+function styleFactionLeftBorder(elm, faction) {
+  const c = factionAccent(faction);
+  if (c) elm.style.borderLeftColor = c;
+}
+function styleFactionTopBorder(elm, faction) {
+  const c = factionAccent(faction);
+  if (c) elm.style.borderTopColor = c;
+}
 
 // ---------------------------------------------------------------------------
 // Normalização: cada datasheet passa a ter sempre um array `profiles`
@@ -335,12 +463,11 @@ function normalizeDatasheet(ds, faction) {
   return Object.assign({}, ds, { faction, profiles });
 }
 function buildLibrary() {
-  return {
-    space_marines: RAW_UNITS.space_marines.map(d => normalizeDatasheet(d, "Space Marines")),
-    orks: RAW_UNITS.orks.map(d => normalizeDatasheet(d, "Orks")),
-  };
+  const lib = {};
+  FACTIONS.forEach(f => { lib[f.key] = (RAW_UNITS[f.key] || []).map(d => normalizeDatasheet(d, f.label)); });
+  return lib;
 }
-function allDatasheets(lib) { return lib.space_marines.concat(lib.orks); }
+function allDatasheets(lib) { return FACTIONS.reduce((acc, f) => acc.concat(lib[f.key] || []), []); }
 function findDatasheet(lib, name) { return allDatasheets(lib).find(d => d.name === name); }
 function rangedWeaponsFor(instance) {
   const weapons = [];
@@ -861,6 +988,10 @@ const state = {
     ended: false,
     checklist: {},
     battleshockRolls: {},
+    // Synapse (Tyranids): unidade a 6" ou menos de uma fonte de Synapse
+    // testa Battleshock com 3D6 em vez de 2D6 — a app nunca sabe posições
+    // físicas, por isso pergunta e guarda a resposta aqui por unidade.
+    battleshockSynapse: {},
     advanceRoll: { unitId: "", die: null },
     chargeRoll: { unitId: "", dice: [] },
     // Log de pontuação: entradas livres por jogador (descrição + VP),
@@ -998,7 +1129,7 @@ function startNewGame() {
       u.groups.forEach(g => { g.liveCount = g.initialCount; g.woundsRemainingOnCurrent = g.stats.W; });
     });
   });
-  state.game = { round: 1, activePlayerKey: "playerA", phase: "command", ended: false, checklist: {}, battleshockRolls: {}, advanceRoll: { unitId: "", die: null }, chargeRoll: { unitId: "", dice: [] }, score: { playerA: [], playerB: [] }, actedByPhaseInstance: {}, usedWeaponsByUnit: {} };
+  state.game = { round: 1, activePlayerKey: "playerA", phase: "command", ended: false, checklist: {}, battleshockRolls: {}, battleshockSynapse: {}, advanceRoll: { unitId: "", die: null }, chargeRoll: { unitId: "", dice: [] }, score: { playerA: [], playerB: [] }, actedByPhaseInstance: {}, usedWeaponsByUnit: {} };
   state.cycle = emptyCycle();
   state.attackLog = [];
 }
@@ -1054,7 +1185,6 @@ function unitsOf(playerKey) {
 }
 function totalLive(u) { return u.groups.reduce((s, g) => s + g.liveCount, 0); }
 function totalInitial(u) { return u.groups.reduce((s, g) => s + g.initialCount, 0); }
-function factionClass(faction) { return faction === "Space Marines" ? "sm" : faction === "Orks" ? "ork" : ""; }
 function playerFactionLabel(player) {
   const factions = new Set(player.units.map(u => u.faction));
   if (factions.size === 0) return "—";
@@ -1147,9 +1277,13 @@ function renderEstadoJogo() {
 
   const summary = el("div", { class: "card sticky-summary" });
   const line = el("div", { class: "summary-line" });
-  line.appendChild(el("span", { class: "faction-badge " + factionClass(factionA), text: (factionA === "—" ? nameA : factionA) + ": " + totA.live + "/" + totA.initial }));
+  const badgeA = el("span", { class: "faction-badge", text: (factionA === "—" ? nameA : factionA) + ": " + totA.live + "/" + totA.initial });
+  styleFactionBadge(badgeA, factionA);
+  line.appendChild(badgeA);
   line.appendChild(document.createTextNode("·"));
-  line.appendChild(el("span", { class: "faction-badge " + factionClass(factionB), text: (factionB === "—" ? nameB : factionB) + ": " + totB.live + "/" + totB.initial }));
+  const badgeB = el("span", { class: "faction-badge", text: (factionB === "—" ? nameB : factionB) + ": " + totB.live + "/" + totB.initial });
+  styleFactionBadge(badgeB, factionB);
+  line.appendChild(badgeB);
   summary.appendChild(line);
   wrap.appendChild(summary);
 
@@ -1162,11 +1296,14 @@ function renderEstadoJogo() {
 }
 
 function renderEstadoPlayerSection(player, name, faction) {
-  const card = el("div", { class: "card player-card " + factionClass(faction) });
+  const card = el("div", { class: "card player-card" });
+  styleFactionTopBorder(card, faction);
   const head = el("div", { class: "row" });
   head.appendChild(el("h2", { text: name }));
   const tot = playerTotals(player);
-  head.appendChild(el("span", { class: "faction-badge " + factionClass(faction), text: tot.live + "/" + tot.initial + " vivos" }));
+  const badge = el("span", { class: "faction-badge", text: tot.live + "/" + tot.initial + " vivos" });
+  styleFactionBadge(badge, faction);
+  head.appendChild(badge);
   card.appendChild(head);
 
   if (player.units.length === 0) {
@@ -1176,7 +1313,8 @@ function renderEstadoPlayerSection(player, name, faction) {
 
   player.units.forEach(u => {
     const isDead = totalLive(u) === 0;
-    const ui = el("div", { class: "unit-instance " + factionClass(u.faction) + (isDead ? " dead" : "") });
+    const ui = el("div", { class: "unit-instance" + (isDead ? " dead" : "") });
+    styleFactionLeftBorder(ui, u.faction);
     ui.appendChild(el("div", { class: "estado-unit-name", text: u.label }));
     u.groups.forEach(g => {
       const row = el("div", { class: "row" });
@@ -1458,12 +1596,37 @@ function renderCommandPhase() {
     const repGroup = u.groups.reduce((best, g) => (g.liveCount > (best ? best.liveCount : -1) ? g : best), null);
     const ld = parseThreshold(repGroup ? repGroup.stats.LD : null) || 7;
     const row = el("div", { class: "unit-instance" });
+    styleFactionLeftBorder(row, u.faction);
     row.appendChild(el("div", { text: u.label + " — " + totalLive(u) + "/" + totalInitial(u) + " modelos" + (u.battleshocked ? " (já battle-shocked)" : ""), style: "font-size:13px;margin-bottom:6px;" }));
-    row.appendChild(el("div", { class: "step-hint", text: "LD usada: " + (repGroup ? repGroup.stats.LD : "?") + " (grupo " + (repGroup ? repGroup.label : "?") + "). Rola 2D6 — precisas de " + ld + "+ para passar." }));
     const rollKey = String(u.id);
+
+    // Synapse (Tyranids): unidade a 6" ou menos de uma fonte de Synapse
+    // testa com 3D6 em vez de 2D6 — a app não sabe posições físicas, por
+    // isso pergunta e nunca decide sozinha.
+    const isTyranid = u.faction === "Tyranids";
+    const synapseInRange = isTyranid && state.game.battleshockSynapse[rollKey] === true;
+    if (isTyranid) {
+      const synRow = el("div", { class: "row" });
+      synRow.style.marginBottom = "6px";
+      synRow.appendChild(el("label", { text: "A 6\" ou menos de Synapse?", style: "margin:0;font-size:11px;" }));
+      const sel = el("select");
+      sel.style.width = "auto";
+      [["no", "Não"], ["yes", "Sim"]].forEach(([v, t]) => {
+        const o = el("option", { value: v, text: t });
+        if ((state.game.battleshockSynapse[rollKey] === true) === (v === "yes")) o.selected = true;
+        sel.appendChild(o);
+      });
+      sel.onchange = e => { state.game.battleshockSynapse[rollKey] = e.target.value === "yes"; render(); };
+      synRow.appendChild(sel);
+      row.appendChild(synRow);
+    }
+
+    const diceCount = synapseInRange ? 3 : 2;
+    const maxRoll = synapseInRange ? 18 : 12;
+    row.appendChild(el("div", { class: "step-hint", text: "LD usada: " + (repGroup ? repGroup.stats.LD : "?") + " (grupo " + (repGroup ? repGroup.label : "?") + "). Rola " + diceCount + "D6 — precisas de " + ld + "+ para passar." }));
     const val = state.game.battleshockRolls[rollKey] || 0;
     const inp = el("input", { type: "number" });
-    inp.value = val; inp.min = "2"; inp.max = "12";
+    inp.value = val; inp.min = String(diceCount); inp.max = String(maxRoll);
     inp.oninput = e => { state.game.battleshockRolls[rollKey] = Math.max(0, parseInt(e.target.value) || 0); };
     row.appendChild(inp);
     const btn = el("button", { class: "primary", text: "Confirmar resultado" });
@@ -1472,6 +1635,7 @@ function renderCommandPhase() {
       const roll = state.game.battleshockRolls[rollKey] || 0;
       u.battleshocked = roll < ld;
       delete state.game.battleshockRolls[rollKey];
+      delete state.game.battleshockSynapse[rollKey];
       render();
     };
     row.appendChild(btn);
@@ -1593,9 +1757,9 @@ function renderSetup() {
   // Biblioteca de datasheets — só referência (stats/armas), não adiciona nada
   const libCard = el("div", { class: "card" });
   libCard.appendChild(el("h2", { text: "Biblioteca de datasheets (referência)" }));
-  libCard.appendChild(el("div", { class: "step-hint", text: "8 Space Marines + 9 Orks — consulta stats e armas aqui. Para meter uma unidade em jogo usa o botão \"+ Escolher unidade\" de cada jogador acima." }));
-  libCard.appendChild(renderFactionDetails("Space Marines", library.space_marines));
-  libCard.appendChild(renderFactionDetails("Orks", library.orks));
+  const countsText = FACTIONS.map(f => (library[f.key] || []).length + " " + f.label).join(" + ");
+  libCard.appendChild(el("div", { class: "step-hint", text: countsText + " — consulta stats e armas aqui. Para meter uma unidade em jogo usa o botão \"+ Escolher unidade\" de cada jogador acima." }));
+  FACTIONS.forEach(f => libCard.appendChild(renderFactionDetails(f.label, library[f.key] || [])));
   wrap.appendChild(libCard);
 
   const missionCard = el("div", { class: "card" });
@@ -1740,6 +1904,12 @@ function renderWeaponLine(w) {
   line.appendChild(el("b", { text: w.name }));
   line.appendChild(document.createTextNode(" — A:" + w.A + " BS:" + w.BS + " S:" + w.S + " AP:" + w.AP + " D:" + w.D + " "));
   (w.keywords || []).forEach(k => line.appendChild(el("span", { class: "kw", text: k })));
+  // wargear_note: restrição de equipamento (ex: "1 por cada 10 modelos",
+  // "substitui a arma X") — texto do próprio ficheiro de unidades, nunca
+  // inventado aqui; só mostrado quando a datasheet o tiver.
+  if (w.wargear_note) {
+    line.appendChild(el("div", { text: "(" + w.wargear_note + ")", style: "font-size:11px;color:var(--text-sec);margin-top:2px;" }));
+  }
   return line;
 }
 
@@ -1820,17 +1990,15 @@ function renderPlayerColumn(side, player) {
   f.appendChild(nameInput);
   card.appendChild(f);
 
-  const factions = new Set(player.units.map(u => u.faction));
-  let detected = "—";
-  if (factions.size === 1) detected = [...factions][0];
-  else if (factions.size > 1) detected = "Mista";
+  const detected = playerFactionLabel(player);
   card.classList.add("player-card");
-  if (detected === "Space Marines") card.classList.add("sm");
-  else if (detected === "Orks") card.classList.add("ork");
+  styleFactionTopBorder(card, detected);
   const row = el("div", { class: "row" });
   row.style.marginBottom = "10px";
   row.appendChild(el("label", { text: "Facção detetada", style: "margin:0" }));
-  row.appendChild(el("span", { class: "faction-badge " + (detected === "Space Marines" ? "sm" : detected === "Orks" ? "ork" : ""), text: detected }));
+  const detectedBadge = el("span", { class: "faction-badge", text: detected });
+  styleFactionBadge(detectedBadge, detected);
+  row.appendChild(detectedBadge);
   card.appendChild(row);
 
   const totalPoints = player.units.reduce((sum, u) => sum + u.points, 0);
@@ -1840,7 +2008,8 @@ function renderPlayerColumn(side, player) {
   card.appendChild(listRow);
   if (player.units.length === 0) card.appendChild(el("div", { class: "empty", text: "Nenhuma unidade escolhida ainda" }));
   player.units.forEach(u => {
-    const ui = el("div", { class: "unit-instance " + (u.faction === "Space Marines" ? "sm" : u.faction === "Orks" ? "ork" : "") });
+    const ui = el("div", { class: "unit-instance" });
+    styleFactionLeftBorder(ui, u.faction);
     const r = el("div", { class: "row" });
     const nameField = el("input", { type: "text" });
     nameField.value = u.label; nameField.style.fontSize = "13px";
@@ -1890,7 +2059,7 @@ function renderUnitPicker(side, player, factionKey, lockedFaction) {
   const wrap = el("div");
   wrap.style.marginTop = "8px";
 
-  const isLocked = lockedFaction === "Space Marines" || lockedFaction === "Orks";
+  const isLocked = FACTIONS.some(f => f.label === lockedFaction);
 
   if (isLocked) {
     wrap.appendChild(el("div", { class: "step-hint", text: "A mostrar só " + lockedFaction + " — a facção deste jogador já ficou definida pela primeira unidade escolhida." }));
@@ -1898,7 +2067,7 @@ function renderUnitPicker(side, player, factionKey, lockedFaction) {
     const filterRow = el("div", { class: "row" });
     filterRow.style.marginBottom = "6px";
     const filterSelect = el("select");
-    [["all", "Todas as facções"], ["Space Marines", "Space Marines"], ["Orks", "Orks"]].forEach(([val, label]) => {
+    [["all", "Todas as facções"]].concat(FACTIONS.map(f => [f.label, f.label])).forEach(([val, label]) => {
       const o = el("option", { value: val, text: label });
       if (state.ui[factionKey] === val) o.selected = true;
       filterSelect.appendChild(o);
@@ -2043,6 +2212,9 @@ function renderAttackCycle(phaseKey) {
   weaponKeywordNotes(weapon).forEach(n => {
     banner.appendChild(el("div", { text: "ℹ️ [" + n.keyword + "] " + n.text, style: "font-size:11px;color:var(--text-sec);margin-top:6px;clear:both;" }));
   });
+  if (weapon.wargear_note) {
+    banner.appendChild(el("div", { text: "ℹ️ " + weapon.wargear_note, style: "font-size:11px;color:var(--text-sec);margin-top:6px;clear:both;" }));
+  }
   wrap.appendChild(banner);
 
   const isTorrent = phaseKey === "shooting" && hasKeyword(weapon, "TORRENT");
