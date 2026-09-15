@@ -2162,13 +2162,27 @@ function renderDsPickerItem(ds, player, playerKey) {
 
   if (sizing.adjustable) {
     const minCount = sizing.fixedTotal + 1;
+    const sizeWrap = el("div");
+    sizeWrap.style.cssText = "flex-basis:100%;";
+    sizeWrap.appendChild(el("label", { text: "Tamanho deste esquadrão (" + minCount + "–" + remaining + "):", style: "margin:0 0 2px;" }));
+    const countRow = el("div", { style: "display:flex;align-items:center;gap:8px;" });
     const countInput = el("input", { type: "number" });
     countInput.style.width = "56px";
     countInput.value = count;
     countInput.min = String(minCount);
     countInput.max = String(remaining);
     countInput.oninput = e => { count = Math.max(minCount, Math.min(remaining, parseInt(e.target.value) || minCount)); };
-    item.appendChild(countInput);
+    countRow.appendChild(countInput);
+    // hasLimit (definido mais abaixo, mas já sabido aqui): se a caixa tem
+    // limite e ainda sobra mais do que o mínimo depois deste esquadrão,
+    // lembra que dá para voltar a "Adicionar" e formar vários esquadrões
+    // mais pequenos em vez de um só — pedido explícito do utilizador
+    // (ex: 2 esquadrões de 10 Termagants em vez de 1 de 20).
+    if (BOX_LIMITS[ds.name] !== undefined) {
+      countRow.appendChild(el("span", { text: "de " + BOX_LIMITS[ds.name] + " na caixa — repete \"Adicionar\" para vários esquadrões mais pequenos", style: "font-size:11px;color:var(--text-sec);" }));
+    }
+    sizeWrap.appendChild(countRow);
+    item.appendChild(sizeWrap);
   }
 
   const addBtn = el("button", { class: "small primary", text: "Adicionar" });
