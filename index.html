@@ -335,7 +335,11 @@ const RAW_UNITS = {
         "Alpha Warrior: enquanto lidera uma unidade, as armas dessa unidade ganham Sustained Hits 1",
         "Death Blow: se for destruído em combate antes de ter lutado nesta fase, rola 1D6 — num 4+, não é removido, luta depois do atacante terminar os ataques, e só depois é removido"
       ],
-      "leader_for":["Termagants","Neurogaunts"],
+      // Tem a ability Leader (dataheet oficial), mas nenhuma das unidades a
+      // que se pode anexar está neste box set — confirmado pelo utilizador
+      // via battle report em vídeo ("the units that he can attach to are
+      // not present in this box set so he's actually going to be all by
+      // himself"). Por isso SEM leader_for aqui: fica sempre standalone.
       "defaultCount":1},
     {"name":"Neurotyrant","points":105,"keywords":["MONSTER","CHARACTER"],
       "stats":{"M":"6\"","T":8,"SV":"4+","InvSV":"4+","W":9,"LD":"7+","OC":3},
