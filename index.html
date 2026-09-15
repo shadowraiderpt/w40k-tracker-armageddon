@@ -1209,6 +1209,17 @@ function unitsOf(playerKey) {
 }
 function totalLive(u) { return u.groups.reduce((s, g) => s + g.liveCount, 0); }
 function totalInitial(u) { return u.groups.reduce((s, g) => s + g.initialCount, 0); }
+// u.label é um nome guardado (editável pelo jogador) — não convém tentar
+// reescrever um "(N)" lá dentro por regex, porque o jogador pode ter
+// renomeado para qualquer texto. Em vez disso, computa-se sempre de novo
+// (nunca gravado no estado) quanto está vivo agora e junta-se ao label só
+// para mostrar — assim escolher atacante/alvo mostra sempre o nº atual de
+// modelos, não o tamanho original da squad.
+function unitLiveLabel(u) {
+  const initial = totalInitial(u);
+  if (initial <= 1) return u.label;
+  return u.label + " — " + totalLive(u) + "/" + initial + " vivos";
+}
 function playerFactionLabel(player) {
   const factions = new Set(player.units.map(u => u.faction));
   if (factions.size === 0) return "—";
@@ -2233,16 +2244,16 @@ function renderAttackCycle(phaseKey) {
   if (!attacker || !weapon || !target) { c.step = 0; return renderAttackCycle(phaseKey); }
   // Nome a mostrar na badge "quem rola" de cada passo — sempre o jogador
   // dono da unidade + a unidade em si, para nunca haver dúvida.
-  const attackerRollerName = attacker.ownerName + " (" + attacker.label + ")";
-  const defenderRollerName = target.ownerName + " (" + target.label + ")";
+  const attackerRollerName = attacker.ownerName + " (" + unitLiveLabel(attacker) + ")";
+  const defenderRollerName = target.ownerName + " (" + unitLiveLabel(target) + ")";
 
   const banner = el("div", { class: "card" });
   banner.style.cssText = "background:var(--surface2);font-size:12px;";
   banner.appendChild(document.createTextNode(""));
-  const b1 = el("b", { text: attacker.label });
+  const b1 = el("b", { text: unitLiveLabel(attacker) });
   banner.appendChild(b1);
   banner.appendChild(document.createTextNode(" (" + weapon.name + ") atinge "));
-  banner.appendChild(el("b", { text: target.label }));
+  banner.appendChild(el("b", { text: unitLiveLabel(target) }));
   const resetBtn = el("button", { class: "small", text: "reiniciar" });
   resetBtn.style.float = "right";
   resetBtn.onclick = () => { state.cycle = emptyCycle(); render(); };
@@ -2979,7 +2990,7 @@ function renderPicker(instances, phaseKey) {
   const sel1 = el("select");
   sel1.appendChild(el("option", { value: "", text: "— escolher —" }));
   attackerInstances.forEach(u => {
-    const o = el("option", { value: u.id, text: u.ownerName + ": " + u.label });
+    const o = el("option", { value: u.id, text: u.ownerName + ": " + unitLiveLabel(u) });
     if (String(u.id) === String(c.attackerId)) o.selected = true;
     sel1.appendChild(o);
   });
@@ -3032,7 +3043,7 @@ function renderPicker(instances, phaseKey) {
   const sel3 = el("select");
   sel3.appendChild(el("option", { value: "", text: "— escolher —" }));
   instances.filter(u => !attacker || u.owner !== attacker.owner).forEach(u => {
-    const o = el("option", { value: u.id, text: u.ownerName + ": " + u.label });
+    const o = el("option", { value: u.id, text: u.ownerName + ": " + unitLiveLabel(u) });
     if (String(u.id) === String(c.targetId)) o.selected = true;
     sel3.appendChild(o);
   });
