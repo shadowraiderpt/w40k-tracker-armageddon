@@ -208,7 +208,10 @@ const RAW_UNITS = {
       ],
       "melee_weapons":[{"name":"Force weapon","keywords":["PSYCHIC"],"range":"Melee","A":4,"WS":"3+","S":6,"AP":-1,"D":"D3"}],
       "defaultCount":1, "leader_for":["Intercessor Squad"]},
-    {"name":"Chaplain with Jump Pack","points":75,"keywords":["INFANTRY","CHARACTER","JUMP PACK"],"stats":{"M":"12\"","T":4,"SV":"3+","InvSV":"4+","W":4,"LD":"5+","OC":1},
+    {"name":"Chaplain with Jump Pack","points":75,"keywords":["INFANTRY","CHARACTER","JUMP PACK"],
+      "abilities":["Exhortation of Rage: na Fight Phase, quando a unidade for selecionada para lutar (antes dos ataques normais), pode opcionalmente escolher uma unidade inimiga em Engagement Range e rolar 1D6 — 4-5: D3 mortal wounds; 6: 3 mortal wounds fixas"],
+      "exhortationOfRage": true,
+      "stats":{"M":"12\"","T":4,"SV":"3+","InvSV":"4+","W":4,"LD":"5+","OC":1},
       "ranged_weapons":[{"name":"Absolvor bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"3+","S":5,"AP":-1,"D":1}],
       "melee_weapons":[{"name":"Crozius arcanum","range":"Melee","A":5,"WS":"2+","S":6,"AP":-1,"D":2}],
       "defaultCount":1, "leader_for":["Vanguard Veteran Squad with Jump Packs"]},
@@ -528,6 +531,33 @@ function attackingGroupsFor(attacker, weapon) {
 }
 function maxModelsAttacking(attacker, weapon) {
   return attackingGroupsFor(attacker, weapon).reduce((s, g) => s + g.liveCount, 0);
+}
+// HAZARDOUS: aplica UM resultado de "1" não modificado ao ATACANTE real
+// (nunca ao alvo) — sempre no(s) grupo(s) donos da arma, nunca pela ordem
+// de alocação normal (essa é só para o alvo levar dano de um ataque
+// inimigo). Se o modelo for CHARACTER/MONSTER/VEHICLE: 3 mortal wounds
+// obrigatórias nesse modelo. Caso contrário: destrói 1 modelo diretamente,
+// preferindo um já ferido, depois um não-character, character por último.
+function applyOneHazardousResult(realAttacker, weapon) {
+  const ownerGroups = attackingGroupsFor(realAttacker, weapon).filter(g => g.liveCount > 0);
+  if (ownerGroups.length === 0) return null;
+  const ds = findDatasheet(library, weapon.sourceDatasheet);
+  const isCMV = ds && (ds.keywords || []).some(k => k === "CHARACTER" || k === "MONSTER" || k === "VEHICLE");
+  if (isCMV) {
+    const g = ownerGroups[0];
+    const result = resolveGroupDamage(g, [], [3]);
+    g.liveCount = result.liveAfter;
+    g.woundsRemainingOnCurrent = result.woundsLeftAfter;
+    return { type: "mortal", dead: result.dead, group: g.label };
+  }
+  let victim = ownerGroups.find(g => g.woundsRemainingOnCurrent != null && g.woundsRemainingOnCurrent < g.stats.W);
+  if (!victim) {
+    const nonChar = ownerGroups.filter(g => !datasheetHasUnitKeyword(g.datasheetName, "CHARACTER"));
+    victim = nonChar[0] || ownerGroups[0];
+  }
+  victim.liveCount = Math.max(0, victim.liveCount - 1);
+  victim.woundsRemainingOnCurrent = victim.stats.W;
+  return { type: "destroyed", group: victim.label };
 }
 function toHitValue(weapon, phaseKey) {
   return phaseKey === "fight" ? weapon.WS : weapon.BS;
@@ -1158,6 +1188,17 @@ function emptyCycle() {
     // A app não sabe posições físicas, por isso só regista o roll e o
     // resultado; a aplicação do dano a unidades próximas é sempre manual.
     deadlyDemiseAsked: null, deadlyDemiseRoll: null, deadlyDemiseTriggered: false,
+    // HAZARDOUS: depois de disparar/lutar com uma arma HAZARDOUS, rola 1D6
+    // por modelo que a usou — resultados guardados aqui para mostrar no
+    // Resultado (nunca afeta o alvo, só a própria unidade atacante).
+    hazardousAsked: null, hazardousResults: [],
+    // EXHORTATION OF RAGE (Chaplain with Jump Pack): opcional, na Fight
+    // Phase, antes dos ataques normais desta unidade — o jogador escolhe se
+    // usa, contra que unidade inimiga (Engagement Range, físico, o jogador
+    // sabe), e o resultado final de mortal wounds já resolvido (o app nunca
+    // decide usar ou não). Vive no picker (step 0), não no ciclo de ataque
+    // em si — reposto sempre que o atacante muda.
+    exhortationAsked: null, exhortationUsing: false, exhortationTargetId: "", exhortationMortalWounds: null,
     // RAPID FIRE X / MELTA X: condição física (alcance) respondida no ecrã
     // de escolha da arma, antes do passo 1. CLEAVE X / BLAST X: contagem de
     // modelos do alvo, também respondida aí (partilhada entre as duas).
@@ -2963,6 +3004,35 @@ function renderAttackCycle(phaseKey) {
   }
 
   if (c.step === 5) {
+    // HAZARDOUS: resolve-se logo, antes de qualquer coisa que dependa do
+    // alvo — é sempre a própria unidade atacante que sofre, nunca o alvo,
+    // e não depende de hits/wounds/danos deste ataque. 1D6 por modelo que
+    // usou a arma (c.modelsAttacking já sabido).
+    if (hasKeyword(weapon, "HAZARDOUS") && c.hazardousAsked === null) {
+      const hazardDs = findDatasheet(library, weapon.sourceDatasheet);
+      const isCMV = hazardDs && (hazardDs.keywords || []).some(k => k === "CHARACTER" || k === "MONSTER" || k === "VEHICLE");
+      wrap.appendChild(renderNumberStep({
+        title: "Hazardous — quantos resultados de 1 não modificado saíram?",
+        hint: "☠️ " + weapon.name + " tem HAZARDOUS: depois de disparar/lutar, rola 1D6 por cada arma usada (" + modelsAttacking + " modelo(s) usaram-na). Em cada 1: " + (isCMV ? "a unidade sofre 3 mortal wounds, obrigatoriamente no modelo que usou a arma." : "1 modelo desta unidade equipado com a arma é destruído diretamente (prioridade: já ferido > não-character > character)."),
+        threshold: 2, invertThreshold: true, stepKey: "hazardous", max: modelsAttacking, countLabel: "Resultados de 1",
+        rollsDice: true,
+        roller: "attacker", rollerName: attackerRollerName, rollWhy: "Hazard roll — depois de usar uma arma HAZARDOUS.",
+        onConfirm: n => {
+          const realAttacker = findRealUnit(attacker.id);
+          const results = [];
+          for (let i = 0; i < n; i++) {
+            const r = realAttacker ? applyOneHazardousResult(realAttacker, weapon) : null;
+            if (r) results.push(r);
+          }
+          c.hazardousResults = results;
+          c.hazardousAsked = true;
+          render();
+        },
+        confirmLabel: "Confirmar Hazardous →",
+      }));
+      return wrap;
+    }
+
     // DEATH SCREAM (Screamer-Killer): depois de disparar e acertar, o alvo
     // testa Battleshock com -1 — independente de mortes/saves, por isso
     // resolve-se antes do Feel No Pain. Só pergunta se houve pelo menos 1
@@ -3110,6 +3180,18 @@ function renderAttackCycle(phaseKey) {
         ? "☠️ Deadly Demise " + deadlyDemiseX + ": rolaste " + c.deadlyDemiseRoll + " — DISPAROU! Aplica " + deadlyDemiseX + " mortal wound(s) a cada unidade a 6\" (de qualquer jogador) manualmente."
         : "☠️ Deadly Demise " + deadlyDemiseX + ": rolaste " + c.deadlyDemiseRoll + " — sem efeito.",
         style: "color:var(--gold);font-weight:600;" }));
+    }
+    if (c.hazardousAsked && c.hazardousResults.length > 0) {
+      c.hazardousResults.forEach(r => {
+        card.appendChild(el("div", {
+          text: r.type === "mortal"
+            ? "☠️ Hazardous: 3 mortal wounds em " + r.group + (r.dead ? " — modelo destruído." : ".")
+            : "☠️ Hazardous: 1 modelo de " + r.group + " destruído diretamente.",
+          style: "color:var(--gold);font-weight:600;",
+        }));
+      });
+    } else if (c.hazardousAsked) {
+      card.appendChild(el("div", { text: "☠️ Hazardous: sem resultados de 1 — sem efeito.", style: "color:var(--text-sec);" }));
     }
     const totalText = critDamageDisplay !== null ? ((critDamageDisplay + normalDamage) + " dano total") : "dano total variável";
     const res = el("div", { class: "result final", text: totalText + " → " + totalDead + " modelo(s) morto(s)" });
@@ -3299,12 +3381,96 @@ function renderPicker(instances, phaseKey) {
     c.attackerId = e.target.value; c.weaponIdx = "";
     c.rapidFireHalfRange = null; c.meltaHalfRange = null; c.blastCleaveModels = null;
     c.abilityAttacksAdjust = 0;
+    c.exhortationAsked = null; c.exhortationUsing = false; c.exhortationTargetId = ""; c.exhortationMortalWounds = null;
     render();
   };
   f1.appendChild(sel1);
   card.appendChild(f1);
 
   const attacker = findInstance(c.attackerId);
+
+  // EXHORTATION OF RAGE (Chaplain with Jump Pack): opcional, Fight Phase,
+  // antes dos ataques normais desta unidade — o jogador decide se usa, sem
+  // a app decidir sozinha (nem a condição de Engagement Range, nem o valor
+  // final de mortal wounds, que o jogador resolve fisicamente com 1D6 e,
+  // se aplicável, 1D3). Bloqueia a escolha de arma/alvo do ataque normal
+  // até estar resolvido, tal como as outras condições desta app.
+  if (attacker && phaseKey === "fight" && c.exhortationAsked === null) {
+    const hasExhortation = attacker.datasheetNames.some(name => {
+      const ds = findDatasheet(library, name);
+      return ds && ds.exhortationOfRage;
+    });
+    if (hasExhortation) {
+      card.appendChild(renderRollerBadge("attacker", attacker.ownerName + " (" + unitLiveLabel(attacker) + ")", "Exhortation of Rage (Chaplain) — opcional, antes dos ataques normais desta unidade."));
+      card.appendChild(el("div", { text: "⚔️ Exhortation of Rage: podes escolher uma unidade inimiga em Engagement Range e rolar 1D6 — 4-5: D3 mortal wounds; 6: 3 mortal wounds fixas. É opcional.", style: "color:var(--gold);font-weight:600;font-size:13px;margin-bottom:8px;" }));
+      const useSel = el("select");
+      [["", "— escolher —"], ["no", "Não usar"], ["yes", "Sim, usar"]].forEach(([v, t]) => useSel.appendChild(el("option", { value: v, text: t })));
+      if (c.exhortationUsing) useSel.value = "yes";
+      useSel.onchange = e => {
+        if (e.target.value === "no") { c.exhortationAsked = true; render(); }
+        else if (e.target.value === "yes") { c.exhortationUsing = true; render(); }
+      };
+      card.appendChild(useSel);
+      if (c.exhortationUsing) {
+        const targetRow = el("div", { class: "field" });
+        targetRow.style.marginTop = "10px";
+        targetRow.appendChild(el("label", { text: "Unidade inimiga alvo (dentro de Engagement Range)" }));
+        const targetSel = el("select");
+        targetSel.appendChild(el("option", { value: "", text: "— escolher —" }));
+        instances.filter(u => u.owner !== attacker.owner).forEach(u => {
+          const o = el("option", { value: u.id, text: u.ownerName + ": " + unitLiveLabel(u) });
+          if (String(u.id) === String(c.exhortationTargetId)) o.selected = true;
+          targetSel.appendChild(o);
+        });
+        targetSel.onchange = e => { c.exhortationTargetId = e.target.value; render(); };
+        targetRow.appendChild(targetSel);
+        card.appendChild(targetRow);
+
+        if (c.exhortationTargetId) {
+          const mwRow = el("div", { class: "field" });
+          mwRow.style.marginTop = "10px";
+          mwRow.appendChild(el("label", { text: "Rola 1D6: 1-3 sem efeito · 4-5 rola também 1D3 · 6 são sempre 3. Quantas mortal wounds resultaram?" }));
+          const mwInp = el("input", { type: "number" });
+          mwInp.min = "0"; mwInp.max = "3"; mwInp.value = c.exhortationMortalWounds != null ? c.exhortationMortalWounds : 0;
+          mwInp.oninput = e => { c.exhortationMortalWounds = Math.max(0, Math.min(3, parseInt(e.target.value) || 0)); };
+          mwRow.appendChild(mwInp);
+          card.appendChild(mwRow);
+          const confirmBtn = el("button", { class: "primary", text: "Confirmar Exhortation of Rage →" });
+          confirmBtn.style.cssText = "width:100%;margin-top:8px;";
+          confirmBtn.onclick = () => {
+            const mw = c.exhortationMortalWounds || 0;
+            if (mw > 0) {
+              const realExTarget = findRealUnit(c.exhortationTargetId);
+              if (realExTarget) {
+                const order = realExTarget.groups.map(g => g.key);
+                // Cada mortal wound é 1 instância separada de dano=1 (nunca
+                // um "pool" de 1 instância só com o total) — mesma regra já
+                // aplicada a Devastating Wounds: só o dano parcial no MESMO
+                // modelo persiste entre instâncias consecutivas, o resto
+                // passa ao próximo modelo/grupo quando o atual morre.
+                let instancesArr = Array(mw).fill(1);
+                const dead = {}; const woundsLeftByGroup = {};
+                order.forEach(key => {
+                  const g = realExTarget.groups.find(gr => gr.key === key);
+                  if (!g) return;
+                  const result = resolveGroupDamage(g, [], instancesArr);
+                  dead[key] = result.dead;
+                  woundsLeftByGroup[key] = result.woundsLeftAfter;
+                  instancesArr = instancesArr.slice(result.instancesConsumed);
+                });
+                applyDeaths(realExTarget, dead, woundsLeftByGroup);
+              }
+            }
+            c.exhortationAsked = true;
+            render();
+          };
+          card.appendChild(confirmBtn);
+        }
+      }
+      return card;
+    }
+  }
+
   const attackerWeapons = attacker ? weaponsForPhase(attacker, phaseKey) : [];
   const availableWeaponCount = attacker ? attackerWeapons.filter(w => !isWeaponUsed(attacker.id, w)).length : 0;
   const showSource = attacker && attacker.datasheetNames.length > 1;
@@ -3435,6 +3601,7 @@ function renderPicker(instances, phaseKey) {
     c.deathScreamAsked = null; c.disruptionApplied = null;
     c.modelsAttacking = null;
     c.deadlyDemiseAsked = null; c.deadlyDemiseRoll = null; c.deadlyDemiseTriggered = false;
+    c.hazardousAsked = null; c.hazardousResults = [];
     render();
   };
   card.appendChild(startBtn);
