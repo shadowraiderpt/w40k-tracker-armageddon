@@ -118,6 +118,9 @@
   .estado-group-label.dead{text-decoration:line-through;}
   .unit-instance.dead{opacity:0.45;}
   .unit-instance.dead .estado-unit-name{text-decoration:line-through;}
+  .battleshock-badge{display:inline-block;background:var(--danger);color:#fff;font-family:var(--display-font);font-size:11px;letter-spacing:0.04em;padding:3px 8px;border-radius:3px;text-transform:uppercase;white-space:nowrap;}
+  .estado-name-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
+  .estado-name-row .estado-unit-name{margin-bottom:0;}
   .roller-badge{border-radius:4px;padding:8px 10px;margin-bottom:10px;border-left:4px solid;}
   .roller-badge.attacker{background:rgba(179,42,42,0.15);border-left-color:var(--danger);}
   .roller-badge.defender{background:rgba(74,85,34,0.2);border-left-color:var(--ork-green);}
@@ -1217,8 +1220,16 @@ function totalInitial(u) { return u.groups.reduce((s, g) => s + g.initialCount, 
 // modelos, não o tamanho original da squad.
 function unitLiveLabel(u) {
   const initial = totalInitial(u);
-  if (initial <= 1) return u.label;
-  return u.label + " — " + totalLive(u) + "/" + initial + " vivos";
+  let label = initial <= 1 ? u.label : (u.label + " — " + totalLive(u) + "/" + initial + " vivos");
+  if (u.battleshocked) label += " ☠️ BATTLESHOCKED";
+  return label;
+}
+// Badge visível de "esta unidade está battleshocked" — usado fora do
+// cartão de Battle-shock da Command Phase (Setup, Estado do Jogo), para
+// nunca se esquecer disto ao chegar à Charge Phase (não pode carregar) ou
+// ao contar Objective Control (OC cai a 0) mais tarde na ronda.
+function renderBattleshockBadge() {
+  return el("span", { class: "battleshock-badge", text: "☠️ Battleshocked" });
 }
 function playerFactionLabel(player) {
   const factions = new Set(player.units.map(u => u.faction));
@@ -1350,7 +1361,10 @@ function renderEstadoPlayerSection(player, name, faction) {
     const isDead = totalLive(u) === 0;
     const ui = el("div", { class: "unit-instance" + (isDead ? " dead" : "") });
     styleFactionLeftBorder(ui, u.faction);
-    ui.appendChild(el("div", { class: "estado-unit-name", text: u.label }));
+    const nameRow = el("div", { class: "estado-name-row" });
+    nameRow.appendChild(el("div", { class: "estado-unit-name", text: u.label }));
+    if (u.battleshocked) nameRow.appendChild(renderBattleshockBadge());
+    ui.appendChild(nameRow);
     u.groups.forEach(g => {
       const row = el("div", { class: "row" });
       row.style.marginBottom = "4px";
@@ -2051,6 +2065,7 @@ function renderPlayerColumn(side, player) {
     nameField.oninput = e => { u.label = e.target.value; };
     r.appendChild(nameField);
     r.appendChild(el("span", { text: u.points + " pts" + (u.pointsApprox ? "*" : ""), style: "font-size:11px;color:var(--text-sec);white-space:nowrap;" }));
+    if (u.battleshocked) r.appendChild(renderBattleshockBadge());
     r.appendChild(el("button", { class: "small", text: "✕", onclick: () => { player.units = player.units.filter(x => x.id !== u.id); render(); } }));
     ui.appendChild(r);
     if (u.pointsApprox) {
