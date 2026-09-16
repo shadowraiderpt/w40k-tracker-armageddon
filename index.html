@@ -951,12 +951,19 @@ function applyFeelNoPain(deadByGroup, order, successes) {
 // RAPID FIRE X / CLEAVE X / BLAST X só se aplicam depois de o jogador
 // confirmar uma condição física da mesa (alcance, contagem de modelos do
 // alvo) — a app nunca decide essa condição sozinha, só soma o bónus depois.
-function computeAttacksBonus(weapon, c) {
+// modelsAttacking (opcional, default 1): RAPID FIRE X é "dentro de metade
+// do alcance, +X dados de ataque" — por MODELO atacante (core_rules_
+// reference.md), por isso o bónus escala com quantos modelos disparam esta
+// arma. CLEAVE X e BLAST X são, pela mesma referência, "+X por cada 5
+// modelos NO ALVO" — baseados no tamanho do ALVO (c.blastCleaveModels), não
+// no nº de modelos atacantes, por isso NÃO escalam com modelsAttacking
+// (confirmado a propósito, não presumido só por parecerem o mesmo padrão).
+function computeAttacksBonus(weapon, c, modelsAttacking) {
   let bonus = c.abilityAttacksAdjust || 0;
   const rapidFireX = keywordValue(weapon, "RAPID FIRE");
   const cleaveX = keywordValue(weapon, "CLEAVE");
   const blastX = keywordValue(weapon, "BLAST");
-  if (rapidFireX !== null && c.rapidFireHalfRange === true) bonus += rapidFireX;
+  if (rapidFireX !== null && c.rapidFireHalfRange === true) bonus += rapidFireX * (modelsAttacking || 1);
   if (cleaveX !== null && c.blastCleaveModels != null) bonus += Math.floor(c.blastCleaveModels / 5) * cleaveX;
   if (blastX !== null && c.blastCleaveModels != null) bonus += Math.floor(c.blastCleaveModels / 5) * blastX;
   return bonus;
@@ -965,12 +972,14 @@ function computeDamageBonus(weapon, c) {
   const meltaX = keywordValue(weapon, "MELTA");
   return (meltaX !== null && c.meltaHalfRange === true) ? meltaX : 0;
 }
-function attacksBonusLabel(weapon, c) {
+function attacksBonusLabel(weapon, c, modelsAttacking) {
   const parts = [];
   const rapidFireX = keywordValue(weapon, "RAPID FIRE");
   const cleaveX = keywordValue(weapon, "CLEAVE");
   const blastX = keywordValue(weapon, "BLAST");
-  if (rapidFireX !== null && c.rapidFireHalfRange === true) parts.push("Rapid Fire " + rapidFireX);
+  if (rapidFireX !== null && c.rapidFireHalfRange === true) {
+    parts.push("Rapid Fire " + rapidFireX + ((modelsAttacking || 1) > 1 ? " × " + modelsAttacking + " modelos" : ""));
+  }
   if (cleaveX !== null && c.blastCleaveModels != null) parts.push("Cleave " + cleaveX);
   if (blastX !== null && c.blastCleaveModels != null) parts.push("Blast " + blastX);
   if (c.abilityAttacksAdjust) parts.push("ability " + (c.abilityAttacksAdjust > 0 ? "+" : "") + c.abilityAttacksAdjust);
@@ -2424,13 +2433,13 @@ function renderAttackCycle(phaseKey) {
   const saveThreshold = effSaveFor(defaultSaveGroup);
   const dmgInfo = parseDamage(weapon.D);
   const attackIsFixed = typeof weapon.A === "number";
-  const attacksBonus = computeAttacksBonus(weapon, c);
-  const meltaBonus = computeDamageBonus(weapon, c);
   // Quantos modelos da unidade atacante disparam/lutam com esta arma —
   // perguntado no início do step 1 (ver abaixo); enquanto não confirmado,
   // usa-se 1 como placeholder inofensivo (não afeta nada visível antes de
   // a pergunta aparecer).
   const modelsAttacking = c.modelsAttacking || 1;
+  const attacksBonus = computeAttacksBonus(weapon, c, modelsAttacking);
+  const meltaBonus = computeDamageBonus(weapon, c);
   const attacksMax = maxOfDiceNotation(weapon.A) * modelsAttacking;
 
   // RAPID FIRE/CLEAVE/BLAST com Attacks variável (ex: D3) precisam de saber
@@ -2479,7 +2488,7 @@ function renderAttackCycle(phaseKey) {
     if (needsAttacksRollStep && c.attacksRolled === null) {
       wrap.appendChild(renderNumberStep({
         title: "Attacks desta arma (base " + weapon.A + (modelsAttacking > 1 ? " × " + modelsAttacking + " modelos" : "") + "): quanto rolaste?",
-        hint: "Depois soma-se o bónus de +" + attacksBonus + " attacks (" + attacksBonusLabel(weapon, c) + ") antes de perguntar os hits." + (modelsAttacking > 1 ? " " + modelsAttacking + " modelos a disparar → rola " + modelsAttacking + " dados de " + weapon.A + " (um por modelo) e soma o total." : ""),
+        hint: "Depois soma-se o bónus de +" + attacksBonus + " attacks (" + attacksBonusLabel(weapon, c, modelsAttacking) + ") antes de perguntar os hits." + (modelsAttacking > 1 ? " " + modelsAttacking + " modelos a disparar → rola " + modelsAttacking + " dados de " + weapon.A + " (um por modelo) e soma o total." : ""),
         threshold: null, stepKey: "attacksroll", max: attacksMax, countLabel: "Attacks rolados (base)",
         roller: "attacker", rollerName: attackerRollerName, rollWhy: "Roll de Attacks — decide quantos ataques esta arma faz neste ataque.",
         onConfirm: n => { c.attacksRolled = n; render(); },
@@ -2529,7 +2538,7 @@ function renderAttackCycle(phaseKey) {
     const effectiveAttacksMax = attackIsFixed
       ? (weapon.A * modelsAttacking) + attacksBonus
       : (needsAttacksRollStep ? c.attacksRolled + attacksBonus : attacksMax);
-    const attacksBonusSuffix = attacksBonus ? " · +" + attacksBonus + " attacks (" + attacksBonusLabel(weapon, c) + ")" : "";
+    const attacksBonusSuffix = attacksBonus ? " · +" + attacksBonus + " attacks (" + attacksBonusLabel(weapon, c, modelsAttacking) + ")" : "";
     if (isTorrent) {
       wrap.appendChild(renderNumberStep({
         title: "Quantos hits (TORRENT — acerta sempre)?",
