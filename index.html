@@ -510,6 +510,18 @@ function meleeWeaponsFor(instance) {
 function weaponsForPhase(instance, phaseKey) {
   return phaseKey === "fight" ? meleeWeaponsFor(instance) : rangedWeaponsFor(instance);
 }
+// Grupo(s) do atacante que são "donos" desta arma (mesma datasheet de
+// origem, weapon.sourceDatasheet) — para a maioria das unidades é só um
+// grupo (ex: líder anexado, datasheet própria), mas datasheets com
+// multiProfile (ex: Boyz: "boss_nob" + "boyz") têm VÁRIOS grupos com o
+// mesmo datasheetName partilhando a mesma lista de armas, por isso soma-se
+// o liveCount de todos, nunca só do primeiro que aparecer.
+function attackingGroupsFor(attacker, weapon) {
+  return attacker.groups.filter(g => g.datasheetName === weapon.sourceDatasheet);
+}
+function maxModelsAttacking(attacker, weapon) {
+  return attackingGroupsFor(attacker, weapon).reduce((s, g) => s + g.liveCount, 0);
+}
 function toHitValue(weapon, phaseKey) {
   return phaseKey === "fight" ? weapon.WS : weapon.BS;
 }
@@ -1088,6 +1100,12 @@ function emptyCycle() {
     // ability condicional a um roll) — só marca o alvo como "disrupted" se
     // houve ≥1 hit, uma vez por ataque resolvido (Shooting Phase só).
     disruptionApplied: null,
+    // Quantos modelos da unidade atacante disparam/lutam com a arma
+    // escolhida contra este alvo — por defeito o liveCount do(s) grupo(s)
+    // donos da arma, mas o jogador pode reduzir (fora de alcance, sem linha
+    // de vista, etc.). Multiplica o máximo de Attacks/hits — nunca assume
+    // só 1 modelo.
+    modelsAttacking: null,
     // RAPID FIRE X / MELTA X: condição física (alcance) respondida no ecrã
     // de escolha da arma, antes do passo 1. CLEAVE X / BLAST X: contagem de
     // modelos do alvo, também respondida aí (partilhada entre as duas).
@@ -2408,7 +2426,12 @@ function renderAttackCycle(phaseKey) {
   const attackIsFixed = typeof weapon.A === "number";
   const attacksBonus = computeAttacksBonus(weapon, c);
   const meltaBonus = computeDamageBonus(weapon, c);
-  const attacksMax = maxOfDiceNotation(weapon.A);
+  // Quantos modelos da unidade atacante disparam/lutam com esta arma —
+  // perguntado no início do step 1 (ver abaixo); enquanto não confirmado,
+  // usa-se 1 como placeholder inofensivo (não afeta nada visível antes de
+  // a pergunta aparecer).
+  const modelsAttacking = c.modelsAttacking || 1;
+  const attacksMax = maxOfDiceNotation(weapon.A) * modelsAttacking;
 
   // RAPID FIRE/CLEAVE/BLAST com Attacks variável (ex: D3) precisam de saber
   // o valor base fisicamente rolado antes de somar o bónus (com A fixo o
@@ -2434,10 +2457,29 @@ function renderAttackCycle(phaseKey) {
   };
 
   if (c.step === 1) {
+    // Quantos modelos da unidade atacante disparam/lutam com esta arma
+    // contra este alvo — sugere o liveCount do(s) grupo(s) donos da arma
+    // (nunca a soma de toda a unidade combinada, ex: líder+tropa), mas o
+    // jogador pode reduzir se souber de algo físico na mesa (fora de
+    // alcance, sem linha de vista, etc.) que a app não pode saber sozinha.
+    if (c.modelsAttacking === null) {
+      const maxModels = maxModelsAttacking(attacker, weapon);
+      wrap.appendChild(renderNumberStep({
+        title: "Quantos modelos desta unidade vão " + (phaseKey === "fight" ? "lutar" : "disparar") + " com " + weapon.name + " contra este alvo?",
+        hint: "Sugestão: todos os " + maxModels + " modelo(s) com esta arma na unidade. Reduz se souberes que alguns estão fora de alcance, sem linha de vista, ou não podem atacar por outra razão física — a app nunca decide isto sozinha.",
+        threshold: null, stepKey: "modelsattacking", max: maxModels, countLabel: "Modelos a " + (phaseKey === "fight" ? "lutar" : "disparar"),
+        initialValue: maxModels,
+        roller: "attacker", rollerName: attackerRollerName, rollWhy: "Confirma quantos modelos desta unidade participam neste ataque.",
+        onConfirm: n => { c.modelsAttacking = Math.max(0, n); render(); },
+        confirmLabel: "Confirmar modelos →",
+      }));
+      return wrap;
+    }
+
     if (needsAttacksRollStep && c.attacksRolled === null) {
       wrap.appendChild(renderNumberStep({
-        title: "Attacks desta arma (base " + weapon.A + "): quanto rolaste?",
-        hint: "Depois soma-se o bónus de +" + attacksBonus + " attacks (" + attacksBonusLabel(weapon, c) + ") antes de perguntar os hits.",
+        title: "Attacks desta arma (base " + weapon.A + (modelsAttacking > 1 ? " × " + modelsAttacking + " modelos" : "") + "): quanto rolaste?",
+        hint: "Depois soma-se o bónus de +" + attacksBonus + " attacks (" + attacksBonusLabel(weapon, c) + ") antes de perguntar os hits." + (modelsAttacking > 1 ? " " + modelsAttacking + " modelos a disparar → rola " + modelsAttacking + " dados de " + weapon.A + " (um por modelo) e soma o total." : ""),
         threshold: null, stepKey: "attacksroll", max: attacksMax, countLabel: "Attacks rolados (base)",
         roller: "attacker", rollerName: attackerRollerName, rollWhy: "Roll de Attacks — decide quantos ataques esta arma faz neste ataque.",
         onConfirm: n => { c.attacksRolled = n; render(); },
@@ -2485,13 +2527,13 @@ function renderAttackCycle(phaseKey) {
     }
 
     const effectiveAttacksMax = attackIsFixed
-      ? weapon.A + attacksBonus
+      ? (weapon.A * modelsAttacking) + attacksBonus
       : (needsAttacksRollStep ? c.attacksRolled + attacksBonus : attacksMax);
     const attacksBonusSuffix = attacksBonus ? " · +" + attacksBonus + " attacks (" + attacksBonusLabel(weapon, c) + ")" : "";
     if (isTorrent) {
       wrap.appendChild(renderNumberStep({
         title: "Quantos hits (TORRENT — acerta sempre)?",
-        hint: "🎯 Arma TORRENT: acerta automaticamente, não há hit roll. Introduz quantos ataques rolaste." + attacksBonusSuffix,
+        hint: "🎯 Arma TORRENT: acerta automaticamente, não há hit roll. Introduz quantos ataques rolaste." + (modelsAttacking > 1 && !attackIsFixed ? " " + modelsAttacking + " modelos a disparar → rola " + modelsAttacking + " dados de " + weapon.A + " (um por modelo) e soma o total." : "") + attacksBonusSuffix,
         threshold: null, stepKey: "hits", max: effectiveAttacksMax, countLabel: "Hits",
         roller: "attacker", rollerName: attackerRollerName, rollWhy: "Roll de ataque (hit roll) — TORRENT acerta sempre, mas contas na mesma quantos ataques fizeste.",
         onConfirm: n => { c.hits = n; c.step = 2; render(); },
@@ -3270,6 +3312,7 @@ function renderPicker(instances, phaseKey) {
     c.heavyStationary = null; c.chargedThisTurn = null; c.lethalHitCrits = null;
     c.groupFlow = null; c.groupCursor = 0; c.woundsPool = 0; c.groupResults = {};
     c.deathScreamAsked = null; c.disruptionApplied = null;
+    c.modelsAttacking = null;
     render();
   };
   card.appendChild(startBtn);
