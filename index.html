@@ -366,6 +366,7 @@ const RAW_UNITS = {
         "Faction: Synapse",
         "Death Scream: depois de disparar, uma unidade atingida tem de testar Battleshock com -1"
       ],
+      "deathScreamOnHit": "Death Scream: depois de disparar, uma unidade atingida tem de testar Battleshock com -1",
       "defaultCount":1},
     {"name":"Psychophage","points":110,"keywords":["MONSTER"],
       "stats":{"M":"12\"","T":9,"SV":"3+","W":10,"LD":"8+","OC":3},
@@ -1077,6 +1078,10 @@ function emptyCycle() {
     // FEEL NO PAIN: sucessos reportados depois do save normal, que cancelam
     // mortes já calculadas (ability de unidade, nunca decidida pela app).
     fnpSuccesses: null,
+    // DEATH SCREAM (Screamer-Killer): depois de disparar e acertar, o alvo
+    // testa Battleshock com -1 — perguntado uma vez por ataque resolvido
+    // (Shooting Phase só), nunca decidido sozinho pela app.
+    deathScreamAsked: null,
     // RAPID FIRE X / MELTA X: condição física (alcance) respondida no ecrã
     // de escolha da arma, antes do passo 1. CLEAVE X / BLAST X: contagem de
     // modelos do alvo, também respondida aí (partilhada entre as duas).
@@ -1623,6 +1628,67 @@ function renderChecklist(phaseKey, items) {
   return card;
 }
 
+// Testa Battle-shock para UMA unidade — usado tanto na lista automática da
+// Command Phase como em triggers imediatos de habilidades fora dela (ex:
+// Death Scream do Screamer-Killer, na própria Shooting Phase do atacante).
+// opts.rollPenalty (opcional, ex: -1): subtraído ao resultado antes de
+// comparar com a LD — a app nunca decide a habilidade sozinha, só aplica o
+// modificador já confirmado pelo pedido do jogador. opts.onConfirm(passed):
+// chamado depois de u.battleshocked já estar atualizado.
+function renderBattleshockRoll(u, opts) {
+  const rollKey = String(u.id) + (opts.rollKeySuffix || "");
+  const repGroup = u.groups.reduce((best, g) => (g.liveCount > (best ? best.liveCount : -1) ? g : best), null);
+  const ld = parseThreshold(repGroup ? repGroup.stats.LD : null) || 7;
+  const row = el("div", { class: "unit-instance" });
+  styleFactionLeftBorder(row, u.faction);
+  row.appendChild(el("div", { text: u.label + " — " + totalLive(u) + "/" + totalInitial(u) + " modelos" + (u.battleshocked ? " (já battle-shocked)" : ""), style: "font-size:13px;margin-bottom:6px;" }));
+
+  // Synapse (Tyranids): unidade a 6" ou menos de uma fonte de Synapse testa
+  // com 3D6 em vez de 2D6 — a app não sabe posições físicas, por isso
+  // pergunta e nunca decide sozinha.
+  const isTyranid = u.faction === "Tyranids";
+  const synapseInRange = isTyranid && state.game.battleshockSynapse[rollKey] === true;
+  if (isTyranid) {
+    const synRow = el("div", { class: "row" });
+    synRow.style.marginBottom = "6px";
+    synRow.appendChild(el("label", { text: "A 6\" ou menos de Synapse?", style: "margin:0;font-size:11px;" }));
+    const sel = el("select");
+    sel.style.width = "auto";
+    [["no", "Não"], ["yes", "Sim"]].forEach(([v, t]) => {
+      const o = el("option", { value: v, text: t });
+      if ((state.game.battleshockSynapse[rollKey] === true) === (v === "yes")) o.selected = true;
+      sel.appendChild(o);
+    });
+    sel.onchange = e => { state.game.battleshockSynapse[rollKey] = e.target.value === "yes"; render(); };
+    synRow.appendChild(sel);
+    row.appendChild(synRow);
+  }
+
+  const diceCount = synapseInRange ? 3 : 2;
+  const maxRoll = synapseInRange ? 18 : 12;
+  const penalty = opts.rollPenalty || 0;
+  const penaltyText = penalty ? (" (" + penalty + " ao resultado)") : "";
+  row.appendChild(el("div", { class: "step-hint", text: "LD usada: " + (repGroup ? repGroup.stats.LD : "?") + " (grupo " + (repGroup ? repGroup.label : "?") + "). Rola " + diceCount + "D6" + penaltyText + " — precisas de " + ld + "+" + (penalty ? " (já com o modificador)" : "") + " para passar." }));
+  const val = state.game.battleshockRolls[rollKey] || 0;
+  const inp = el("input", { type: "number" });
+  inp.value = val; inp.min = String(diceCount); inp.max = String(maxRoll);
+  inp.oninput = e => { state.game.battleshockRolls[rollKey] = Math.max(0, parseInt(e.target.value) || 0); };
+  row.appendChild(inp);
+  const btn = el("button", { class: "primary", text: "Confirmar resultado" });
+  btn.style.cssText = "width:100%;margin-top:6px;";
+  btn.onclick = () => {
+    const roll = (state.game.battleshockRolls[rollKey] || 0) + penalty;
+    const passed = roll >= ld;
+    u.battleshocked = !passed;
+    delete state.game.battleshockRolls[rollKey];
+    delete state.game.battleshockSynapse[rollKey];
+    if (opts.onConfirm) opts.onConfirm(passed);
+    render();
+  };
+  row.appendChild(btn);
+  return row;
+}
+
 function renderCommandPhase() {
   const wrap = el("div");
   const p = activePlayer();
@@ -1641,55 +1707,7 @@ function renderCommandPhase() {
   if (needsTest.length === 0) {
     bsCard.appendChild(el("div", { class: "empty", text: "Nenhuma unidade precisa de testar (todas acima de metade força e não battle-shocked)." }));
   }
-  needsTest.forEach(u => {
-    const repGroup = u.groups.reduce((best, g) => (g.liveCount > (best ? best.liveCount : -1) ? g : best), null);
-    const ld = parseThreshold(repGroup ? repGroup.stats.LD : null) || 7;
-    const row = el("div", { class: "unit-instance" });
-    styleFactionLeftBorder(row, u.faction);
-    row.appendChild(el("div", { text: u.label + " — " + totalLive(u) + "/" + totalInitial(u) + " modelos" + (u.battleshocked ? " (já battle-shocked)" : ""), style: "font-size:13px;margin-bottom:6px;" }));
-    const rollKey = String(u.id);
-
-    // Synapse (Tyranids): unidade a 6" ou menos de uma fonte de Synapse
-    // testa com 3D6 em vez de 2D6 — a app não sabe posições físicas, por
-    // isso pergunta e nunca decide sozinha.
-    const isTyranid = u.faction === "Tyranids";
-    const synapseInRange = isTyranid && state.game.battleshockSynapse[rollKey] === true;
-    if (isTyranid) {
-      const synRow = el("div", { class: "row" });
-      synRow.style.marginBottom = "6px";
-      synRow.appendChild(el("label", { text: "A 6\" ou menos de Synapse?", style: "margin:0;font-size:11px;" }));
-      const sel = el("select");
-      sel.style.width = "auto";
-      [["no", "Não"], ["yes", "Sim"]].forEach(([v, t]) => {
-        const o = el("option", { value: v, text: t });
-        if ((state.game.battleshockSynapse[rollKey] === true) === (v === "yes")) o.selected = true;
-        sel.appendChild(o);
-      });
-      sel.onchange = e => { state.game.battleshockSynapse[rollKey] = e.target.value === "yes"; render(); };
-      synRow.appendChild(sel);
-      row.appendChild(synRow);
-    }
-
-    const diceCount = synapseInRange ? 3 : 2;
-    const maxRoll = synapseInRange ? 18 : 12;
-    row.appendChild(el("div", { class: "step-hint", text: "LD usada: " + (repGroup ? repGroup.stats.LD : "?") + " (grupo " + (repGroup ? repGroup.label : "?") + "). Rola " + diceCount + "D6 — precisas de " + ld + "+ para passar." }));
-    const val = state.game.battleshockRolls[rollKey] || 0;
-    const inp = el("input", { type: "number" });
-    inp.value = val; inp.min = String(diceCount); inp.max = String(maxRoll);
-    inp.oninput = e => { state.game.battleshockRolls[rollKey] = Math.max(0, parseInt(e.target.value) || 0); };
-    row.appendChild(inp);
-    const btn = el("button", { class: "primary", text: "Confirmar resultado" });
-    btn.style.cssText = "width:100%;margin-top:6px;";
-    btn.onclick = () => {
-      const roll = state.game.battleshockRolls[rollKey] || 0;
-      u.battleshocked = roll < ld;
-      delete state.game.battleshockRolls[rollKey];
-      delete state.game.battleshockSynapse[rollKey];
-      render();
-    };
-    row.appendChild(btn);
-    bsCard.appendChild(row);
-  });
+  needsTest.forEach(u => bsCard.appendChild(renderBattleshockRoll(u, {})));
   wrap.appendChild(bsCard);
 
   return wrap;
@@ -2232,6 +2250,29 @@ function allInstances() {
   return a.concat(b);
 }
 function findInstance(id) { return allInstances().find(u => String(u.id) === String(id)); }
+// allInstances()/findInstance() devolvem uma CÓPIA superficial (owner/
+// ownerName juntados) — dá para mutar u.groups[].liveCount porque o array é
+// partilhado por referência, mas atribuir u.battleshocked = ... na cópia
+// nunca chegaria ao estado real. Para isso, ir buscar a unidade verdadeira.
+function findRealUnit(id) {
+  for (const p of [state.setup.playerA, state.setup.playerB]) {
+    const u = p.units.find(x => String(x.id) === String(id));
+    if (u) return u;
+  }
+  return null;
+}
+// DEATH SCREAM (Screamer-Killer) e habilidades semelhantes: ability de
+// UNIDADE (não de arma) que só se aplica na Shooting Phase, detetada num
+// campo estruturado próprio da datasheet (deathScreamOnHit) — nunca por
+// procurar texto livre em "abilities".
+function deathScreamAbility(attacker, phaseKey) {
+  if (phaseKey !== "shooting") return null;
+  for (const name of attacker.datasheetNames) {
+    const ds = findDatasheet(library, name);
+    if (ds && ds.deathScreamOnHit) return ds.deathScreamOnHit;
+  }
+  return null;
+}
 
 function renderAttackCycle(phaseKey) {
   const wrap = el("div");
@@ -2787,6 +2828,28 @@ function renderAttackCycle(phaseKey) {
   }
 
   if (c.step === 5) {
+    // DEATH SCREAM (Screamer-Killer): depois de disparar e acertar, o alvo
+    // testa Battleshock com -1 — independente de mortes/saves, por isso
+    // resolve-se antes do Feel No Pain. Só pergunta se houve pelo menos 1
+    // hit (a ability exige "unidade atingida"); sem hits, marca como já
+    // perguntado e segue em frente sem mostrar nada.
+    const deathScreamText = deathScreamAbility(attacker, phaseKey);
+    if (deathScreamText && c.deathScreamAsked === null) {
+      if (c.hits > 0) {
+        const dsCard = el("div", { class: "card" });
+        dsCard.appendChild(renderRollerBadge("defender", defenderRollerName, "Death Scream — atingido pelo Screamer-Killer, testa Battle-shock com -1."));
+        dsCard.appendChild(el("div", { class: "step-hint", text: "☠️ " + deathScreamText, style: "color:var(--gold);font-weight:600;font-size:13px;" }));
+        const realTarget = findRealUnit(target.id);
+        dsCard.appendChild(renderBattleshockRoll(realTarget, {
+          rollPenalty: -1,
+          onConfirm: () => { c.deathScreamAsked = true; },
+        }));
+        wrap.appendChild(dsCard);
+        return wrap;
+      }
+      c.deathScreamAsked = true;
+    }
+
     // FEEL NO PAIN: ability de UNIDADE (não de arma), detetada no campo
     // "abilities" da datasheet do alvo — sempre DEPOIS do save normal e das
     // mortal wounds de Devastating Wounds, nunca antes. Passo adicional, só
@@ -3146,6 +3209,7 @@ function renderPicker(instances, phaseKey) {
     c.sustainedHits = null; c.fnpSuccesses = null; c.attacksRolled = null;
     c.heavyStationary = null; c.chargedThisTurn = null; c.lethalHitCrits = null;
     c.groupFlow = null; c.groupCursor = 0; c.woundsPool = 0; c.groupResults = {};
+    c.deathScreamAsked = null;
     render();
   };
   card.appendChild(startBtn);
