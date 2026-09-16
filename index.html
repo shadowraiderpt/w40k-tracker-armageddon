@@ -119,6 +119,7 @@
   .unit-instance.dead{opacity:0.45;}
   .unit-instance.dead .estado-unit-name{text-decoration:line-through;}
   .battleshock-badge{display:inline-block;background:var(--danger);color:#fff;font-family:var(--display-font);font-size:11px;letter-spacing:0.04em;padding:3px 8px;border-radius:3px;text-transform:uppercase;white-space:nowrap;}
+  .disrupted-badge{display:inline-block;background:#8a5a1e;color:#fff;font-family:var(--display-font);font-size:11px;letter-spacing:0.04em;padding:3px 8px;border-radius:3px;text-transform:uppercase;white-space:nowrap;}
   .estado-name-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
   .estado-name-row .estado-unit-name{margin-bottom:0;}
   .roller-badge{border-radius:4px;padding:8px 10px;margin-bottom:10px;border-left:4px solid;}
@@ -432,8 +433,9 @@ const RAW_UNITS = {
       "melee_weapons":[{"name":"Chitinous claws and teeth","range":"Melee","A":1,"WS":"4+","S":4,"AP":0,"D":1}],
       "abilities":[
         "Faction: Synapse",
-        "Disruption Bombardment: depois de disparar, uma unidade de infantaria inimiga atingida fica 'disrupted' até ao fim do próximo turno do adversário: -2 ao Move e -2 aos rolls de Advance/Charge"
+        "Disruption Bombardment: unidade inimiga atingida pelos ataques de tiro desta unidade tem -2 ao Move e aos rolls de Advance e Charge, até ao fim do próximo turno do adversário (sem restrição a INFANTRY — corrigido a partir do texto oficial da carta, que não tem essa restrição)"
       ],
+      "disruptedOnHit": "Disruption Bombardment: unidade inimiga atingida pelos ataques de tiro desta unidade tem -2 ao Move e aos rolls de Advance e Charge, até ao fim do próximo turno do adversário",
       "defaultCount":5}
   ]
 };
@@ -1082,6 +1084,10 @@ function emptyCycle() {
     // testa Battleshock com -1 — perguntado uma vez por ataque resolvido
     // (Shooting Phase só), nunca decidido sozinho pela app.
     deathScreamAsked: null,
+    // DISRUPTION BOMBARDMENT (Barbgaunts): sem teste nenhum (não é uma
+    // ability condicional a um roll) — só marca o alvo como "disrupted" se
+    // houve ≥1 hit, uma vez por ataque resolvido (Shooting Phase só).
+    disruptionApplied: null,
     // RAPID FIRE X / MELTA X: condição física (alcance) respondida no ecrã
     // de escolha da arma, antes do passo 1. CLEAVE X / BLAST X: contagem de
     // modelos do alvo, também respondida aí (partilhada entre as duas).
@@ -1158,6 +1164,7 @@ function startNewGame() {
     player.cp = 0;
     player.units.forEach(u => {
       u.battleshocked = false;
+      u.disrupted = false;
       u.groups.forEach(g => { g.liveCount = g.initialCount; g.woundsRemainingOnCurrent = g.stats.W; });
     });
   });
@@ -1227,6 +1234,7 @@ function unitLiveLabel(u) {
   const initial = totalInitial(u);
   let label = initial <= 1 ? u.label : (u.label + " — " + totalLive(u) + "/" + initial + " vivos");
   if (u.battleshocked) label += " ☠️ BATTLESHOCKED";
+  if (u.disrupted) label += " 🐌 DISRUPTED (-2 M/Advance/Charge)";
   return label;
 }
 // Badge visível de "esta unidade está battleshocked" — usado fora do
@@ -1235,6 +1243,13 @@ function unitLiveLabel(u) {
 // ao contar Objective Control (OC cai a 0) mais tarde na ronda.
 function renderBattleshockBadge() {
   return el("span", { class: "battleshock-badge", text: "☠️ Battleshocked" });
+}
+// Badge visível de "esta unidade está disrupted" (Disruption Bombardment
+// dos Barbgaunts e semelhantes) — lembra o -2 ao Move/Advance/Charge até
+// ao fim do próximo turno do adversário. Limpa-se sozinho no fim desse
+// turno (ver clearExpiredDisruption(), chamado a partir de advancePhase()).
+function renderDisruptedBadge() {
+  return el("span", { class: "disrupted-badge", text: "🐌 Disrupted (-2 M/Advance/Charge)" });
 }
 function playerFactionLabel(player) {
   const factions = new Set(player.units.map(u => u.faction));
@@ -1270,18 +1285,29 @@ function resetPhaseTransientState() {
   state.cycle = emptyCycle();
 }
 
+// DISRUPTION BOMBARDMENT e semelhantes duram "até ao fim do próximo turno
+// do adversário" — como os turnos alternam sempre A, B, A, B..., o turno
+// seguinte ao de quem aplicou o efeito é sempre exatamente o turno do
+// alvo, por isso basta limpar no fim do turno de quem está marcado.
+function clearExpiredDisruption(playerKey) {
+  state.setup[playerKey].units.forEach(u => { u.disrupted = false; });
+}
+
 function advancePhase() {
   const idx = PHASES.findIndex(p => p.key === state.game.phase);
   if (idx < PHASES.length - 1) {
     state.game.phase = PHASES[idx + 1].key;
   } else if (state.game.activePlayerKey === "playerA") {
+    clearExpiredDisruption("playerA");
     state.game.activePlayerKey = "playerB";
     state.game.phase = "command";
   } else if (state.game.round < 5) {
+    clearExpiredDisruption("playerB");
     state.game.activePlayerKey = "playerA";
     state.game.phase = "command";
     state.game.round += 1;
   } else {
+    clearExpiredDisruption("playerB");
     state.game.ended = true;
   }
   resetPhaseTransientState();
@@ -1369,6 +1395,7 @@ function renderEstadoPlayerSection(player, name, faction) {
     const nameRow = el("div", { class: "estado-name-row" });
     nameRow.appendChild(el("div", { class: "estado-unit-name", text: u.label }));
     if (u.battleshocked) nameRow.appendChild(renderBattleshockBadge());
+    if (u.disrupted) nameRow.appendChild(renderDisruptedBadge());
     ui.appendChild(nameRow);
     u.groups.forEach(g => {
       const row = el("div", { class: "row" });
@@ -2039,6 +2066,7 @@ function addUnitToPlayer(playerKey, ds, opts) {
     points,
     pointsApprox: customCount,
     battleshocked: false,
+    disrupted: false,
     groups,
   };
   player.units.push(inst);
@@ -2084,6 +2112,7 @@ function renderPlayerColumn(side, player) {
     r.appendChild(nameField);
     r.appendChild(el("span", { text: u.points + " pts" + (u.pointsApprox ? "*" : ""), style: "font-size:11px;color:var(--text-sec);white-space:nowrap;" }));
     if (u.battleshocked) r.appendChild(renderBattleshockBadge());
+    if (u.disrupted) r.appendChild(renderDisruptedBadge());
     r.appendChild(el("button", { class: "small", text: "✕", onclick: () => { player.units = player.units.filter(x => x.id !== u.id); render(); } }));
     ui.appendChild(r);
     if (u.pointsApprox) {
@@ -2270,6 +2299,17 @@ function deathScreamAbility(attacker, phaseKey) {
   for (const name of attacker.datasheetNames) {
     const ds = findDatasheet(library, name);
     if (ds && ds.deathScreamOnHit) return ds.deathScreamOnHit;
+  }
+  return null;
+}
+// DISRUPTION BOMBARDMENT (Barbgaunts) e semelhantes: mesmo padrão do Death
+// Scream (campo estruturado, só Shooting Phase), mas sem teste — o efeito
+// aplica-se automaticamente a quem for atingido, sem roll nenhum.
+function disruptionAbility(attacker, phaseKey) {
+  if (phaseKey !== "shooting") return null;
+  for (const name of attacker.datasheetNames) {
+    const ds = findDatasheet(library, name);
+    if (ds && ds.disruptedOnHit) return ds.disruptedOnHit;
   }
   return null;
 }
@@ -2850,6 +2890,23 @@ function renderAttackCycle(phaseKey) {
       c.deathScreamAsked = true;
     }
 
+    // DISRUPTION BOMBARDMENT (Barbgaunts): sem teste — só marca o alvo como
+    // "disrupted" (-2 Move/Advance/Charge até ao fim do próximo turno do
+    // adversário) se houve ≥1 hit. Aplicado direto no estado real (a app
+    // decide isto sozinha porque não é condicional a nada físico na mesa,
+    // ao contrário de HEAVY/Lethal Hits/Synapse); o badge fica visível em
+    // Setup/Estado do Jogo até ao fim do turno seguinte (clearExpiredDisruption).
+    const disruptText = disruptionAbility(attacker, phaseKey);
+    let disruptionJustApplied = false;
+    if (disruptText && c.disruptionApplied === null) {
+      if (c.hits > 0) {
+        const realTarget = findRealUnit(target.id);
+        if (realTarget) realTarget.disrupted = true;
+        disruptionJustApplied = true;
+      }
+      c.disruptionApplied = true;
+    }
+
     // FEEL NO PAIN: ability de UNIDADE (não de arma), detetada no campo
     // "abilities" da datasheet do alvo — sempre DEPOIS do save normal e das
     // mortal wounds de Devastating Wounds, nunca antes. Passo adicional, só
@@ -2887,6 +2944,9 @@ function renderAttackCycle(phaseKey) {
       // rawTotalDead já reflete deadByGroup PÓS-FNP (foi recalculado neste
       // render); o total pré-FNP é esse mais os sucessos que cancelaram mortes.
       card.appendChild(el("div", { class: "step-hint", text: "⚕️ Feel No Pain " + thresholdText(fnp.value) + ": " + c.fnpSuccesses + " sucesso(s) cancelaram " + c.fnpSuccesses + " morte(s) (de " + (rawTotalDead + c.fnpSuccesses) + " antes do FNP)." }));
+    }
+    if (disruptionJustApplied) {
+      card.appendChild(el("div", { class: "step-hint", text: "🐌 " + disruptText, style: "color:var(--gold);font-weight:600;" }));
     }
     const totalText = critDamageDisplay !== null ? ((critDamageDisplay + normalDamage) + " dano total") : "dano total variável";
     const res = el("div", { class: "result final", text: totalText + " → " + totalDead + " modelo(s) morto(s)" });
@@ -3209,7 +3269,7 @@ function renderPicker(instances, phaseKey) {
     c.sustainedHits = null; c.fnpSuccesses = null; c.attacksRolled = null;
     c.heavyStationary = null; c.chargedThisTurn = null; c.lethalHitCrits = null;
     c.groupFlow = null; c.groupCursor = 0; c.woundsPool = 0; c.groupResults = {};
-    c.deathScreamAsked = null;
+    c.deathScreamAsked = null; c.disruptionApplied = null;
     render();
   };
   card.appendChild(startBtn);
