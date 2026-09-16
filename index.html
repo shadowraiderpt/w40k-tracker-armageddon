@@ -199,6 +199,7 @@ const RAW_UNITS = {
       "defaultCount":1, "leader_for":["Intercessor Squad"]},
     {"name":"Librarian","points":70,"keywords":["INFANTRY","CHARACTER"],
       "abilities":["Psychic Hood: Feel No Pain 4+ vs ataques psíquicos"],
+      "fnpCondition":{"type":"weapon_keyword","keyword":"PSYCHIC"},
       "stats":{"M":"6\"","T":4,"SV":"3+","InvSV":"4+","W":4,"LD":"6+","OC":1},
       "ranged_weapons":[
         {"name":"Bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"3+","S":4,"AP":0,"D":1},
@@ -213,6 +214,7 @@ const RAW_UNITS = {
       "defaultCount":1, "leader_for":["Vanguard Veteran Squad with Jump Packs"]},
     {"name":"Ancient","points":40,"keywords":["INFANTRY","CHARACTER"],
       "abilities":["Unbreakable Resolve: Feel No Pain 4+ perto de objetivo ou a 6\" do centro"],
+      "fnpCondition":{"type":"ask","question":"Esta unidade está perto de um objetivo, ou a 6\\\" ou menos do centro da mesa, neste momento?"},
       "stats":{"M":"6\"","T":4,"SV":"3+","W":4,"LD":"6+","OC":1},
       "ranged_weapons":[
         {"name":"Bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"3+","S":4,"AP":0,"D":1},
@@ -242,7 +244,10 @@ const RAW_UNITS = {
       ],
       "melee_weapons":[{"name":"Master-crafted power weapon","range":"Melee","A":3,"WS":"3+","S":5,"AP":-2,"D":2}],
       "defaultCount":5},
-    {"name":"Eradicator Squad with Heavy Bolters","points":80,"keywords":["INFANTRY"],"stats":{"M":"5\"","T":6,"SV":"3+","W":3,"LD":"6+","OC":1},
+    {"name":"Eradicator Squad with Heavy Bolters","points":80,"keywords":["INFANTRY"],
+      "abilities":["Overlapping Detonations: enemy MONSTER/VEHICLE units shot get [BLAST 1] on heavy bolters"],
+      "conditionalBlastVsMonsterVehicle":{"weapon":"Heavy bolter","value":1},
+      "stats":{"M":"5\"","T":6,"SV":"3+","W":3,"LD":"6+","OC":1},
       "ranged_weapons":[
         {"name":"Bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"3+","S":4,"AP":0,"D":1},
         {"name":"Heavy bolter","keywords":["HEAVY","SUSTAINED HITS 1"],"range":"36\"","A":3,"BS":"3+","S":5,"AP":-1,"D":2}
@@ -368,6 +373,7 @@ const RAW_UNITS = {
         "Death Scream: depois de disparar, uma unidade atingida tem de testar Battleshock com -1"
       ],
       "deathScreamOnHit": "Death Scream: depois de disparar, uma unidade atingida tem de testar Battleshock com -1",
+      "deadlyDemise": 1,
       "defaultCount":1},
     {"name":"Psychophage","points":110,"keywords":["MONSTER"],
       "stats":{"M":"12\"","T":9,"SV":"3+","W":10,"LD":"8+","OC":3},
@@ -379,6 +385,7 @@ const RAW_UNITS = {
         "Bio-stimulus: depois de disparar, uma unidade inimiga atingida sofre +1 AP em ataques corpo-a-corpo Tyranid contra ela até ao fim do turno (só uma vez por turno)",
         "Feeding Frenzy: +1 ao hit roll corpo-a-corpo contra alvos Below Starting Strength, +1 ao wound roll também se Below Half-strength"
       ],
+      "deadlyDemise": 1,
       "defaultCount":1},
     {"name":"Von Ryan's Leapers","points":70,"keywords":["INFANTRY"],
       "stats":{"M":"10\"","T":5,"SV":"4+","InvSV":"6+","W":3,"LD":"8+","OC":1},
@@ -891,6 +898,26 @@ function datasheetHasUnitKeyword(datasheetName, kw) {
 function targetHasUnitKeyword(target, kw) {
   return target.groups.some(g => datasheetHasUnitKeyword(g.datasheetName, kw));
 }
+// Overlapping Detonations (Eradicator Squad) e semelhantes: concede uma
+// keyword de arma condicional a uma keyword de UNIDADE do alvo (aqui,
+// BLAST X só contra MONSTER/VEHICLE) — a app já sabe a datasheet do alvo
+// confirmado, por isso decide isto sozinha (ao contrário de HEAVY/Lethal
+// Hits/Synapse, que dependem de algo físico só o jogador sabe). Devolve o
+// weapon tal como está se não houver nenhuma condição estruturada aplicável,
+// ou uma cópia com a keyword extra já incluída.
+function conditionalWeaponKeywords(attacker, weapon, target) {
+  if (!attacker || !weapon || !target) return weapon;
+  for (const name of attacker.datasheetNames) {
+    const ds = findDatasheet(library, name);
+    const cond = ds && ds.conditionalBlastVsMonsterVehicle;
+    if (cond && cond.weapon === weapon.name && !hasKeyword(weapon, "BLAST")) {
+      if (targetHasUnitKeyword(target, "MONSTER") || targetHasUnitKeyword(target, "VEHICLE")) {
+        return Object.assign({}, weapon, { keywords: (weapon.keywords || []).concat(["BLAST " + cond.value]) });
+      }
+    }
+  }
+  return weapon;
+}
 // Feel No Pain é uma ability de UNIDADE (não de arma) — texto livre no campo
 // "abilities" da datasheet, ex: "Dok's Toolz: Feel No Pain 5+". Procura em
 // TODOS os grupos do alvo (um líder anexado como o Painboy propaga a
@@ -903,12 +930,19 @@ function findFeelNoPain(abilities) {
   }
   return null;
 }
+// fnpCondition (opcional, campo estruturado na datasheet): algumas Feel No
+// Pain só se aplicam sob uma condição (ex: Librarian só "vs ataques
+// psíquicos", Ancient só "perto de objetivo ou a 6\" do centro") — sem isto,
+// a regex genérica acima aplicava-as sempre, incondicionalmente (bug real,
+// não só uma feature em falta). type:"weapon_keyword" é verificável sozinha
+// pela app (a arma atacante já é conhecida); type:"ask" é uma condição
+// física que só o jogador sabe, perguntada uma vez por ataque.
 function feelNoPainFor(target) {
   let best = null;
   target.groups.forEach(g => {
     const ds = findDatasheet(library, g.datasheetName);
     const fnp = ds && findFeelNoPain(ds.abilities);
-    if (fnp && (!best || fnp.value < best.value)) best = fnp;
+    if (fnp && (!best || fnp.value < best.value)) best = Object.assign({}, fnp, { condition: ds.fnpCondition || null, sourceDatasheet: ds.name });
   });
   return best;
 }
@@ -1101,6 +1135,10 @@ function emptyCycle() {
     // FEEL NO PAIN: sucessos reportados depois do save normal, que cancelam
     // mortes já calculadas (ability de unidade, nunca decidida pela app).
     fnpSuccesses: null,
+    // Resposta à condição física de uma Feel No Pain do tipo "ask" (ex:
+    // Ancient "perto de objetivo ou a 6\" do centro") — null até o jogador
+    // confirmar; nunca decidida sozinha pela app.
+    fnpConditionAnswered: null,
     // DEATH SCREAM (Screamer-Killer): depois de disparar e acertar, o alvo
     // testa Battleshock com -1 — perguntado uma vez por ataque resolvido
     // (Shooting Phase só), nunca decidido sozinho pela app.
@@ -1115,6 +1153,11 @@ function emptyCycle() {
     // de vista, etc.). Multiplica o máximo de Attacks/hits — nunca assume
     // só 1 modelo.
     modelsAttacking: null,
+    // DEADLY DEMISE X (Screamer-Killer, Psychophage): ao morrer, rola 1D6 —
+    // num 6, unidades a 6" (de qualquer jogador) sofrem X mortal wounds cada.
+    // A app não sabe posições físicas, por isso só regista o roll e o
+    // resultado; a aplicação do dano a unidades próximas é sempre manual.
+    deadlyDemiseAsked: null, deadlyDemiseRoll: null, deadlyDemiseTriggered: false,
     // RAPID FIRE X / MELTA X: condição física (alcance) respondida no ecrã
     // de escolha da arma, antes do passo 1. CLEAVE X / BLAST X: contagem de
     // modelos do alvo, também respondida aí (partilhada entre as duas).
@@ -2362,8 +2405,9 @@ function renderAttackCycle(phaseKey) {
 
   const attacker = findInstance(c.attackerId);
   const attackerWeapons = attacker ? weaponsForPhase(attacker, phaseKey) : [];
-  const weapon = attacker && c.weaponIdx !== "" ? attackerWeapons[c.weaponIdx] : null;
+  const rawWeapon = attacker && c.weaponIdx !== "" ? attackerWeapons[c.weaponIdx] : null;
   const target = findInstance(c.targetId);
+  const weapon = conditionalWeaponKeywords(attacker, rawWeapon, target);
   if (!attacker || !weapon || !target) { c.step = 0; return renderAttackCycle(phaseKey); }
   // Nome a mostrar na badge "quem rola" de cada passo — sempre o jogador
   // dono da unidade + a unidade em si, para nunca haver dúvida.
@@ -2958,13 +3002,75 @@ function renderAttackCycle(phaseKey) {
       c.disruptionApplied = true;
     }
 
+    // DEADLY DEMISE X (Screamer-Killer, Psychophage): dispara quando a
+    // unidade morre POR COMPLETO nesta resolução — pergunta o roll 1D6 uma
+    // vez; a app não sabe quem está a 6", só regista o resultado e lembra o
+    // jogador de aplicar o dano manualmente se disparar (num 6).
+    const deadlyDemiseX = (() => {
+      for (const name of target.datasheetNames) {
+        const ds = findDatasheet(library, name);
+        if (ds && ds.deadlyDemise) return ds.deadlyDemise;
+      }
+      return null;
+    })();
+    if (deadlyDemiseX && c.deadlyDemiseAsked === null) {
+      const survivingLive = target.groups.reduce((s, g) => s + Math.max(0, g.liveCount - ((c.deadByGroup && c.deadByGroup[g.key]) || 0)), 0);
+      if (survivingLive === 0) {
+        const ddCard = el("div", { class: "card" });
+        ddCard.appendChild(renderRollerBadge("defender", defenderRollerName, "Deadly Demise " + deadlyDemiseX + " — a unidade foi destruída."));
+        ddCard.appendChild(el("div", { class: "step-hint", text: "☠️ Ao morrer, rola 1D6 — num 6, TODAS as unidades a 6\" (de qualquer jogador) sofrem " + deadlyDemiseX + " mortal wound(s) cada. A app não sabe quem está a 6\" — se disparar, aplica o dano manualmente (aba Estado do Jogo).", style: "color:var(--gold);font-weight:600;font-size:13px;" }));
+        const inp = el("input", { type: "number" });
+        inp.min = "1"; inp.max = "6"; inp.value = c.deadlyDemiseRoll || 1;
+        inp.oninput = e => { c.deadlyDemiseRoll = Math.max(1, Math.min(6, parseInt(e.target.value) || 1)); };
+        ddCard.appendChild(inp);
+        const btn = el("button", { class: "primary", text: "Confirmar resultado →" });
+        btn.style.cssText = "width:100%;margin-top:8px;";
+        btn.onclick = () => {
+          c.deadlyDemiseAsked = true;
+          c.deadlyDemiseTriggered = (c.deadlyDemiseRoll || 0) === 6;
+          render();
+        };
+        ddCard.appendChild(btn);
+        wrap.appendChild(ddCard);
+        return wrap;
+      }
+      c.deadlyDemiseAsked = true;
+    }
+
     // FEEL NO PAIN: ability de UNIDADE (não de arma), detetada no campo
     // "abilities" da datasheet do alvo — sempre DEPOIS do save normal e das
     // mortal wounds de Devastating Wounds, nunca antes. Passo adicional, só
     // aparece se houver mortes já calculadas para cancelar.
     const fnp = feelNoPainFor(target);
     const rawTotalDead = Object.values(c.deadByGroup || {}).reduce((a, b) => a + b, 0);
-    if (fnp && c.fnpSuccesses === null && rawTotalDead > 0) {
+    // fnp.condition: nem toda Feel No Pain é incondicional (bug corrigido —
+    // antes aplicava-se sempre). "weapon_keyword": a app verifica sozinha se
+    // a arma atacante tem essa keyword (ex: Librarian só vs PSYCHIC).
+    // "ask": condição física que só o jogador sabe (ex: Ancient perto de
+    // objetivo/centro) — pergunta uma vez antes de oferecer o roll.
+    let fnpApplies = !!fnp;
+    if (fnp && fnp.condition) {
+      if (fnp.condition.type === "weapon_keyword") {
+        fnpApplies = hasKeyword(weapon, fnp.condition.keyword);
+      } else if (fnp.condition.type === "ask") {
+        if (c.fnpConditionAnswered === null && rawTotalDead > 0) {
+          const condCard = el("div", { class: "card" });
+          condCard.appendChild(renderRollerBadge("defender", defenderRollerName, "Condição de Feel No Pain — confirma antes de rolar."));
+          condCard.appendChild(el("div", { class: "step-hint", text: "⚕️ " + fnp.label, style: "color:var(--gold);font-weight:600;font-size:13px;" }));
+          condCard.appendChild(el("h3", { text: fnp.condition.question }));
+          const sel = el("select");
+          [["", "— escolher —"], ["yes", "Sim"], ["no", "Não"]].forEach(([v, t]) => {
+            sel.appendChild(el("option", { value: v, text: t }));
+          });
+          sel.onchange = e => { c.fnpConditionAnswered = e.target.value === "" ? null : e.target.value === "yes"; render(); };
+          condCard.appendChild(sel);
+          wrap.appendChild(condCard);
+          return wrap;
+        }
+        fnpApplies = c.fnpConditionAnswered === true;
+      }
+    }
+    if (fnp && fnpApplies && c.fnpSuccesses === null && rawTotalDead > 0) {
       wrap.appendChild(renderNumberStep({
         title: "Feel No Pain " + thresholdText(fnp.value) + " — quantos passaram?",
         hint: "⚕️ " + fnp.label + ". Rola 1 dado por cada uma das " + rawTotalDead + " mortes já calculadas (depois do save normal) — cada sucesso cancela 1 morte.",
@@ -2998,6 +3104,12 @@ function renderAttackCycle(phaseKey) {
     }
     if (disruptionJustApplied) {
       card.appendChild(el("div", { class: "step-hint", text: "🐌 " + disruptText, style: "color:var(--gold);font-weight:600;" }));
+    }
+    if (deadlyDemiseX && c.deadlyDemiseAsked && c.deadlyDemiseRoll) {
+      card.appendChild(el("div", { text: c.deadlyDemiseTriggered
+        ? "☠️ Deadly Demise " + deadlyDemiseX + ": rolaste " + c.deadlyDemiseRoll + " — DISPAROU! Aplica " + deadlyDemiseX + " mortal wound(s) a cada unidade a 6\" (de qualquer jogador) manualmente."
+        : "☠️ Deadly Demise " + deadlyDemiseX + ": rolaste " + c.deadlyDemiseRoll + " — sem efeito.",
+        style: "color:var(--gold);font-weight:600;" }));
     }
     const totalText = critDamageDisplay !== null ? ((critDamageDisplay + normalDamage) + " dano total") : "dano total variável";
     const res = el("div", { class: "result final", text: totalText + " → " + totalDead + " modelo(s) morto(s)" });
@@ -3245,8 +3357,8 @@ function renderPicker(instances, phaseKey) {
   f3.appendChild(sel3);
   card.appendChild(f3);
 
-  const weapon = attacker && c.weaponIdx !== "" ? attackerWeapons[c.weaponIdx] : null;
   const target = findInstance(c.targetId);
+  const weapon = conditionalWeaponKeywords(attacker, attacker && c.weaponIdx !== "" ? attackerWeapons[c.weaponIdx] : null, target);
 
   // RAPID FIRE X / CLEAVE X / MELTA X / BLAST X: a app nunca decide a
   // condição (alcance medido, tamanho do alvo) — só pergunta e aplica o
@@ -3317,11 +3429,12 @@ function renderPicker(instances, phaseKey) {
     c.manualDamage = null; c.deadByGroup = null;
     c.hitAdjust = 0; c.woundAdjust = 0;
     c.critWounds = null; c.critInstances = null; c.critInstancesByGroup = null;
-    c.sustainedHits = null; c.fnpSuccesses = null; c.attacksRolled = null;
+    c.sustainedHits = null; c.fnpSuccesses = null; c.fnpConditionAnswered = null; c.attacksRolled = null;
     c.heavyStationary = null; c.chargedThisTurn = null; c.lethalHitCrits = null;
     c.groupFlow = null; c.groupCursor = 0; c.woundsPool = 0; c.groupResults = {};
     c.deathScreamAsked = null; c.disruptionApplied = null;
     c.modelsAttacking = null;
+    c.deadlyDemiseAsked = null; c.deadlyDemiseRoll = null; c.deadlyDemiseTriggered = false;
     render();
   };
   card.appendChild(startBtn);
