@@ -1,0 +1,12 @@
+{
+  "name": "w40k-tracker-tests",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Node test harness for demo/index.html game-logic (not part of the deployed app).",
+  "scripts": {
+    "test": "node run-tests.js"
+  },
+  "devDependencies": {
+    "jsdom": "^25.0.0"
+  }
+}

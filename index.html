@@ -2527,10 +2527,16 @@ function renderAttackCycle(phaseKey) {
   const meltaBonus = computeDamageBonus(weapon, c);
   const attacksMax = maxOfDiceNotation(weapon.A) * modelsAttacking;
 
-  // RAPID FIRE/CLEAVE/BLAST com Attacks variável (ex: D3) precisam de saber
-  // o valor base fisicamente rolado antes de somar o bónus (com A fixo o
-  // bónus soma-se direto ao número, sem perguntar nada de novo).
-  const needsAttacksRollStep = !attackIsFixed && attacksBonus !== 0;
+  // Attacks variável (ex: D3, D6, D6+3) tem SEMPRE de ser resolvido com um
+  // roll próprio antes do hit roll — mesmo sem nenhum bónus a somar (bug
+  // corrigido: antes só perguntava isto quando havia bónus de RAPID FIRE/
+  // CLEAVE/BLAST a somar, e nos outros casos assumia o valor MÁXIMO da
+  // notação como se fosse sempre esse, ex: tratava "D6" como "6" fixo). Com
+  // vários modelos a disparar, cada um rola o seu dado e o total é a soma —
+  // o campo aceita isso (é 1 valor só a introduzir), o aviso "🎲 Lança N
+  // dados" mostra quantos dados físicos lançar (=modelsAttacking), não o
+  // máximo teórico da soma.
+  const needsAttacksRollStep = !attackIsFixed;
 
   // "Corrigir passo anterior" — nunca apaga o valor já confirmado do passo
   // a que se volta (fica pré-preenchido para editar), só invalida os
@@ -2571,10 +2577,12 @@ function renderAttackCycle(phaseKey) {
     }
 
     if (needsAttacksRollStep && c.attacksRolled === null) {
+      const bonusSentence = attacksBonus ? " Depois soma-se o bónus de +" + attacksBonus + " attacks (" + attacksBonusLabel(weapon, c, modelsAttacking) + ") antes de perguntar os hits." : "";
       wrap.appendChild(renderNumberStep({
         title: "Attacks desta arma (base " + weapon.A + (modelsAttacking > 1 ? " × " + modelsAttacking + " modelos" : "") + "): quanto rolaste?",
-        hint: "Depois soma-se o bónus de +" + attacksBonus + " attacks (" + attacksBonusLabel(weapon, c, modelsAttacking) + ") antes de perguntar os hits." + (modelsAttacking > 1 ? " " + modelsAttacking + " modelos a disparar → rola " + modelsAttacking + " dados de " + weapon.A + " (um por modelo) e soma o total." : ""),
+        hint: (modelsAttacking > 1 ? modelsAttacking + " modelos a disparar → rola " + modelsAttacking + " dados de " + weapon.A + " (um por modelo) e soma o total." : "Rola " + weapon.A + " para determinar quantos ataques esta arma faz.") + bonusSentence,
         threshold: null, stepKey: "attacksroll", max: attacksMax, countLabel: "Attacks rolados (base)",
+        rollsDice: true, diceCount: modelsAttacking,
         roller: "attacker", rollerName: attackerRollerName, rollWhy: "Roll de Attacks — decide quantos ataques esta arma faz neste ataque.",
         onConfirm: n => { c.attacksRolled = n; render(); },
         confirmLabel: "Confirmar attacks →",
@@ -2620,14 +2628,16 @@ function renderAttackCycle(phaseKey) {
       return wrap;
     }
 
+    // Chegados aqui, se !attackIsFixed o Attacks já foi resolvido pelo passo
+    // acima (c.attacksRolled nunca é null neste ponto).
     const effectiveAttacksMax = attackIsFixed
       ? (weapon.A * modelsAttacking) + attacksBonus
-      : (needsAttacksRollStep ? c.attacksRolled + attacksBonus : attacksMax);
+      : c.attacksRolled + attacksBonus;
     const attacksBonusSuffix = attacksBonus ? " · +" + attacksBonus + " attacks (" + attacksBonusLabel(weapon, c, modelsAttacking) + ")" : "";
     if (isTorrent) {
       wrap.appendChild(renderNumberStep({
         title: "Quantos hits (TORRENT — acerta sempre)?",
-        hint: "🎯 Arma TORRENT: acerta automaticamente, não há hit roll. Introduz quantos ataques rolaste." + (modelsAttacking > 1 && !attackIsFixed ? " " + modelsAttacking + " modelos a disparar → rola " + modelsAttacking + " dados de " + weapon.A + " (um por modelo) e soma o total." : "") + attacksBonusSuffix,
+        hint: "🎯 Arma TORRENT: acerta automaticamente, não há hit roll. Introduz quantos ataques rolaste." + attacksBonusSuffix,
         threshold: null, stepKey: "hits", max: effectiveAttacksMax, countLabel: "Hits",
         roller: "attacker", rollerName: attackerRollerName, rollWhy: "Roll de ataque (hit roll) — TORRENT acerta sempre, mas contas na mesma quantos ataques fizeste.",
         onConfirm: n => { c.hits = n; c.step = 2; render(); },
@@ -3640,8 +3650,14 @@ function renderNumberStep(opts) {
   // wounds/saves/FNP) — nunca nos que recontam dados já rolados noutro passo
   // (Sustained Hits, Devastating Wounds críticos, Lethal Hits), onde "lança
   // X dados" seria uma instrução errada.
-  if (opts.rollsDice && max !== null) {
-    card.appendChild(el("div", { class: "dice-call", text: "🎲 Lança " + max + (max === 1 ? " dado" : " dados") + "." }));
+  // opts.diceCount: só nos passos onde o Nº de dados FÍSICOS a lançar é
+  // diferente do valor máximo do campo (ex: Attacks aleatório de N modelos —
+  // o jogador lança N dados e SOMA, mas o campo aceita até N×valor máximo
+  // da notação). Sem isto, assume-se max (hits/wounds/saves: 1 dado por
+  // tentativa, por isso os dois coincidem).
+  const diceCount = (typeof opts.diceCount === "number") ? opts.diceCount : max;
+  if (opts.rollsDice && diceCount !== null) {
+    card.appendChild(el("div", { class: "dice-call", text: "🎲 Lança " + diceCount + (diceCount === 1 ? " dado" : " dados") + "." }));
   }
   card.appendChild(el("div", { class: "step-hint", text: opts.hint }));
   card.appendChild(el("h3", { text: opts.title }));
