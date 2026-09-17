@@ -196,6 +196,12 @@ const RAW_UNITS = {
     {"name":"Captain with Relic Shield","points":80,"keywords":["INFANTRY","CHARACTER"],"stats":{"M":"6\"","T":4,"SV":"3+","InvSV":"4+","W":5,"LD":"6+","OC":1},
       "ranged_weapons":[{"name":"Heavy bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"18\"","A":1,"BS":"2+","S":4,"AP":-1,"D":1}],
       "melee_weapons":[{"name":"Master-crafted power weapon","range":"Melee","A":6,"WS":"2+","S":5,"AP":-2,"D":2}],
+      "abilities":["Finest Hour: once per battle, quando esta unidade for selecionada para lutar na Fight phase, até ao fim da fase esta unidade ganha +3 Attacks e a keyword Devastating Wounds",
+        "Rites of Battle: once per battle round, quando esta unidade (ou, se for o Warlord, qualquer unidade do exército) usa um stratagem, esse stratagem custa -1CP (mínimo 0CP)"],
+      "onceAbilities":[
+        {"text":"Finest Hour: até ao fim da fase, esta unidade ganha +3 Attacks e a keyword Devastating Wounds.", "scope":"battle", "kind":"combat"},
+        {"text":"Rites of Battle: o próximo stratagem usado por/para esta unidade (ou pelo exército, se for Warlord) custa -1CP (mínimo 0CP).", "scope":"battle_round", "kind":"stratagem"}
+      ],
       "defaultCount":1, "leader_for":["Intercessor Squad"]},
     {"name":"Librarian","points":70,"keywords":["INFANTRY","CHARACTER"],
       "abilities":["Psychic Hood: Feel No Pain 4+ vs ataques psíquicos"],
@@ -623,6 +629,67 @@ function renderStratagemsCard(phaseKey) {
     item.appendChild(el("div", { text: "Quando: " + s.when, style: "font-size:11px;color:var(--text-sec);margin-top:4px;" }));
     item.appendChild(el("div", { text: "Efeito: " + s.effect, style: "font-size:12px;margin-top:4px;" }));
     if (s.note) item.appendChild(el("div", { text: "Nota: " + s.note, style: "font-size:11px;color:var(--accent-text);margin-top:4px;" }));
+    card.appendChild(item);
+  });
+  return card;
+}
+
+// Abilities "once per battle"/"once per battle round" (ex: Finest Hour,
+// Rites of Battle do Captain) — campo estruturado por datasheet
+// (onceAbilities), nunca texto livre. A app NUNCA tenta detetar sozinha
+// quando uma destas dispara (ex: "unidade selecionada para lutar") nem
+// aplica o efeito — só lembra que existem e deixa marcar "já usei", como
+// pedido explicitamente (em vez de tentar automatizar cada Character).
+// kind:"combat" -> mostrado no início da Fight phase; kind:"stratagem" ->
+// mostrado junto aos Stratagems em qualquer fase (podem ser jogados nela).
+function onceAbilitiesFor(instance, kind) {
+  const results = [];
+  instance.groups.forEach(g => {
+    const ds = findDatasheet(library, g.datasheetName);
+    (ds && ds.onceAbilities || []).forEach((ability, idx) => {
+      if (ability.kind === kind) results.push({ ds, idx, ability });
+    });
+  });
+  return results;
+}
+function onceAbilityKey(unit, ds, idx) { return unit.id + "|" + ds.name + "|" + idx; }
+// scope "battle_round": só conta como "usada" se foi marcada NA ronda atual
+// (ronda diferente = já pode voltar a usar-se); scope "battle": marcada
+// uma vez, fica sempre usada até "Novo Jogo".
+function isOnceAbilityUsed(key, ability) {
+  const entry = state.game.onceAbilityUsed[key];
+  if (!entry) return false;
+  return ability.scope === "battle_round" ? entry.round === state.game.round : true;
+}
+function toggleOnceAbilityUsed(key, ability) {
+  if (isOnceAbilityUsed(key, ability)) delete state.game.onceAbilityUsed[key];
+  else state.game.onceAbilityUsed[key] = { round: state.game.round };
+}
+function renderOnceAbilitiesCard(kind, title) {
+  const rows = [];
+  allInstances().forEach(u => {
+    onceAbilitiesFor(u, kind).forEach(r => rows.push(Object.assign({ unit: u }, r)));
+  });
+  if (rows.length === 0) return null;
+  const card = el("div", { class: "card" });
+  card.appendChild(el("h2", { text: title + " (" + rows.length + ")" }));
+  card.appendChild(el("div", { class: "step-hint", text: "A app só lembra que estas abilities existem e o seu limite de utilização — decides tu se e quando compensa usá-las; a app nunca aplica o efeito sozinha." }));
+  rows.forEach(({ unit, ds, idx, ability }) => {
+    const key = onceAbilityKey(unit, ds, idx);
+    const used = isOnceAbilityUsed(key, ability);
+    const item = el("div", { class: "unit-instance" });
+    const head = el("div", { class: "row" });
+    head.appendChild(el("b", { text: unit.ownerName + " — " + unitLiveLabel(unit) }));
+    head.appendChild(el("span", { class: "faction-badge", text: ability.scope === "battle" ? "1x/batalha" : "1x/ronda de batalha" }));
+    item.appendChild(head);
+    item.appendChild(el("div", { text: ability.text, style: "font-size:12px;margin-top:4px;" }));
+    const label = el("label", { style: "display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;cursor:pointer;" });
+    const cb = el("input", { type: "checkbox" });
+    cb.checked = used;
+    cb.onchange = () => { toggleOnceAbilityUsed(key, ability); render(); };
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(used ? "Já usada" + (ability.scope === "battle_round" ? " nesta ronda" : " nesta batalha") : "Marcar como usada agora"));
+    item.appendChild(label);
     card.appendChild(item);
   });
   return card;
@@ -1125,6 +1192,12 @@ const state = {
     // luta uma vez por fase (nenhuma das 17 unidades da Armageddon tem
     // regra que permita repetir a mesma arma na mesma fase).
     usedWeaponsByUnit: {},
+    // Abilities "once per battle"/"once per battle round" (ex: Finest Hour,
+    // Rites of Battle do Captain) — a app só LEMBRA que existem e deixa
+    // marcar "já usei", nunca decide por ti se compensa nem aplica o efeito
+    // sozinha (ver onceAbilities nas datasheets, renderOnceAbilitiesCard).
+    // Chave "idDaUnidade|datasheet|índice" -> { round: N em que foi marcada }.
+    onceAbilityUsed: {},
   },
 };
 
@@ -1279,7 +1352,7 @@ function startNewGame() {
       u.groups.forEach(g => { g.liveCount = g.initialCount; g.woundsRemainingOnCurrent = g.stats.W; });
     });
   });
-  state.game = { round: 1, activePlayerKey: "playerA", phase: "command", ended: false, checklist: {}, battleshockRolls: {}, battleshockSynapse: {}, advanceRoll: { unitId: "", die: null }, chargeRoll: { unitId: "", dice: [] }, score: { playerA: [], playerB: [] }, actedByPhaseInstance: {}, usedWeaponsByUnit: {} };
+  state.game = { round: 1, activePlayerKey: "playerA", phase: "command", ended: false, checklist: {}, battleshockRolls: {}, battleshockSynapse: {}, advanceRoll: { unitId: "", die: null }, chargeRoll: { unitId: "", dice: [] }, score: { playerA: [], playerB: [] }, actedByPhaseInstance: {}, usedWeaponsByUnit: {}, onceAbilityUsed: {} };
   state.cycle = emptyCycle();
   state.attackLog = [];
 }
@@ -1329,6 +1402,23 @@ function markWeaponUsed(unitId, weapon) {
 }
 function isWeaponUsed(unitId, weapon) {
   return usedWeaponsSetFor(unitId).includes(weaponIdentity(weapon));
+}
+// Checklist "Armas já resolvidas: Captain ✓ / Ancient ☐ / Intercessors ☐"
+// para Attached Units (líder(es) + esquadrão, vários datasheetNames) — só
+// para deixar claro, antes de "terminar esta unidade", que ainda falta
+// resolver a arma de outro modelo. Null para unidades de 1 datasheet só
+// (não há nada para desambiguar). Datasheets sem nenhuma arma nesta fase
+// (ex: só tem melee e estamos em Shooting) ficam marcadas "—", nem ✓ nem
+// ☐, para não parecerem uma ativação em falta que na verdade não existe.
+function unitWeaponChecklistText(attacker, phaseKey) {
+  if (!attacker || attacker.datasheetNames.length < 2) return null;
+  const weapons = weaponsForPhase(attacker, phaseKey);
+  const parts = attacker.datasheetNames.map(name => {
+    const own = weapons.filter(w => w.sourceDatasheet === name);
+    if (own.length === 0) return name + " —";
+    return name + (own.every(w => isWeaponUsed(attacker.id, w)) ? " ✓" : " ☐");
+  });
+  return "Armas já resolvidas nesta fase: " + parts.join(" / ");
 }
 function unitsOf(playerKey) {
   return state.setup[playerKey].units;
@@ -1832,6 +1922,8 @@ function renderCommandPhase() {
   const p = activePlayer();
 
   wrap.appendChild(renderStratagemsCard("command"));
+  const onceCardCommand = renderOnceAbilitiesCard("stratagem", "Abilities \"once per battle round\" ligadas a stratagems");
+  if (onceCardCommand) wrap.appendChild(onceCardCommand);
   wrap.appendChild(renderChecklist("command", [
     "Ganhar 1 CP (ambos os jogadores)",
     "Testar battle-shock (unidades battle-shocked ou a metade força ou menos)",
@@ -1854,6 +1946,8 @@ function renderCommandPhase() {
 function renderMovementPhase() {
   const wrap = el("div");
   wrap.appendChild(renderStratagemsCard("movement"));
+  const onceCardMovement = renderOnceAbilitiesCard("stratagem", "Abilities \"once per battle round\" ligadas a stratagems");
+  if (onceCardMovement) wrap.appendChild(onceCardMovement);
   wrap.appendChild(renderChecklist("movement", [
     "Escolher por unidade: parada / normal / advance (+1D6) / fall back",
     "Advance: não pode disparar (exceto ASSAULT) nem carregar depois",
@@ -1896,6 +1990,8 @@ function renderMovementPhase() {
 function renderChargePhase() {
   const wrap = el("div");
   wrap.appendChild(renderStratagemsCard("charge"));
+  const onceCardCharge = renderOnceAbilitiesCard("stratagem", "Abilities \"once per battle round\" ligadas a stratagems");
+  if (onceCardCharge) wrap.appendChild(onceCardCharge);
   wrap.appendChild(renderChecklist("charge", [
     "Elegível: unengaged, não moveu/avançou/recuou este turno, ≤12\" de um inimigo",
     "Rolar 2D6 = distância máxima do charge move",
@@ -2433,7 +2529,13 @@ function renderAttackCycle(phaseKey) {
   const weaponLabel = phaseKey === "fight" ? "arma (combate)" : "arma (tiro)";
 
   wrap.appendChild(renderStratagemsCard(phaseKey));
-  if (phaseKey === "fight") wrap.appendChild(renderFightSequenceCard());
+  const stratOnceCard = renderOnceAbilitiesCard("stratagem", "Abilities \"once per battle round\" ligadas a stratagems");
+  if (stratOnceCard) wrap.appendChild(stratOnceCard);
+  if (phaseKey === "fight") {
+    wrap.appendChild(renderFightSequenceCard());
+    const combatOnceCard = renderOnceAbilitiesCard("combat", "Abilities \"once per battle\" ligadas a combate");
+    if (combatOnceCard) wrap.appendChild(combatOnceCard);
+  }
 
   if (instances.length === 0 && c.step === 0) {
     wrap.appendChild(el("div", { class: "empty", text: 'Ainda não há unidades configuradas. Vai ao separador "Setup" e adiciona unidades aos dois jogadores primeiro.' }));
@@ -3236,6 +3338,15 @@ function renderAttackCycle(phaseKey) {
     // Speeder: 3 armas; Big Mek Dakkarig: 2), normalmente contra alvos
     // diferentes — por isso "continuar com esta unidade" NUNCA pode
     // acontecer automaticamente a seguir a um só ataque resolvido.
+    // Numa Attached Unit (Captain/Ancient + esquadrão) é fácil clicar
+    // "terminar" sem querer antes de resolver a arma de outro modelo — a
+    // checklist abaixo (calculada ANTES de marcar a arma atual como usada,
+    // por isso ainda mostra o estado real ao momento da decisão) torna
+    // óbvio o que falta.
+    const checklistBeforeEnd = unitWeaponChecklistText(attacker, phaseKey);
+    if (checklistBeforeEnd) {
+      card.appendChild(el("div", { class: "step-hint", text: "⚠️ " + checklistBeforeEnd + " — esta arma (" + weapon.name + ") ainda não está marcada como resolvida.", style: "color:var(--gold);font-weight:600;margin-top:10px;" }));
+    }
     const endUnitBtn = el("button", { class: "primary", text: "Confirmar e terminar esta unidade nesta fase" });
     endUnitBtn.style.width = "100%";
     endUnitBtn.onclick = () => {
@@ -3398,6 +3509,10 @@ function renderPicker(instances, phaseKey) {
   card.appendChild(f1);
 
   const attacker = findInstance(c.attackerId);
+  const checklistText = unitWeaponChecklistText(attacker, phaseKey);
+  if (checklistText) {
+    card.appendChild(el("div", { class: "step-hint", text: checklistText, style: "margin:8px 0;padding:8px;background:var(--surface2);border-radius:6px;" }));
+  }
 
   // EXHORTATION OF RAGE (Chaplain with Jump Pack): opcional, Fight Phase,
   // antes dos ataques normais desta unidade — o jogador decide se usa, sem
