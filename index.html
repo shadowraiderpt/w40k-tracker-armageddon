@@ -729,6 +729,11 @@ const WEAPON_KEYWORD_NOTES = {
   "PSYCHIC": "Pode ignorar modificadores ao BS/WS e ao hit roll.",
   "TWIN-LINKED": "Pode re-rolar o wound roll.",
   "EXTRA ATTACKS": "Ataques adicionais a somar aos da arma principal.",
+  // A app não modela cover nenhum (cobertura entra sempre pelo ajuste manual
+  // do jogador ao save) — por isso não há nada para "ignorar" automaticamente
+  // aqui, só o lembrete para não deixar o adversário aplicar +1 ao save por
+  // estar coberto.
+  "IGNORES COVER": "Esta arma ignora bónus de cobertura — não deixes o adversário aplicar +1 ao save manual por estar coberto.",
 };
 function weaponKeywordNotes(weapon) {
   return (weapon.keywords || [])
