@@ -193,7 +193,7 @@
 // ---------------------------------------------------------------------------
 const RAW_UNITS = {
   space_marines: [
-    {"name":"Captain with Relic Shield","points":80,"keywords":["INFANTRY","CHARACTER"],"stats":{"M":"6\"","T":4,"SV":"3+","InvSV":"4+","W":5,"LD":"6+","OC":1},
+    {"name":"Captain with Relic Shield","points":80,"keywords":["INFANTRY","CHARACTER","EXPLOSIVES"],"stats":{"M":"6\"","T":4,"SV":"3+","InvSV":"4+","W":5,"LD":"6+","OC":1},
       "ranged_weapons":[{"name":"Heavy bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"18\"","A":1,"BS":"2+","S":4,"AP":-1,"D":1}],
       "melee_weapons":[{"name":"Master-crafted power weapon","range":"Melee","A":6,"WS":"2+","S":5,"AP":-2,"D":2}],
       "abilities":["Finest Hour: once per battle, quando esta unidade for selecionada para lutar na Fight phase, até ao fim da fase esta unidade ganha +3 Attacks e a keyword Devastating Wounds",
@@ -203,7 +203,7 @@ const RAW_UNITS = {
         {"text":"Rites of Battle: o próximo stratagem usado por/para esta unidade (ou pelo exército, se for Warlord) custa -1CP (mínimo 0CP).", "scope":"battle_round", "kind":"stratagem"}
       ],
       "defaultCount":1, "leader_for":["Intercessor Squad"]},
-    {"name":"Librarian","points":70,"keywords":["INFANTRY","CHARACTER"],
+    {"name":"Librarian","points":70,"keywords":["INFANTRY","CHARACTER","PSYKER","EXPLOSIVES"],
       "abilities":["Psychic Hood: Feel No Pain 4+ vs ataques psíquicos"],
       "fnpCondition":{"type":"weapon_keyword","keyword":"PSYCHIC"},
       "stats":{"M":"6\"","T":4,"SV":"3+","InvSV":"4+","W":4,"LD":"6+","OC":1},
@@ -214,14 +214,14 @@ const RAW_UNITS = {
       ],
       "melee_weapons":[{"name":"Force weapon","keywords":["PSYCHIC"],"range":"Melee","A":4,"WS":"3+","S":6,"AP":-1,"D":"D3"}],
       "defaultCount":1, "leader_for":["Intercessor Squad"]},
-    {"name":"Chaplain with Jump Pack","points":75,"keywords":["INFANTRY","CHARACTER","JUMP PACK"],
+    {"name":"Chaplain with Jump Pack","points":75,"keywords":["INFANTRY","CHARACTER","JUMP PACK","EXPLOSIVES"],
       "abilities":["Exhortation of Rage: na Fight Phase, quando a unidade for selecionada para lutar (antes dos ataques normais), pode opcionalmente escolher uma unidade inimiga em Engagement Range e rolar 1D6 — 4-5: D3 mortal wounds; 6: 3 mortal wounds fixas"],
       "exhortationOfRage": true,
       "stats":{"M":"12\"","T":4,"SV":"3+","InvSV":"4+","W":4,"LD":"5+","OC":1},
       "ranged_weapons":[{"name":"Absolvor bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"3+","S":5,"AP":-1,"D":1}],
       "melee_weapons":[{"name":"Crozius arcanum","range":"Melee","A":5,"WS":"2+","S":6,"AP":-1,"D":2}],
       "defaultCount":1, "leader_for":["Vanguard Veteran Squad with Jump Packs"]},
-    {"name":"Ancient","points":40,"keywords":["INFANTRY","CHARACTER"],
+    {"name":"Ancient","points":40,"keywords":["INFANTRY","CHARACTER","EXPLOSIVES"],
       "abilities":["Unbreakable Resolve: Feel No Pain 4+ perto de objetivo ou a 6\" do centro"],
       "fnpCondition":{"type":"ask","question":"Esta unidade está perto de um objetivo, ou a 6\\\" ou menos do centro da mesa, neste momento?"},
       "stats":{"M":"6\"","T":4,"SV":"3+","W":4,"LD":"6+","OC":1},
@@ -231,7 +231,7 @@ const RAW_UNITS = {
       ],
       "melee_weapons":[{"name":"Close-combat weapon","range":"Melee","A":5,"WS":"2+","S":4,"AP":0,"D":1}],
       "defaultCount":1, "support_for":["Intercessor Squad"]},
-    {"name":"Intercessor Squad","points":150,"keywords":["INFANTRY"],"stats":{"M":"6\"","T":4,"SV":"3+","W":2,"LD":"6+","OC":2},
+    {"name":"Intercessor Squad","points":150,"keywords":["INFANTRY","EXPLOSIVES"],"stats":{"M":"6\"","T":4,"SV":"3+","W":2,"LD":"6+","OC":2},
       "ranged_weapons":[
         {"name":"Bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"3+","S":4,"AP":0,"D":1},
         {"name":"Bolt rifle","keywords":["ASSAULT","HEAVY"],"range":"24\"","A":2,"BS":"3+","S":4,"AP":-1,"D":1},
@@ -297,7 +297,7 @@ const RAW_UNITS = {
         {"name":"'Urty syringe","keywords":["ANTI-INFANTRY 4+","EXTRA ATTACKS","PRECISION"],"range":"Melee","A":1,"WS":"3+","S":2,"AP":0,"D":1}
       ],
       "defaultCount":1, "support_for":["Boyz"]},
-    {"name":"Weirdboy","points":65,"keywords":["INFANTRY","CHARACTER"],"stats":{"M":"6\"","T":5,"SV":"5+","W":4,"LD":"7+","OC":1},
+    {"name":"Weirdboy","points":65,"keywords":["INFANTRY","CHARACTER","PSYKER"],"stats":{"M":"6\"","T":5,"SV":"5+","W":4,"LD":"7+","OC":1},
       "ranged_weapons":[{"name":"'Eadbanger","keywords":["PRECISION","PSYCHIC"],"range":"24\"","A":1,"BS":"4+","S":6,"AP":-3,"D":1}],
       "melee_weapons":[{"name":"Waaagh! staff","keywords":["PSYCHIC"],"range":"Melee","A":3,"WS":"3+","S":8,"AP":-1,"D":"D3"}],
       "defaultCount":1, "leader_for":["Boyz"]},
@@ -359,7 +359,7 @@ const RAW_UNITS = {
       // not present in this box set so he's actually going to be all by
       // himself"). Por isso SEM leader_for aqui: fica sempre standalone.
       "defaultCount":1},
-    {"name":"Neurotyrant","points":105,"keywords":["MONSTER","CHARACTER"],
+    {"name":"Neurotyrant","points":105,"keywords":["MONSTER","CHARACTER","PSYKER"],
       "stats":{"M":"6\"","T":8,"SV":"4+","InvSV":"4+","W":9,"LD":"7+","OC":3},
       "ranged_weapons":[{"name":"Psychic scream","keywords":["IGNORES COVER","PSYCHIC","TORRENT"],"range":"18\"","A":"2D6","BS":"N/A","S":5,"AP":-1,"D":2}],
       "melee_weapons":[{"name":"Neurotyrant claws and lashes","range":"Melee","A":6,"WS":"3+","S":5,"AP":0,"D":1}],

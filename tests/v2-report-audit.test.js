@@ -90,6 +90,34 @@ test("Aura de InvSv do Bannernob (Waaagh! Banner) aplica-se à unidade Boyz+Bann
   assert(aura && aura.value === 5, "devia haver uma aura de InvSv 5+ (Waaagh! Banner) aplicável a toda a unidade");
 });
 
+test("Bug G: PSYKER estava em falta em todas as unidades com arma [PSYCHIC] — Anti-Psyker do Psychophage nunca disparava", () => {
+  const win = loadApp();
+  ["Librarian", "Weirdboy", "Neurotyrant"].forEach(name => {
+    const ds = win.findDatasheet(win.__library, name);
+    assert(ds.keywords.includes("PSYKER"), name + " tem arma [PSYCHIC] mas não tinha a keyword de unidade PSYKER");
+  });
+});
+
+test("Bug G corrigido: Anti-Psyker 4+ do Psychophage aplica-se de facto contra o Librarian (tem PSYKER)", () => {
+  const win = loadApp();
+  const attacker = addFullUnit(win, "playerA", "Psychophage");
+  const target = addFullUnit(win, "playerB", "Librarian");
+  const weaponIdx = weaponByName(win, attacker, "fight", "Talons and betentacled maw");
+  setupCycle(win, { attacker, weaponIdx, target, phaseKey: "fight", modelsAttacking: 1 });
+  win.__state.cycle.step = 2;
+  win.__state.cycle.hits = 1;
+  const wrap = win.renderAttackCycle("fight");
+  assert(/ANTI-PSYKER 4\+ aplicado/.test(wrap.textContent), "com o Librarian a ter PSYKER, o Anti-Psyker 4+ devia aparecer aplicado no passo de ferir");
+});
+
+test("Bug H: Captain/Chaplain/Ancient/Intercessor Squad têm EXPLOSIVES, como o texto do Stratagem já dizia", () => {
+  const win = loadApp();
+  ["Captain with Relic Shield", "Chaplain with Jump Pack", "Ancient", "Intercessor Squad"].forEach(name => {
+    const ds = win.findDatasheet(win.__library, name);
+    assert(ds.keywords.includes("EXPLOSIVES"), name + " devia ter EXPLOSIVES (o texto do Stratagem Explosives já afirmava isto)");
+  });
+});
+
 test("Ripper Swarms tem a keyword SWARM, não INFANTRY", () => {
   const win = loadApp();
   const ds = win.findDatasheet(win.__library, "Ripper Swarms");
