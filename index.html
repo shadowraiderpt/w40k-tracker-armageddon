@@ -1470,18 +1470,57 @@ function playerTotals(player) {
     return acc;
   }, { live: 0, initial: 0 });
 }
-// Regista um ataque já resolvido no ciclo de combate — só para consulta na
-// tab "Estado do Jogo" (mais recente primeiro), nunca lido de volta para
-// cálculos. A app já tem toda esta informação disponível no momento em que
-// o jogador confirma o resultado; só falta guardá-la em vez de descartar.
-function logAttack(attacker, weapon, target, totalDead) {
+// Regista um ataque já resolvido no ciclo de combate — para consulta na tab
+// "Estado do Jogo" (mais recente primeiro) E para permitir desfazer parcial
+// (pedido B: "Desfazer último ataque"), sem precisar de um reset total ao
+// jogo. Guarda um snapshot do alvo ANTES de applyDeaths() correr (chamado
+// sempre a seguir a logAttack nos dois pontos onde isto é invocado), para
+// undoLastAttack() poder restaurar exatamente o liveCount/woundsRemaining
+// de cada grupo. unitMarkedActed distingue "terminar unidade" (também
+// desfaz o "já atuou esta fase") de "resolver outro ataque com a mesma
+// unidade" (não mexe nisso). phaseInstanceKey fica fixo no momento do
+// ataque — usedWeaponsByUnit/actedByPhaseInstance são sempre desfeitos
+// nessa chave específica, nunca na "atual" (que pode já ter mudado se o
+// jogador navegou de fase sem voltar a atacar).
+function logAttack(attacker, weapon, target, totalDead, opts) {
+  opts = opts || {};
   state.attackLog.unshift({
     round: state.game.round,
+    attackerId: attacker.id,
     attackerLabel: attacker.label,
+    targetId: target.id,
     targetLabel: target.label,
     weaponName: weapon.name,
+    weaponId: weaponIdentity(weapon),
     dead: totalDead,
+    phaseInstanceKey: phaseInstanceKey(),
+    unitMarkedActed: !!opts.unitMarkedActed,
+    groupsBefore: target.groups.map(g => ({ key: g.key, liveCount: g.liveCount, woundsRemainingOnCurrent: g.woundsRemainingOnCurrent })),
   });
+}
+// Só o ataque mais recente (attackLog[0]) é desfazível — nunca em cascata.
+// Assim que outro ataque qualquer é registado, ele passa a ocupar o
+// índice 0 e este deixa de ter o botão (ver renderAttackHistory).
+function undoLastAttack() {
+  const entry = state.attackLog[0];
+  if (!entry) return;
+  const realTarget = findRealUnit(entry.targetId);
+  if (realTarget) {
+    entry.groupsBefore.forEach(gb => {
+      const g = realTarget.groups.find(gr => gr.key === gb.key);
+      if (g) { g.liveCount = gb.liveCount; g.woundsRemainingOnCurrent = gb.woundsRemainingOnCurrent; }
+    });
+  }
+  const usedKey = entry.phaseInstanceKey + "-" + entry.attackerId;
+  if (state.game.usedWeaponsByUnit[usedKey]) {
+    state.game.usedWeaponsByUnit[usedKey] = state.game.usedWeaponsByUnit[usedKey].filter(wid => wid !== entry.weaponId);
+  }
+  if (entry.unitMarkedActed && state.game.actedByPhaseInstance[entry.phaseInstanceKey]) {
+    const arr = state.game.actedByPhaseInstance[entry.phaseInstanceKey];
+    const idx = arr.indexOf(String(entry.attackerId));
+    if (idx !== -1) arr.splice(idx, 1);
+  }
+  state.attackLog.shift();
 }
 
 function resetPhaseTransientState() {
@@ -1658,11 +1697,23 @@ function renderAttackHistory() {
     card.appendChild(el("div", { class: "empty", text: "Ainda não foi resolvido nenhum ataque nesta partida." }));
     return card;
   }
-  state.attackLog.forEach(entry => {
+  state.attackLog.forEach((entry, i) => {
     const row = el("div", { class: "unit-instance", style: "font-size:12px;" });
     row.appendChild(el("div", {
       text: "Ronda " + entry.round + ": " + entry.attackerLabel + " atacou " + entry.targetLabel + " com " + entry.weaponName + " — " + entry.dead + " modelo(s) morto(s)",
     }));
+    // Pedido B (desfazer parcial): só o ataque MAIS recente (i===0) pode
+    // ser desfeito — assim que outro ataque acontece, este deixa de ser o
+    // índice 0 e o botão desaparece, para nunca desfazer fora de ordem.
+    if (i === 0) {
+      const undoBtn = el("button", { class: "small", text: "↩ Desfazer último ataque" });
+      undoBtn.style.marginTop = "6px";
+      undoBtn.onclick = () => {
+        undoLastAttack();
+        render();
+      };
+      row.appendChild(undoBtn);
+    }
     card.appendChild(row);
   });
   return card;
@@ -3355,7 +3406,7 @@ function renderAttackCycle(phaseKey) {
     const endUnitBtn = el("button", { class: "primary", text: "Confirmar e terminar esta unidade nesta fase" });
     endUnitBtn.style.width = "100%";
     endUnitBtn.onclick = () => {
-      logAttack(attacker, weapon, target, totalDead);
+      logAttack(attacker, weapon, target, totalDead, { unitMarkedActed: true });
       applyDeaths(target, c.deadByGroup, c.woundsLeftByGroup);
       markWeaponUsed(attacker.id, weapon);
       markUnitActedThisPhase(attacker.id);
@@ -3517,6 +3568,31 @@ function renderPicker(instances, phaseKey) {
   const checklistText = unitWeaponChecklistText(attacker, phaseKey);
   if (checklistText) {
     card.appendChild(el("div", { class: "step-hint", text: checklistText, style: "margin:8px 0;padding:8px;background:var(--surface2);border-radius:6px;" }));
+  }
+
+  // Desfazer parcial (A): uma unidade marcada "já terminou esta fase" some
+  // do dropdown acima e fica presa — sem isto, o único jeito de a destravar
+  // era um reset total ao jogo. "Reabrir" só tira o id do conjunto de
+  // "acted"; NUNCA mexe no dano já aplicado nem nas armas já marcadas como
+  // usadas (essas continuam corretamente indisponíveis para reescolher).
+  const actedUnitsHere = actedThisPhase.map(id => findInstance(id)).filter(Boolean);
+  if (actedUnitsHere.length > 0) {
+    const reopenCard = el("div", { class: "step-hint", style: "margin:8px 0;padding:8px;background:var(--surface2);border-radius:6px;" });
+    reopenCard.appendChild(el("div", { text: "Unidades que já terminaram esta fase:", style: "font-weight:600;margin-bottom:4px;" }));
+    actedUnitsHere.forEach(u => {
+      const row = el("div", { style: "display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:4px;" });
+      row.appendChild(el("span", { text: u.ownerName + ": " + unitLiveLabel(u) }));
+      const btn = el("button", { class: "small", text: "Reabrir esta unidade nesta fase" });
+      btn.onclick = () => {
+        const arr = actedSetForCurrentPhase();
+        const idx = arr.indexOf(String(u.id));
+        if (idx !== -1) arr.splice(idx, 1);
+        render();
+      };
+      row.appendChild(btn);
+      reopenCard.appendChild(row);
+    });
+    card.appendChild(reopenCard);
   }
 
   // EXHORTATION OF RAGE (Chaplain with Jump Pack): opcional, Fight Phase,
