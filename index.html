@@ -334,6 +334,8 @@ const RAW_UNITS = {
         {"name":"Rokkit launcha","range":"24\"","A":"D3+3","BS":"5+","S":10,"AP":-2,"D":3}
       ],
       "melee_weapons":[{"name":"Choppas","range":"Melee","A":5,"WS":"3+","S":4,"AP":-1,"D":1}],
+      "abilities":["Indiscriminate Detonations: suppress an enemy unit hit by this unit's attacks, -1 to hit rolls until start of next Command phase"],
+      "suppressOnHit":true,
       "defaultCount":1},
     {"name":"Big Mek Dakkarig","points":115,"keywords":["VEHICLE","CHARACTER"],"stats":{"M":"8\"","T":8,"SV":"3+","InvSV":"5+","W":11,"LD":"7+","OC":3},
       "ranged_weapons":[
@@ -581,6 +583,37 @@ function attackingGroupsFor(attacker, weapon) {
 // só o sargento tem chainsword/grenade launcher; Vanguard Veteran Squad —
 // só até 4 heavy bolt pistols, só 1 plasma pistol) — sem isto, a app
 // sugeria sempre o grupo inteiro como "máximo de modelos com esta arma".
+// ---- ENGAGED (Feature B) -------------------------------------------------
+// engagedWithUnitId vive na unidade real (persiste com o jogo). Só o jogador
+// sabe se está em Engagement Range — a app guarda a resposta e filtra armas.
+function isCloseQuarters(w) { return hasKeyword(w, "CLOSE-QUARTERS") || hasKeyword(w, "PISTOL"); }
+function weaponSourceIsMV(w) { return datasheetHasUnitKeyword(w.sourceDatasheet, "MONSTER") || datasheetHasUnitKeyword(w.sourceDatasheet, "VEHICLE"); }
+function unitIsMV(u) { return targetHasUnitKeyword(u, "MONSTER") || targetHasUnitKeyword(u, "VEHICLE"); }
+function engagedEnemyOf(attacker) {
+  if (!attacker) return null;
+  const real = findRealUnit(attacker.id);
+  const id = real && real.engagedWithUnitId;
+  if (!id) return null;
+  const e = findInstance(id);
+  return e && totalLive(e) > 0 ? e : null;
+}
+// Motivo pelo qual uma arma de TIRO não pode ser usada agora (null = pode).
+// Engaged: não MONSTER/VEHICLE só usa [CLOSE-QUARTERS]. Não engaged: um
+// modelo único (líder/character) não combina arma [CLOSE-QUARTERS] com não-CQ
+// na mesma fase (mesmo mecanismo de "já usada" do weaponIdentity).
+function weaponBlockedReason(attacker, weapon, phaseKey) {
+  if (phaseKey !== "shooting" || !attacker || !weapon) return null;
+  if (engagedEnemyOf(attacker)) {
+    if (!isCloseQuarters(weapon) && !weaponSourceIsMV(weapon)) return "engaged: só armas [CLOSE-QUARTERS]";
+    return null;
+  }
+  const owners = attackingGroupsFor(attacker, weapon);
+  if (owners.reduce((sum, g) => sum + g.initialCount, 0) === 1) {
+    const clash = weaponsForPhase(attacker, phaseKey).find(o => o.sourceDatasheet === weapon.sourceDatasheet && isWeaponUsed(attacker.id, o) && isCloseQuarters(o) !== isCloseQuarters(weapon));
+    if (clash) return "este modelo já usou " + clash.name + " — não combina [CLOSE-QUARTERS] com outras armas na mesma fase";
+  }
+  return null;
+}
 function maxModelsAttacking(attacker, weapon) {
   const total = attackingGroupsFor(attacker, weapon).reduce((s, g) => s + g.liveCount, 0);
   return (typeof weapon.maxModels === "number") ? Math.min(total, weapon.maxModels) : total;
@@ -1451,7 +1484,7 @@ function emptyCycle() {
     // HOLD STILL AND SAY AARGH (Painboy, 'Urty syringe): crítico no wound
     // roll contra alvo não-VEHICLE causa D6 mortal wounds extra.
     critMwAsked: null, critMwCritCount: null, critMwRoll: null,
-    symbioticApplied: false, grislySelected: null, grislyAsked: false,
+    symbioticApplied: false, grislySelected: null, grislyAsked: false, suppressApplied: false,
     // EXHORTATION OF RAGE (Chaplain with Jump Pack): opcional, na Fight
     // Phase, antes dos ataques normais desta unidade — o jogador escolhe se
     // usa, contra que unidade inimiga (Engagement Range, físico, o jogador
@@ -1536,6 +1569,8 @@ function startNewGame() {
     player.units.forEach(u => {
       u.battleshocked = false;
       u.disrupted = false;
+      u.suppressedBy = null;
+      u.engagedWithUnitId = null;
       u.groups.forEach(g => { g.liveCount = g.initialCount; g.woundsRemainingOnCurrent = g.stats.W; });
     });
   });
@@ -1628,6 +1663,7 @@ function unitLiveLabel(u) {
   let label = initial <= 1 ? u.label : (u.label + " — " + totalLive(u) + "/" + initial + " vivos");
   if (u.battleshocked) label += " ☠️ BATTLESHOCKED";
   if (u.disrupted) label += " 🐌 DISRUPTED (-2 M/Advance/Charge)";
+  if (u.suppressedBy) label += " 🔻 SUPPRESSED (-1 to hit)";
   return label;
 }
 // Badge visível de "esta unidade está battleshocked" — usado fora do
@@ -1725,6 +1761,16 @@ function clearExpiredDisruption(playerKey) {
   state.setup[playerKey].units.forEach(u => { u.disrupted = false; });
 }
 
+// INDISCRIMINATE DETONATIONS (Wartrakk): a unidade suprimida testa -1 to hit
+// até ao início do PRÓXIMO Command phase de quem a suprimiu — ou seja, limpa-se
+// quando o turno passa a ser desse jogador (a unidade suprimida joga o seu
+// próprio turno pelo meio, já com o -1).
+function clearSuppressed(newActiveKey) {
+  [state.setup.playerA, state.setup.playerB].forEach(pl => pl.units.forEach(u => {
+    if (u.suppressedBy === newActiveKey) u.suppressedBy = null;
+  }));
+}
+
 function advancePhase() {
   const idx = PHASES.findIndex(p => p.key === state.game.phase);
   if (idx < PHASES.length - 1) {
@@ -1732,10 +1778,12 @@ function advancePhase() {
   } else if (state.game.activePlayerKey === "playerA") {
     clearExpiredDisruption("playerA");
     state.game.activePlayerKey = "playerB";
+    clearSuppressed("playerB");
     state.game.phase = "command";
   } else if (state.game.round < 5) {
     clearExpiredDisruption("playerB");
     state.game.activePlayerKey = "playerA";
+    clearSuppressed("playerA");
     state.game.phase = "command";
     state.game.round += 1;
   } else {
@@ -2850,6 +2898,9 @@ function renderAttackCycle(phaseKey) {
   const meleeWoundBonusValue = phaseKey === "fight" ? unitAuraBonus(attacker, "meleeWoundBonus") : 0;
   // DAMAGED (Haruspex/Exocrine): com poucas wounds restantes no modelo, -1 ao
   // hit roll — a app já sabe as wounds restantes, por isso aplica sozinha.
+  const suppressedPenaltyValue = attacker.suppressedBy ? 1 : 0;
+  const engagedEnemyNow = phaseKey === "shooting" ? engagedEnemyOf(attacker) : null;
+  const engagedPenaltyValue = (engagedEnemyNow && weaponSourceIsMV(weapon) && !isCloseQuarters(weapon)) ? 1 : 0;
   const damagedPenaltyValue = (() => {
     const g = attackingGroupsFor(attacker, weapon).find(gr => gr.liveCount > 0);
     const dsD = g && findDatasheet(library, g.datasheetName);
@@ -2870,7 +2921,7 @@ function renderAttackCycle(phaseKey) {
   const antiApplies = !!(antiInfo && targetHasUnitKeyword(target, antiInfo.targetKeyword));
   const critThreshold = antiApplies ? Math.min(6, antiInfo.threshold) : 6;
   const hitThreshold = parseThreshold(toHitValue(weapon, phaseKey));
-  const effHitThreshold = adjustedThreshold(hitThreshold, c.hitAdjust + heavyBonus + meleeHitBonusValue - damagedPenaltyValue);
+  const effHitThreshold = adjustedThreshold(hitThreshold, c.hitAdjust + heavyBonus + meleeHitBonusValue - damagedPenaltyValue - suppressedPenaltyValue - engagedPenaltyValue);
   // Toughness da unidade-alvo: a maior Toughness entre os grupos vivos, não
   // a do primeiro grupo da lista (que só por coincidência costuma ser a
   // mais alta, ex: Neurotyrant — numa Attached Unit com um líder mais
@@ -3028,7 +3079,7 @@ function renderAttackCycle(phaseKey) {
       wrap.appendChild(renderNumberStep({
         title: "Precisas de " + thresholdText(effHitThreshold) + " para acertar",
         bigNumber: thresholdText(effHitThreshold),
-        bonusChips: (heavyBonus ? ["HEAVY: +1 ao acertar"] : []).concat(meleeHitBonusValue ? ["+" + meleeHitBonusValue + " ao acertar (melee, permanente)"] : []).concat(damagedPenaltyValue ? ["DAMAGED: -" + damagedPenaltyValue + " ao acertar"] : []),
+        bonusChips: (heavyBonus ? ["HEAVY: +1 ao acertar"] : []).concat(meleeHitBonusValue ? ["+" + meleeHitBonusValue + " ao acertar (melee, permanente)"] : []).concat(damagedPenaltyValue ? ["DAMAGED: -" + damagedPenaltyValue + " ao acertar"] : []).concat(suppressedPenaltyValue ? ["SUPPRESSED (Indiscriminate Detonations): -1 ao acertar"] : []).concat(engagedPenaltyValue ? ["ENGAGED (MONSTER/VEHICLE, arma não [CLOSE-QUARTERS]): -1 ao acertar"] : []),
         hint: statLabel(hitStat) + ": " + toHitValue(weapon, phaseKey) + (c.hitAdjust ? " · ajuste manual aplicado: " + (c.hitAdjust > 0 ? "+" : "") + c.hitAdjust : "") + attacksBonusSuffix,
         threshold: effHitThreshold > 6 ? 999 : effHitThreshold, stepKey: "hits", max: effectiveAttacksMax, countLabel: "Hits",
         rollsDice: true,
@@ -3525,6 +3576,16 @@ function renderAttackCycle(phaseKey) {
       c.disruptionApplied = true;
     }
 
+    // INDISCRIMINATE DETONATIONS (Wartrakk): sem teste — se houve ≥1 hit, o
+    // alvo fica suprimido (-1 to hit) até ao próximo Command phase do dono
+    // do Wartrakk. A app decide sozinha (hits e alvo são conhecidos).
+    const attackerSuppresses = attacker.datasheetNames.some(n => { const d = findDatasheet(library, n); return d && d.suppressOnHit; });
+    if (attackerSuppresses && c.hits > 0 && !c.suppressApplied) {
+      const realT = findRealUnit(target.id);
+      if (realT) realT.suppressedBy = attacker.owner === "A" ? "playerA" : "playerB";
+      c.suppressApplied = true;
+    }
+
     // DEADLY DEMISE X (Screamer-Killer, Psychophage): dispara quando a
     // unidade morre POR COMPLETO nesta resolução — pergunta o roll 1D6 uma
     // vez; a app não sabe quem está a 6", só regista o resultado e lembra o
@@ -4017,8 +4078,30 @@ function renderPicker(instances, phaseKey) {
     }
   }
 
+  if (attacker && phaseKey === "shooting") {
+    const ef = el("div", { class: "field" });
+    ef.appendChild(el("label", { text: "Esta unidade está engaged (Engagement Range) com…" }));
+    const esel = el("select");
+    esel.appendChild(el("option", { value: "", text: "— não está engaged —" }));
+    const realA0 = findRealUnit(attacker.id);
+    instances.filter(u => u.owner !== attacker.owner && totalLive(u) > 0).forEach(u => {
+      const o = el("option", { value: u.id, text: u.ownerName + ": " + unitLiveLabel(u) });
+      if (realA0 && String(realA0.engagedWithUnitId) === String(u.id)) o.selected = true;
+      esel.appendChild(o);
+    });
+    esel.onchange = e => {
+      const realA = findRealUnit(attacker.id);
+      if (realA) realA.engagedWithUnitId = e.target.value || null;
+      c.weaponIdx = ""; c.targetId = "";
+      render();
+    };
+    ef.appendChild(esel);
+    if (engagedEnemyOf(attacker)) ef.appendChild(el("div", { class: "step-hint", text: unitIsMV(attacker) ? "MONSTER/VEHICLE engaged: todas as armas, mas as que não são [CLOSE-QUARTERS] levam -1 ao acertar e [BLAST] não pode visar a unidade engaged." : "Engaged: só armas [CLOSE-QUARTERS], e só a unidade engaged como alvo." }));
+    card.appendChild(ef);
+  }
+
   const attackerWeapons = attacker ? weaponsForPhase(attacker, phaseKey) : [];
-  const availableWeaponCount = attacker ? attackerWeapons.filter(w => !isWeaponUsed(attacker.id, w)).length : 0;
+  const availableWeaponCount = attacker ? attackerWeapons.filter(w => !isWeaponUsed(attacker.id, w) && !weaponBlockedReason(attacker, w, phaseKey)).length : 0;
   const showSource = attacker && attacker.datasheetNames.length > 1;
   if (attacker) {
     const f2 = el("div", { class: "field" });
@@ -4026,7 +4109,8 @@ function renderPicker(instances, phaseKey) {
     if (attackerWeapons.length === 0) {
       f2.appendChild(el("div", { class: "step-hint", text: phaseKey === "fight" ? "Esta unidade não tem armas de combate." : "Esta unidade não tem armas de tiro." }));
     } else if (availableWeaponCount === 0) {
-      f2.appendChild(el("div", { class: "step-hint", text: "Esta unidade já usou todas as armas disponíveis nesta fase — escolhe outra unidade, ou confirma \"terminar esta unidade\" no último ataque resolvido." }));
+      const blockedAll = attackerWeapons.filter(w => !isWeaponUsed(attacker.id, w) && weaponBlockedReason(attacker, w, phaseKey));
+      f2.appendChild(el("div", { class: "step-hint", text: blockedAll.length ? "Nenhuma arma disponível: " + weaponBlockedReason(attacker, blockedAll[0], phaseKey) + "." : "Esta unidade já usou todas as armas disponíveis nesta fase — escolhe outra unidade, ou confirma \"terminar esta unidade\" no último ataque resolvido." }));
     } else {
       const sel2 = el("select");
       sel2.appendChild(el("option", { value: "", text: "— escolher —" }));
@@ -4034,7 +4118,7 @@ function renderPicker(instances, phaseKey) {
         // Cada arma dispara/luta uma vez por fase — não voltar a oferecer
         // uma arma já usada nesta ativação enquanto a unidade continuar
         // selecionada via "resolver outro ataque com esta unidade".
-        if (isWeaponUsed(attacker.id, w)) return;
+        if (isWeaponUsed(attacker.id, w) || weaponBlockedReason(attacker, w, phaseKey)) return;
         const label = w.name + (showSource ? " [" + w.sourceDatasheet + "]" : "") + " (A:" + w.A + " " + hitStat + ":" + toHitValue(w, phaseKey) + " S:" + w.S + " AP:" + w.AP + " D:" + w.D + ")";
         const o = el("option", { value: i, text: label });
         if (String(i) === String(c.weaponIdx)) o.selected = true;
@@ -4055,7 +4139,10 @@ function renderPicker(instances, phaseKey) {
   f3.appendChild(el("label", { text: "Unidade alvo" }));
   const sel3 = el("select");
   sel3.appendChild(el("option", { value: "", text: "— escolher —" }));
-  instances.filter(u => !attacker || u.owner !== attacker.owner).forEach(u => {
+  const engagedForTargets = phaseKey === "shooting" ? engagedEnemyOf(attacker) : null;
+  const pickedWeaponForTargets = attacker && c.weaponIdx !== "" ? attackerWeapons[c.weaponIdx] : null;
+  const engagedOnlyTarget = engagedForTargets && !(pickedWeaponForTargets ? weaponSourceIsMV(pickedWeaponForTargets) : unitIsMV(attacker));
+  instances.filter(u => (!attacker || u.owner !== attacker.owner) && (!engagedOnlyTarget || String(u.id) === String(engagedForTargets.id))).forEach(u => {
     const o = el("option", { value: u.id, text: u.ownerName + ": " + unitLiveLabel(u) });
     if (String(u.id) === String(c.targetId)) o.selected = true;
     sel3.appendChild(o);
@@ -4134,7 +4221,9 @@ function renderPicker(instances, phaseKey) {
 
   const startBtn = el("button", { class: "primary", text: "Iniciar ciclo de ataque →" });
   startBtn.style.width = "100%";
-  startBtn.disabled = !(attacker && weapon && target && weaponPreCycleQuestionsAnswered(weapon, c));
+  const blastVsEngaged = !!(phaseKey === "shooting" && weapon && target && hasKeyword(weapon, "BLAST") && engagedEnemyOf(attacker) && String(engagedEnemyOf(attacker).id) === String(target.id));
+  if (blastVsEngaged) card.appendChild(el("div", { class: "step-hint", text: "⚠️ [BLAST] não pode visar uma unidade em Engagement Range da tua — escolhe outra arma ou outro alvo.", style: "color:var(--gold);font-weight:600;" }));
+  startBtn.disabled = !(attacker && weapon && target && weaponPreCycleQuestionsAnswered(weapon, c)) || blastVsEngaged;
   startBtn.onclick = () => {
     c.step = 1; c.hits = null; c.wounds = null; c.failedSaves = null;
     c.allocOrder = target.groups.length > 1 ? null : target.groups.map(g => g.key);
@@ -4149,7 +4238,7 @@ function renderPicker(instances, phaseKey) {
     c.deadlyDemiseAsked = null; c.deadlyDemiseRoll = null; c.deadlyDemiseTriggered = false;
     c.hazardousAsked = null; c.hazardousResults = [];
     c.critMwAsked = null; c.critMwCritCount = null; c.critMwRoll = null;
-    c.symbioticApplied = false; c.grislySelected = null; c.grislyAsked = false;
+    c.symbioticApplied = false; c.grislySelected = null; c.grislyAsked = false; c.suppressApplied = false;
     render();
   };
   card.appendChild(startBtn);
