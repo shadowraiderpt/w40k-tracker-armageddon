@@ -363,11 +363,9 @@ const RAW_UNITS = {
         "Death Blow: se for destruído em combate antes de ter lutado nesta fase, rola 1D6 — num 4+, não é removido, luta depois do atacante terminar os ataques, e só depois é removido"
       ],
       "alphaWarrior": true,
-      // Tem a ability Leader (dataheet oficial), mas nenhuma das unidades a
-      // que se pode anexar está neste box set — confirmado pelo utilizador
-      // via battle report em vídeo ("the units that he can attach to are
-      // not present in this box set so he's actually going to be all by
-      // himself"). Por isso SEM leader_for aqui: fica sempre standalone.
+      // Pode liderar os Gargoyles (confirmado pelo utilizador). Os Neurogaunts
+      // continuam a ser liderados só pelo Neurotyrant.
+      "leader_for":["Gargoyles"],
       "defaultCount":1},
     {"name":"Neurotyrant","points":105,"keywords":["MONSTER","CHARACTER","PSYKER"],
       "stats":{"M":"6\"","T":8,"SV":"4+","InvSV":"4+","W":9,"LD":"7+","OC":3},
@@ -439,6 +437,31 @@ const RAW_UNITS = {
       "symbioticTargeting":true,
       "damaged":{"maxWounds":5,"hitPenalty":1},
       "defaultCount":1},
+    {"name":"Neurolictor","points":80,"keywords":["INFANTRY","VANGUARD INVADER","SYNAPSE"],
+      "stats":{"M":"8\"","T":5,"SV":"4+","InvSV":"4+","W":7,"LD":"7+","OC":1},
+      "ranged_weapons":[],
+      "melee_weapons":[{"name":"Piercing claws and talons","keywords":["PRECISION"],"range":"Melee","A":6,"WS":"2+","S":6,"AP":-2,"D":1}],
+      "abilities":[
+        "Core: Infiltrators, Lone Operative, Stealth",
+        "Faction: Shadow in the Warp, Synapse",
+        "Feeder Tendrils: cada vez que este modelo destrói um modelo inimigo CHARACTER, ganhas 1CP",
+        "Neural Disruption: no teu Command phase, escolhe uma unidade inimiga a 12\" deste modelo — essa unidade tem de fazer um teste de Battle-shock",
+        "Psychological Saboteur (Aura): enquanto uma unidade inimiga estiver a 12\" deste modelo, se essa unidade estiver Battle-shocked: os ataques dela têm -1 ao Hit roll; os ataques de modelos Tyranids amigos contra ela têm +1 ao Wound roll"
+      ],
+      "feederTendrils":true,"neuralDisruption":true,"psychologicalSaboteur":true,
+      "defaultCount":1},
+    {"name":"Gargoyles","points":80,"keywords":["INFANTRY","BATTLELINE","FLY","ENDLESS MULTITUDE","VANGUARD INVADER"],
+      "stats":{"M":"12\"","T":3,"SV":"6+","W":1,"LD":"8+","OC":2},
+      "ranged_weapons":[{"name":"Fleshborer","keywords":["ASSAULT"],"range":"18\"","A":1,"BS":"4+","S":5,"AP":0,"D":1}],
+      "melee_weapons":[{"name":"Blinding venom","range":"Melee","A":1,"WS":"4+","S":3,"AP":0,"D":1}],
+      "abilities":[
+        "Core: Deep Strike",
+        "Faction: Synapse",
+        "Winged Swarm: no teu Shooting phase, depois desta unidade disparar, se não estiver dentro de Engagement Range de nenhuma unidade inimiga, pode fazer um Normal move de até 6\". Se o fizer, até ao fim do turno esta unidade não é elegível para declarar charge"
+      ],
+      "wingedSwarm":true,
+      "pointsBySize":{"10":80,"20":155},
+      "defaultCount":10},
     {"name":"Von Ryan's Leapers","points":70,"keywords":["INFANTRY"],
       "stats":{"M":"10\"","T":5,"SV":"4+","InvSV":"6+","W":3,"LD":"8+","OC":1},
       "ranged_weapons":[],
@@ -788,6 +811,42 @@ function renderOnceAbilitiesCard(kind, title) {
 // resultado final) — a app só lembra que a unidade tem esse direito
 // enquanto o ciclo de ataque dela estiver aberto (ver banner em
 // renderAttackCycle).
+// NEURAL DISRUPTION (Neurolictor): no Command phase do dono, escolhe uma
+// unidade inimiga a 12" (distância física — o jogador escolhe) que testa
+// Battle-shock. Perguntado uma vez por instância de Command phase.
+function renderNeuralDisruptionCard() {
+  const activeOwner = state.game.activePlayerKey === "playerA" ? "A" : "B";
+  const src = allInstances().find(u => u.owner === activeOwner && totalLive(u) > 0 && u.datasheetNames.some(n => { const d = findDatasheet(library, n); return d && d.neuralDisruption; }));
+  if (!src) return null;
+  const key = phaseInstanceKey();
+  if (state.game.neuralAskedInstance === key) return null;
+  const card = el("div", { class: "card" });
+  card.appendChild(renderRollerBadge("attacker", src.ownerName + " (" + unitLiveLabel(src) + ")", "Neural Disruption — no teu Command phase."));
+  card.appendChild(el("div", { text: "🧠 Neural Disruption: escolhe uma unidade inimiga a 12\" do Neurolictor — essa unidade testa Battle-shock. É opcional.", style: "color:var(--gold);font-weight:600;font-size:13px;margin-bottom:8px;" }));
+  const chosen = state.game.neuralTargetId;
+  if (!chosen) {
+    const sel = el("select");
+    sel.appendChild(el("option", { value: "", text: "— escolher —" }));
+    sel.appendChild(el("option", { value: "none", text: "Não usar este Command phase" }));
+    allInstances().filter(u => u.owner !== activeOwner && totalLive(u) > 0).forEach(u => sel.appendChild(el("option", { value: u.id, text: u.ownerName + ": " + unitLiveLabel(u) })));
+    sel.onchange = e => {
+      const v = e.target.value;
+      if (!v) return;
+      if (v === "none") state.game.neuralAskedInstance = key; else state.game.neuralTargetId = v;
+      render();
+    };
+    card.appendChild(sel);
+  } else {
+    const ru = findRealUnit(chosen);
+    if (ru) card.appendChild(renderBattleshockRoll(ru, { rollKeySuffix: "-neural" }));
+    const done = el("button", { class: "primary", text: "Concluir Neural Disruption →" });
+    done.style.cssText = "width:100%;margin-top:8px;";
+    done.onclick = () => { state.game.neuralAskedInstance = key; state.game.neuralTargetId = null; render(); };
+    card.appendChild(done);
+  }
+  return card;
+}
+
 function renderAlphaWarriorCard() {
   const activeOwner = state.game.activePlayerKey === "playerA" ? "A" : "B";
   const primeInPlay = allInstances().find(u => u.owner === activeOwner && u.datasheetNames.some(name => {
@@ -878,7 +937,7 @@ const BOX_LIMITS = {
   // ele; nunca assumir "sem limite" para uma facção nova sem perguntar).
   "Winged Tyranid Prime": 1, "Neurotyrant": 1, "Screamer-Killer": 1, "Psychophage": 1,
   "Von Ryan's Leapers": 3, "Termagants": 20, "Ripper Swarms": 2,
-  "Neurogaunts": 11, "Barbgaunts": 5, "Haruspex": 1, "Exocrine": 1,
+  "Neurogaunts": 11, "Barbgaunts": 5, "Haruspex": 1, "Exocrine": 1, "Neurolictor": 1, "Gargoyles": 10,
 };
 function unitsUsedCount(dsName) {
   let used = 0;
@@ -1414,6 +1473,7 @@ const state = {
     alphaWarriorAskedInstance: null, alphaWarriorTargetId: null,
     // SYMBIOTIC TARGETING (Exocrine) e GRISLY SPECTACLE (Haruspex)
     symbioticTarget: null, grislyDone: {},
+    neuralAskedInstance: null, neuralTargetId: null,
   },
 };
 
@@ -1485,6 +1545,7 @@ function emptyCycle() {
     // roll contra alvo não-VEHICLE causa D6 mortal wounds extra.
     critMwAsked: null, critMwCritCount: null, critMwRoll: null,
     symbioticApplied: false, grislySelected: null, grislyAsked: false, suppressApplied: false,
+    saboteurHit: null, saboteurWound: null, feederApplied: false,
     // EXHORTATION OF RAGE (Chaplain with Jump Pack): opcional, na Fight
     // Phase, antes dos ataques normais desta unidade — o jogador escolhe se
     // usa, contra que unidade inimiga (Engagement Range, físico, o jogador
@@ -1571,10 +1632,11 @@ function startNewGame() {
       u.disrupted = false;
       u.suppressedBy = null;
       u.engagedWithUnitId = null;
+      u.noChargeKey = null;
       u.groups.forEach(g => { g.liveCount = g.initialCount; g.woundsRemainingOnCurrent = g.stats.W; });
     });
   });
-  state.game = { round: 1, activePlayerKey: "playerA", phase: "command", ended: false, checklist: {}, battleshockRolls: {}, battleshockSynapse: {}, advanceRoll: { unitId: "", die: null }, chargeRoll: { unitId: "", dice: [] }, score: { playerA: [], playerB: [] }, actedByPhaseInstance: {}, usedWeaponsByUnit: {}, onceAbilityUsed: {}, alphaWarriorAskedInstance: null, alphaWarriorTargetId: null, symbioticTarget: null, grislyDone: {} };
+  state.game = { round: 1, activePlayerKey: "playerA", phase: "command", ended: false, checklist: {}, battleshockRolls: {}, battleshockSynapse: {}, advanceRoll: { unitId: "", die: null }, chargeRoll: { unitId: "", dice: [] }, score: { playerA: [], playerB: [] }, actedByPhaseInstance: {}, usedWeaponsByUnit: {}, onceAbilityUsed: {}, alphaWarriorAskedInstance: null, alphaWarriorTargetId: null, symbioticTarget: null, grislyDone: {}, neuralAskedInstance: null, neuralTargetId: null };
   state.cycle = emptyCycle();
   state.attackLog = [];
 }
@@ -1664,6 +1726,7 @@ function unitLiveLabel(u) {
   if (u.battleshocked) label += " ☠️ BATTLESHOCKED";
   if (u.disrupted) label += " 🐌 DISRUPTED (-2 M/Advance/Charge)";
   if (u.suppressedBy) label += " 🔻 SUPPRESSED (-1 to hit)";
+  if (u.noChargeKey && u.noChargeKey === state.game.round + "-" + state.game.activePlayerKey) label += " 🚫 NÃO PODE DECLARAR CHARGE (Winged Swarm)";
   return label;
 }
 // Badge visível de "esta unidade está battleshocked" — usado fora do
@@ -2217,6 +2280,8 @@ function renderCommandPhase() {
   if (onceCardCommand) wrap.appendChild(onceCardCommand);
   const alphaWarriorCard = renderAlphaWarriorCard();
   if (alphaWarriorCard) wrap.appendChild(alphaWarriorCard);
+  const neuralCard = renderNeuralDisruptionCard();
+  if (neuralCard) wrap.appendChild(neuralCard);
   wrap.appendChild(renderChecklist("command", [
     "Ganhar 1 CP (ambos os jogadores)",
     "Testar battle-shock (unidades battle-shocked ou a metade força ou menos)",
@@ -2303,7 +2368,7 @@ function renderChargePhase() {
   const sel = el("select");
   sel.appendChild(el("option", { value: "", text: "— escolher unidade —" }));
   p.units.forEach(u => {
-    const o = el("option", { value: u.id, text: u.label });
+    const o = el("option", { value: u.id, text: unitLiveLabel(u) });
     if (String(u.id) === String(state.game.chargeRoll.unitId)) o.selected = true;
     sel.appendChild(o);
   });
@@ -2560,7 +2625,11 @@ function addUnitToPlayer(playerKey, ds, opts) {
   const isSquadLike = leaderDs != null || supportDs != null || sizing.defaultTotal > 1;
   const needsNumber = existing > 0 || isSquadLike;
 
-  const points = (leaderDs ? leaderDs.points : 0) + (supportDs ? supportDs.points : 0) + ds.points;
+  // pointsBySize (opcional): preço exato em tamanhos de esquadrão oficiais
+  // (ex: Gargoyles 10 = 80, 20 = 155); fora dessa tabela mantém-se o preço
+  // base com asterisco (aproximado), como nas outras unidades escaláveis.
+  const exactPoints = ds.pointsBySize && ds.pointsBySize[String(count != null ? count : sizing.defaultTotal)];
+  const points = (leaderDs ? leaderDs.points : 0) + (supportDs ? supportDs.points : 0) + (exactPoints || ds.points);
 
   const inst = {
     id: nextId(),
@@ -2568,7 +2637,7 @@ function addUnitToPlayer(playerKey, ds, opts) {
     faction: ds.faction,
     label: baseLabel + (needsNumber ? " #" + (existing + 1) : ""),
     points,
-    pointsApprox: customCount,
+    pointsApprox: customCount && !exactPoints,
     battleshocked: false,
     disrupted: false,
     groups,
@@ -2898,6 +2967,16 @@ function renderAttackCycle(phaseKey) {
   const meleeWoundBonusValue = phaseKey === "fight" ? unitAuraBonus(attacker, "meleeWoundBonus") : 0;
   // DAMAGED (Haruspex/Exocrine): com poucas wounds restantes no modelo, -1 ao
   // hit roll — a app já sabe as wounds restantes, por isso aplica sozinha.
+  // PSYCHOLOGICAL SABOTEUR (Neurolictor): aura a 12" (distância física — a
+  // app pergunta). Só se pergunta quando os factos que a app conhece já a
+  // tornam possível: a unidade atacante está Battle-shocked com um Neurolictor
+  // inimigo em jogo (-1 hit), ou o atacante é Tyranids e o alvo está
+  // Battle-shocked com um Neurolictor amigo em jogo (+1 wound).
+  const hasSaboteur = u => totalLive(u) > 0 && u.datasheetNames.some(n => { const d = findDatasheet(library, n); return d && d.psychologicalSaboteur; });
+  const sabHitCandidate = !!attacker.battleshocked && allInstances().some(u => u.owner !== attacker.owner && hasSaboteur(u));
+  const sabWoundCandidate = attacker.faction === "Tyranids" && !!target.battleshocked && allInstances().some(u => u.owner === attacker.owner && hasSaboteur(u));
+  const sabHitPenaltyValue = (sabHitCandidate && c.saboteurHit === true) ? 1 : 0;
+  const sabWoundBonusValue = (sabWoundCandidate && c.saboteurWound === true) ? 1 : 0;
   const suppressedPenaltyValue = attacker.suppressedBy ? 1 : 0;
   const engagedEnemyNow = phaseKey === "shooting" ? engagedEnemyOf(attacker) : null;
   const engagedPenaltyValue = (engagedEnemyNow && weaponSourceIsMV(weapon) && !isCloseQuarters(weapon)) ? 1 : 0;
@@ -2921,7 +3000,7 @@ function renderAttackCycle(phaseKey) {
   const antiApplies = !!(antiInfo && targetHasUnitKeyword(target, antiInfo.targetKeyword));
   const critThreshold = antiApplies ? Math.min(6, antiInfo.threshold) : 6;
   const hitThreshold = parseThreshold(toHitValue(weapon, phaseKey));
-  const effHitThreshold = adjustedThreshold(hitThreshold, c.hitAdjust + heavyBonus + meleeHitBonusValue - damagedPenaltyValue - suppressedPenaltyValue - engagedPenaltyValue);
+  const effHitThreshold = adjustedThreshold(hitThreshold, c.hitAdjust + heavyBonus + meleeHitBonusValue - damagedPenaltyValue - suppressedPenaltyValue - engagedPenaltyValue - sabHitPenaltyValue);
   // Toughness da unidade-alvo: a maior Toughness entre os grupos vivos, não
   // a do primeiro grupo da lista (que só por coincidência costuma ser a
   // mais alta, ex: Neurotyrant — numa Attached Unit com um líder mais
@@ -2930,7 +3009,7 @@ function renderAttackCycle(phaseKey) {
   const targetT = Math.max(...(targetLiveGroups.length ? targetLiveGroups : target.groups).map(g => Number(g.stats.T)));
   const rawWoundT = woundThreshold(weapon.S, targetT);
   const woundT = antiApplies ? Math.min(rawWoundT, antiInfo.threshold) : rawWoundT;
-  const effWoundThreshold = adjustedThreshold(woundT, c.woundAdjust + meleeWoundBonusValue);
+  const effWoundThreshold = adjustedThreshold(woundT, c.woundAdjust + meleeWoundBonusValue + sabWoundBonusValue);
 
   // Abilities de UNIDADE que dão InvSv a toda a unidade (ex: Bannernob)
   // aplicam-se a TODOS os grupos do alvo, não só ao grupo que já tem InvSV
@@ -3008,6 +3087,22 @@ function renderAttackCycle(phaseKey) {
       return wrap;
     }
 
+    if ((sabHitCandidate && c.saboteurHit === null) || (sabWoundCandidate && c.saboteurWound === null)) {
+      const sc = el("div", { class: "card" });
+      sc.appendChild(el("div", { class: "step-hint", text: "🧠 Psychological Saboteur (Neurolictor): a aura só vale para unidades Battle-shocked a 12\" do Neurolictor — a app não sabe distâncias.", style: "color:var(--gold);font-weight:600;font-size:13px;" }));
+      const askOne = (question, key) => {
+        sc.appendChild(el("h3", { text: question }));
+        const sel = el("select");
+        [["", "— escolher —"], ["yes", "Sim"], ["no", "Não"]].forEach(([v, t]) => sel.appendChild(el("option", { value: v, text: t })));
+        sel.onchange = e => { c[key] = e.target.value === "" ? null : e.target.value === "yes"; render(); };
+        sc.appendChild(sel);
+      };
+      if (sabHitCandidate && c.saboteurHit === null) askOne("Esta unidade (Battle-shocked) está a 12\" de um Neurolictor inimigo? (-1 ao acertar)", "saboteurHit");
+      if (sabWoundCandidate && c.saboteurWound === null) askOne("A unidade alvo (Battle-shocked) está a 12\" de um Neurolictor amigo? (+1 ao ferir)", "saboteurWound");
+      wrap.appendChild(sc);
+      return wrap;
+    }
+
     if (needsAttacksRollStep && c.attacksRolled === null) {
       const bonusSentence = attacksBonus ? " Depois soma-se o bónus de +" + attacksBonus + " attacks (" + attacksBonusLabel(weapon, c, modelsAttacking) + ") antes de perguntar os hits." : "";
       wrap.appendChild(renderNumberStep({
@@ -3079,7 +3174,7 @@ function renderAttackCycle(phaseKey) {
       wrap.appendChild(renderNumberStep({
         title: "Precisas de " + thresholdText(effHitThreshold) + " para acertar",
         bigNumber: thresholdText(effHitThreshold),
-        bonusChips: (heavyBonus ? ["HEAVY: +1 ao acertar"] : []).concat(meleeHitBonusValue ? ["+" + meleeHitBonusValue + " ao acertar (melee, permanente)"] : []).concat(damagedPenaltyValue ? ["DAMAGED: -" + damagedPenaltyValue + " ao acertar"] : []).concat(suppressedPenaltyValue ? ["SUPPRESSED (Indiscriminate Detonations): -1 ao acertar"] : []).concat(engagedPenaltyValue ? ["ENGAGED (MONSTER/VEHICLE, arma não [CLOSE-QUARTERS]): -1 ao acertar"] : []),
+        bonusChips: (heavyBonus ? ["HEAVY: +1 ao acertar"] : []).concat(meleeHitBonusValue ? ["+" + meleeHitBonusValue + " ao acertar (melee, permanente)"] : []).concat(damagedPenaltyValue ? ["DAMAGED: -" + damagedPenaltyValue + " ao acertar"] : []).concat(suppressedPenaltyValue ? ["SUPPRESSED (Indiscriminate Detonations): -1 ao acertar"] : []).concat(engagedPenaltyValue ? ["ENGAGED (MONSTER/VEHICLE, arma não [CLOSE-QUARTERS]): -1 ao acertar"] : []).concat(sabHitPenaltyValue ? ["PSYCHOLOGICAL SABOTEUR: -1 ao acertar"] : []),
         hint: statLabel(hitStat) + ": " + toHitValue(weapon, phaseKey) + (c.hitAdjust ? " · ajuste manual aplicado: " + (c.hitAdjust > 0 ? "+" : "") + c.hitAdjust : "") + attacksBonusSuffix,
         threshold: effHitThreshold > 6 ? 999 : effHitThreshold, stepKey: "hits", max: effectiveAttacksMax, countLabel: "Hits",
         rollsDice: true,
@@ -3143,6 +3238,7 @@ function renderAttackCycle(phaseKey) {
     if (sustainedX && c.sustainedHits) woundBonusChips.push("SUSTAINED HITS: +" + (c.sustainedHits * sustainedX) + " hits automáticos");
     if (antiApplies) woundBonusChips.push("ANTI-" + antiInfo.targetKeyword + " " + antiInfo.threshold + "+ aplicado");
     if (lethalCrits) woundBonusChips.push("LETHAL HITS: " + lethalCrits + " wound(s) automático(s)");
+    if (sabWoundBonusValue) woundBonusChips.push("PSYCHOLOGICAL SABOTEUR: +1 ao ferir");
     if (meleeWoundBonusValue) woundBonusChips.push("+" + meleeWoundBonusValue + " ao ferir (melee, permanente)");
     // wound-roll anterior (sem a parte automática do Lethal Hits) — usado só
     // para pré-preencher se voltares aqui via "Corrigir passo anterior".
@@ -3727,6 +3823,38 @@ function renderAttackCycle(phaseKey) {
       return wrap;
     }
 
+    // FEEDER TENDRILS (Neurolictor): matar um modelo CHARACTER inimigo dá 1CP.
+    // A app sabe que grupos perderam modelos e se a datasheet deles é
+    // CHARACTER — só falta o jogador registar o CP (uma vez por ataque).
+    const attackerHasFeeder = attacker.datasheetNames.some(n => { const d = findDatasheet(library, n); return d && d.feederTendrils; });
+    const killedCharacter = target.groups.some(g => ((c.deadByGroup && c.deadByGroup[g.key]) || 0) > 0 && datasheetHasUnitKeyword(g.datasheetName, "CHARACTER"));
+    if (attackerHasFeeder && killedCharacter) {
+      const fCard = el("div", { class: "card" });
+      fCard.appendChild(el("div", { class: "step-hint", text: "🩸 Feeder Tendrils: um modelo CHARACTER inimigo foi destruído — ganhas 1CP.", style: "color:var(--gold);font-weight:600;font-size:13px;" }));
+      const fBtn = el("button", { class: "primary", text: c.feederApplied ? "+1CP registado ✓" : "Registar +1CP" });
+      fBtn.disabled = !!c.feederApplied;
+      fBtn.onclick = () => { state.setup[attacker.owner === "A" ? "playerA" : "playerB"].cp += 1; c.feederApplied = true; render(); };
+      fCard.appendChild(fBtn);
+      wrap.appendChild(fCard);
+    }
+
+    // WINGED SWARM (Gargoyles): depois de disparar, se não terminou engaged,
+    // pode mover até 6" — mas não pode declarar charge nesse turno. Opcional:
+    // a app só regista a decisão e mostra o aviso na Charge phase.
+    const attackerHasWinged = attacker.datasheetNames.some(n => { const d = findDatasheet(library, n); return d && d.wingedSwarm; });
+    if (attackerHasWinged && phaseKey === "shooting" && !engagedEnemyOf(attacker)) {
+      const wCard = el("div", { class: "card" });
+      const realW = findRealUnit(attacker.id);
+      const wKey = state.game.round + "-" + state.game.activePlayerKey;
+      const used = realW && realW.noChargeKey === wKey;
+      wCard.appendChild(el("div", { class: "step-hint", text: "🦇 Winged Swarm: depois de disparar, se a unidade não está em Engagement Range de nenhuma unidade inimiga, pode fazer um Normal move de até 6\". Se o fizer, não pode declarar charge neste turno.", style: "color:var(--gold);font-weight:600;font-size:13px;" }));
+      const wBtn = el("button", { text: used ? "Winged Swarm usado ✓ (não pode carregar)" : "Vou mover 6\" (Winged Swarm)" });
+      wBtn.disabled = !!used;
+      wBtn.onclick = () => { if (realW) realW.noChargeKey = wKey; render(); };
+      wCard.appendChild(wBtn);
+      wrap.appendChild(wCard);
+    }
+
     const card = el("div", { class: "card" });
     card.appendChild(el("h2", { text: "Resultado" }));
     const critCount = c.critWounds || 0;
@@ -4239,6 +4367,7 @@ function renderPicker(instances, phaseKey) {
     c.hazardousAsked = null; c.hazardousResults = [];
     c.critMwAsked = null; c.critMwCritCount = null; c.critMwRoll = null;
     c.symbioticApplied = false; c.grislySelected = null; c.grislyAsked = false; c.suppressApplied = false;
+    c.saboteurHit = null; c.saboteurWound = null; c.feederApplied = false;
     render();
   };
   card.appendChild(startBtn);
