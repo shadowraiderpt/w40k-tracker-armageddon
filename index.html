@@ -406,6 +406,37 @@ const RAW_UNITS = {
       "deadlyDemise": 1,
       "fnpAura": {"value": 6, "range": 6},
       "defaultCount":1},
+    {"name":"Haruspex","points":125,"keywords":["MONSTER","HARVESTER"],
+      "stats":{"M":"8\"","T":11,"SV":"3+","W":14,"LD":"8+","OC":4},
+      "ranged_weapons":[{"name":"Grasping tongue","keywords":["PRECISION"],"range":"12\"","A":1,"BS":"3+","S":6,"AP":-2,"D":"D6+1"}],
+      "melee_weapons":[
+        {"name":"Ravenous maw","range":"Melee","A":14,"WS":"3+","S":7,"AP":-1,"D":2},
+        {"name":"Shovelling claws","keywords":["EXTRA ATTACKS"],"range":"Melee","A":4,"WS":"3+","S":14,"AP":-2,"D":"D6+1"}
+      ],
+      "abilities":[
+        "Core: Deadly Demise D3",
+        "Faction: Synapse",
+        "Grisly Spectacle: cada vez que este modelo é selecionado para lutar, depois de resolver os ataques, se uma ou mais unidades inimigas foram destruídas por esses ataques, cada unidade inimiga a 6\" deste modelo tem de fazer um teste de Battle-shock",
+        "Damaged (1-5 wounds remaining): subtrai 1 ao hit roll"
+      ],
+      "deadlyDemise":"D3",
+      "grislySpectacle":true,
+      "damaged":{"maxWounds":5,"hitPenalty":1},
+      "defaultCount":1},
+    {"name":"Exocrine","points":135,"keywords":["MONSTER"],
+      "stats":{"M":"8\"","T":10,"SV":"3+","W":14,"LD":"8+","OC":4},
+      "ranged_weapons":[{"name":"Bio-plasmic cannon","keywords":["BLAST","HEAVY"],"range":"36\"","A":"D6+3","BS":"3+","S":9,"AP":-3,"D":3}],
+      "melee_weapons":[{"name":"Powerful limbs","range":"Melee","A":3,"WS":"3+","S":7,"AP":0,"D":2}],
+      "abilities":[
+        "Core: Deadly Demise D3",
+        "Faction: Synapse",
+        "Symbiotic Targeting: no Shooting phase, depois deste modelo disparar, escolhe uma unidade inimiga atingida por um ou mais desses ataques. Até ao fim da fase, sempre que um modelo Tyranids amigo fizer um ataque contra essa unidade, pode repetir um hit roll de 1",
+        "Damaged (1-5 wounds remaining): subtrai 1 ao hit roll"
+      ],
+      "deadlyDemise":"D3",
+      "symbioticTargeting":true,
+      "damaged":{"maxWounds":5,"hitPenalty":1},
+      "defaultCount":1},
     {"name":"Von Ryan's Leapers","points":70,"keywords":["INFANTRY"],
       "stats":{"M":"10\"","T":5,"SV":"4+","InvSV":"6+","W":3,"LD":"8+","OC":1},
       "ranged_weapons":[],
@@ -814,7 +845,7 @@ const BOX_LIMITS = {
   // ele; nunca assumir "sem limite" para uma facção nova sem perguntar).
   "Winged Tyranid Prime": 1, "Neurotyrant": 1, "Screamer-Killer": 1, "Psychophage": 1,
   "Von Ryan's Leapers": 3, "Termagants": 20, "Ripper Swarms": 2,
-  "Neurogaunts": 11, "Barbgaunts": 5,
+  "Neurogaunts": 11, "Barbgaunts": 5, "Haruspex": 1, "Exocrine": 1,
 };
 function unitsUsedCount(dsName) {
   let used = 0;
@@ -1348,6 +1379,8 @@ const state = {
     // phase — alphaWarriorAskedInstance guarda o phaseInstanceKey() já
     // resolvido, para não perguntar de novo dentro do mesmo Command phase.
     alphaWarriorAskedInstance: null, alphaWarriorTargetId: null,
+    // SYMBIOTIC TARGETING (Exocrine) e GRISLY SPECTACLE (Haruspex)
+    symbioticTarget: null, grislyDone: {},
   },
 };
 
@@ -1418,6 +1451,7 @@ function emptyCycle() {
     // HOLD STILL AND SAY AARGH (Painboy, 'Urty syringe): crítico no wound
     // roll contra alvo não-VEHICLE causa D6 mortal wounds extra.
     critMwAsked: null, critMwCritCount: null, critMwRoll: null,
+    symbioticApplied: false, grislySelected: null, grislyAsked: false,
     // EXHORTATION OF RAGE (Chaplain with Jump Pack): opcional, na Fight
     // Phase, antes dos ataques normais desta unidade — o jogador escolhe se
     // usa, contra que unidade inimiga (Engagement Range, físico, o jogador
@@ -1505,7 +1539,7 @@ function startNewGame() {
       u.groups.forEach(g => { g.liveCount = g.initialCount; g.woundsRemainingOnCurrent = g.stats.W; });
     });
   });
-  state.game = { round: 1, activePlayerKey: "playerA", phase: "command", ended: false, checklist: {}, battleshockRolls: {}, battleshockSynapse: {}, advanceRoll: { unitId: "", die: null }, chargeRoll: { unitId: "", dice: [] }, score: { playerA: [], playerB: [] }, actedByPhaseInstance: {}, usedWeaponsByUnit: {}, onceAbilityUsed: {}, alphaWarriorAskedInstance: null, alphaWarriorTargetId: null };
+  state.game = { round: 1, activePlayerKey: "playerA", phase: "command", ended: false, checklist: {}, battleshockRolls: {}, battleshockSynapse: {}, advanceRoll: { unitId: "", die: null }, chargeRoll: { unitId: "", dice: [] }, score: { playerA: [], playerB: [] }, actedByPhaseInstance: {}, usedWeaponsByUnit: {}, onceAbilityUsed: {}, alphaWarriorAskedInstance: null, alphaWarriorTargetId: null, symbioticTarget: null, grislyDone: {} };
   state.cycle = emptyCycle();
   state.attackLog = [];
 }
@@ -2795,6 +2829,10 @@ function renderAttackCycle(phaseKey) {
   if (state.game.alphaWarriorTargetId && String(state.game.alphaWarriorTargetId) === String(attacker.id)) {
     banner.appendChild(el("div", { text: "🧠 Alpha Warrior ativo nesta unidade: podes re-rolar resultados de 1 nos hit rolls e wound rolls, até ao próximo Command phase.", style: "font-size:11px;color:var(--gold);margin-top:6px;clear:both;" }));
   }
+  const symb = state.game.symbioticTarget;
+  if (symb && symb.key === phaseInstanceKey() && attacker.faction === "Tyranids" && String(symb.targetId) === String(target.id)) {
+    banner.appendChild(el("div", { text: "🎯 Symbiotic Targeting ativo contra esta unidade: podes repetir um hit roll de 1 (só até ao fim desta fase).", style: "font-size:11px;color:var(--gold);margin-top:6px;clear:both;" }));
+  }
   wrap.appendChild(banner);
 
   const isTorrent = phaseKey === "shooting" && hasKeyword(weapon, "TORRENT");
@@ -2810,6 +2848,15 @@ function renderAttackCycle(phaseKey) {
   // contrário de HEAVY (precisa de confirmar que não moveu).
   const meleeHitBonusValue = phaseKey === "fight" ? unitAuraBonus(attacker, "meleeHitBonus") : 0;
   const meleeWoundBonusValue = phaseKey === "fight" ? unitAuraBonus(attacker, "meleeWoundBonus") : 0;
+  // DAMAGED (Haruspex/Exocrine): com poucas wounds restantes no modelo, -1 ao
+  // hit roll — a app já sabe as wounds restantes, por isso aplica sozinha.
+  const damagedPenaltyValue = (() => {
+    const g = attackingGroupsFor(attacker, weapon).find(gr => gr.liveCount > 0);
+    const dsD = g && findDatasheet(library, g.datasheetName);
+    const d = dsD && dsD.damaged;
+    if (d && g.woundsRemainingOnCurrent != null && g.woundsRemainingOnCurrent <= d.maxWounds) return d.hitPenalty;
+    return 0;
+  })();
   // Lethal Hits condicional a ter carregado este turno (ability de
   // unidade, ex: Vanguard Assault) — só relevante em combate corpo a corpo.
   const chargeLethalHitsText = chargeLethalHitsAbility(weapon, phaseKey);
@@ -2823,7 +2870,7 @@ function renderAttackCycle(phaseKey) {
   const antiApplies = !!(antiInfo && targetHasUnitKeyword(target, antiInfo.targetKeyword));
   const critThreshold = antiApplies ? Math.min(6, antiInfo.threshold) : 6;
   const hitThreshold = parseThreshold(toHitValue(weapon, phaseKey));
-  const effHitThreshold = adjustedThreshold(hitThreshold, c.hitAdjust + heavyBonus + meleeHitBonusValue);
+  const effHitThreshold = adjustedThreshold(hitThreshold, c.hitAdjust + heavyBonus + meleeHitBonusValue - damagedPenaltyValue);
   // Toughness da unidade-alvo: a maior Toughness entre os grupos vivos, não
   // a do primeiro grupo da lista (que só por coincidência costuma ser a
   // mais alta, ex: Neurotyrant — numa Attached Unit com um líder mais
@@ -2981,7 +3028,7 @@ function renderAttackCycle(phaseKey) {
       wrap.appendChild(renderNumberStep({
         title: "Precisas de " + thresholdText(effHitThreshold) + " para acertar",
         bigNumber: thresholdText(effHitThreshold),
-        bonusChips: (heavyBonus ? ["HEAVY: +1 ao acertar"] : []).concat(meleeHitBonusValue ? ["+" + meleeHitBonusValue + " ao acertar (melee, permanente)"] : []),
+        bonusChips: (heavyBonus ? ["HEAVY: +1 ao acertar"] : []).concat(meleeHitBonusValue ? ["+" + meleeHitBonusValue + " ao acertar (melee, permanente)"] : []).concat(damagedPenaltyValue ? ["DAMAGED: -" + damagedPenaltyValue + " ao acertar"] : []),
         hint: statLabel(hitStat) + ": " + toHitValue(weapon, phaseKey) + (c.hitAdjust ? " · ajuste manual aplicado: " + (c.hitAdjust > 0 ? "+" : "") + c.hitAdjust : "") + attacksBonusSuffix,
         threshold: effHitThreshold > 6 ? 999 : effHitThreshold, stepKey: "hits", max: effectiveAttacksMax, countLabel: "Hits",
         rollsDice: true,
@@ -3564,6 +3611,61 @@ function renderAttackCycle(phaseKey) {
       return wrap;
     }
 
+    // SYMBIOTIC TARGETING (Exocrine): depois de disparar e acertar, a unidade
+    // atingida fica marcada até ao fim da fase — a app já sabe alvo e hits,
+    // por isso regista sozinha (mesmo padrão do Disruption Bombardment).
+    const attackerHasSymb = attacker.datasheetNames.some(n => { const d = findDatasheet(library, n); return d && d.symbioticTargeting; });
+    if (attackerHasSymb && phaseKey === "shooting" && c.hits > 0 && !c.symbioticApplied) {
+      state.game.symbioticTarget = { key: phaseInstanceKey(), targetId: target.id };
+      c.symbioticApplied = true;
+    }
+
+    // GRISLY SPECTACLE (Haruspex): depois de lutar, se este ataque destruiu
+    // a unidade alvo, cada unidade inimiga a 6" testa Battle-shock. A app
+    // sabe que a unidade morreu, mas não distâncias — o jogador escolhe
+    // quais estão a 6". Só uma vez por ativação (chave por unidade+fase).
+    const attackerHasGrisly = attacker.datasheetNames.some(n => { const d = findDatasheet(library, n); return d && d.grislySpectacle; });
+    const grislyKey = phaseInstanceKey() + "-" + attacker.id;
+    const targetWiped = target.groups.reduce((sum, g) => sum + Math.max(0, g.liveCount - ((c.deadByGroup && c.deadByGroup[g.key]) || 0)), 0) === 0;
+    if (attackerHasGrisly && phaseKey === "fight" && targetWiped && !c.grislyAsked && !state.game.grislyDone[grislyKey]) {
+      const gCard = el("div", { class: "card" });
+      gCard.appendChild(renderRollerBadge("defender", "Unidades inimigas a 6\" de " + attacker.label, "Grisly Spectacle — unidade destruída, Battle-shock a quem estiver a 6\"."));
+      gCard.appendChild(el("div", { class: "step-hint", text: "☠️ Grisly Spectacle: " + target.label + " foi destruída. Cada unidade inimiga a 6\" do Haruspex testa Battle-shock. Marca as que estão a 6\" (a app não sabe distâncias).", style: "color:var(--gold);font-weight:600;font-size:13px;" }));
+      const candidates = allInstances().filter(u => u.owner !== attacker.owner && String(u.id) !== String(target.id) && totalLive(u) > 0);
+      if (c.grislySelected === null) {
+        const picks = {};
+        candidates.forEach(u => {
+          const lab = el("label", { style: "display:flex;align-items:center;gap:6px;margin:4px 0;font-size:12px;" });
+          const cb = el("input", { type: "checkbox" });
+          cb.onchange = () => { picks[u.id] = cb.checked; };
+          lab.appendChild(cb);
+          lab.appendChild(document.createTextNode(u.ownerName + ": " + unitLiveLabel(u)));
+          gCard.appendChild(lab);
+        });
+        if (candidates.length === 0) gCard.appendChild(el("div", { class: "step-hint", text: "Não há outras unidades inimigas em jogo." }));
+        const okBtn = el("button", { class: "primary", text: "Confirmar unidades a 6\" →" });
+        okBtn.style.cssText = "width:100%;margin-top:8px;";
+        okBtn.onclick = () => {
+          c.grislySelected = Object.keys(picks).filter(id => picks[id]);
+          state.game.grislyDone[grislyKey] = true;
+          if (c.grislySelected.length === 0) c.grislyAsked = true;
+          render();
+        };
+        gCard.appendChild(okBtn);
+      } else {
+        c.grislySelected.forEach(id => {
+          const ru = findRealUnit(id);
+          if (ru) gCard.appendChild(renderBattleshockRoll(ru, { rollKeySuffix: "-grisly" }));
+        });
+        const doneBtn = el("button", { class: "primary", text: "Concluir Grisly Spectacle →" });
+        doneBtn.style.cssText = "width:100%;margin-top:8px;";
+        doneBtn.onclick = () => { c.grislyAsked = true; render(); };
+        gCard.appendChild(doneBtn);
+      }
+      wrap.appendChild(gCard);
+      return wrap;
+    }
+
     const card = el("div", { class: "card" });
     card.appendChild(el("h2", { text: "Resultado" }));
     const critCount = c.critWounds || 0;
@@ -4047,6 +4149,7 @@ function renderPicker(instances, phaseKey) {
     c.deadlyDemiseAsked = null; c.deadlyDemiseRoll = null; c.deadlyDemiseTriggered = false;
     c.hazardousAsked = null; c.hazardousResults = [];
     c.critMwAsked = null; c.critMwCritCount = null; c.critMwRoll = null;
+    c.symbioticApplied = false; c.grislySelected = null; c.grislyAsked = false;
     render();
   };
   card.appendChild(startBtn);
