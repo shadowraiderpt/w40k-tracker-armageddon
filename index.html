@@ -1123,14 +1123,26 @@ function woundExplainLine(weapon, targetT, effWoundThreshold, antiApplies, antiI
 // Passo 4 — "O AP nunca modifica o Invulnerable Save"). Recebe sv/ap/inv já
 // resolvidos (inv já com a aura de InvSv, se aplicável) — os MESMOS valores
 // que effSaveFor() usa, nunca uma segunda conta em paralelo.
-function saveExplainLine(sv, apValue, inv) {
+// adjust (opcional): ajuste manual (cobertura, stratagems, etc.) — só à
+// armour save, nunca à InvSv (core_rules_reference.md: "O AP nunca modifica
+// o Invulnerable Save", e o mesmo princípio estende-se a outros
+// modificadores da armour save). Piso de 2+ (um 1 natural falha sempre),
+// sem limite de ±1 (essa regra é do BS/WS, não do save, na 11ª edição). Só
+// menciona o ajuste na linha se ele realmente mudar o número (mesmo
+// critério do woundExplainLine) — se ficar preso no piso de 2+, o ajuste
+// não aparece porque não fez diferença nenhuma ao resultado.
+function saveExplainLine(sv, apValue, inv, adjust) {
   const modified = sv + Math.abs(apValue || 0);
-  const base = "Sv " + sv + "+ com AP" + (apValue || 0) + " → " + modified + "+";
-  if (inv === null || inv === undefined) {
-    return modified > 6 ? base + ", não há save possível" : base;
+  const effModified = adjust ? Math.max(2, modified - adjust) : modified;
+  let base = "Sv " + sv + "+ com AP" + (apValue || 0) + " → " + modified + "+";
+  if (effModified !== modified) {
+    base += ", ajuste " + (adjust > 0 ? "+" : "") + adjust + " → " + effModified + "+";
   }
-  if (inv < modified) return base + "; InvSv " + inv + "+ não é afetada pela AP → usa " + inv + "+";
-  return base + "; melhor que a InvSv " + inv + "+ → usa " + modified + "+";
+  if (inv === null || inv === undefined) {
+    return effModified > 6 ? base + ", não há save possível" : base;
+  }
+  if (inv < effModified) return base + "; InvSv " + inv + "+ não é afetada pela AP → usa " + inv + "+";
+  return base + "; melhor que a InvSv " + inv + "+ → usa " + effModified + "+";
 }
 // Nome completo de uma estatística abreviada, para mostrar por extenso nos
 // passos do ciclo de ataque em vez de só "S", "T", "SV"... Mantido em
@@ -1536,7 +1548,7 @@ function emptyCycle() {
     // por causa de modificadores da mesa física (cobertura, stratagems...).
     // A app nunca decide o modificador sozinha — só soma/subtrai o que o
     // jogador já sabe.
-    hitAdjust: 0, woundAdjust: 0,
+    hitAdjust: 0, woundAdjust: 0, saveAdjust: 0,
     // DEVASTATING WOUNDS: quantos dos wounds confirmados foram um 6 não
     // modificado (critical wound) — viram mortal wounds diretas, sem save.
     // critInstances: array com 1 instância de dano (= weapon.D) por critical
@@ -3063,12 +3075,18 @@ function renderAttackCycle(phaseKey) {
   // aplicam-se a TODOS os grupos do alvo, não só ao grupo que já tem InvSV
   // na própria datasheet — mesmo princípio do Feel No Pain.
   const invSvAura = invSvAuraFor(target);
+  // c.saveAdjust (cobertura, stratagems, etc.) só modifica a armour save
+  // (Sv+AP) — nunca a Invulnerable Save, que "nunca é modificada pela AP"
+  // (core_rules_reference.md) nem por nada mais que a modifique através
+  // dela. Sem limite de ±1 (isso aplica-se ao BS/WS, não ao save, na 11ª
+  // edição) — só o piso de 2+ (um 1 natural falha sempre), já garantido
+  // por adjustedThreshold(). Depois usa-se sempre o melhor dos dois.
   function effSaveFor(group) {
     const sv = parseThreshold(group.stats.SV);
     let inv = parseThreshold(group.stats.InvSV);
     if (invSvAura && (inv === null || invSvAura.value < inv)) inv = invSvAura.value;
     const ap = Math.abs(weapon.AP || 0);
-    let eff = sv + ap;
+    let eff = adjustedThreshold(sv + ap, c.saveAdjust);
     if (inv !== null && inv < eff) eff = inv;
     return eff;
   }
@@ -3375,13 +3393,14 @@ function renderAttackCycle(phaseKey) {
       wrap.appendChild(renderNumberStep({
         title: "O adversário precisa de " + svText + " para salvar",
         bigNumber: svText,
-        explainLine: saveExplainLine(parseThreshold(defaultSaveGroup.stats.SV), weapon.AP, defaultInv),
+        explainLine: saveExplainLine(parseThreshold(defaultSaveGroup.stats.SV), weapon.AP, defaultInv, c.saveAdjust),
         bonusChips: (isDevWounds && c.critWounds) ? ["DEVASTATING WOUNDS: " + c.critWounds + " wound(s) resolvido(s) sem save"] : [],
         hint: hintParts.join(" / "),
         threshold: saveThreshold > 6 ? 999 : saveThreshold, stepKey: "saves", max: woundsForSave, countLabel: "Saves falhados",
         rollsDice: true,
         initialValue: c.failedSaves,
         onBack: backToWounds,
+        adjust: { value: c.saveAdjust, onChange: v => { c.saveAdjust = Math.max(-5, Math.min(5, v)); render(); } },
         invertThreshold: true,
         roller: "defender", rollerName: defenderRollerName, rollWhy: "Roll de salvaguarda (save roll) — tenta evitar o dano com a armadura ou InvSv.",
         onConfirm: n => {
@@ -3499,7 +3518,7 @@ function renderAttackCycle(phaseKey) {
       wrap.appendChild(renderNumberStep({
         title: currentGroup.label + " (" + c.groupResults[currentKey].assignedWounds + " wound(s)): precisa de " + svText + " para salvar",
         bigNumber: svText,
-        explainLine: saveExplainLine(parseThreshold(currentGroup.stats.SV), weapon.AP, currentInv),
+        explainLine: saveExplainLine(parseThreshold(currentGroup.stats.SV), weapon.AP, currentInv, c.saveAdjust),
         hint: hintParts.join(" / "),
         threshold: gSave > 6 ? 999 : gSave, stepKey: "save-" + currentKey,
         max: c.groupResults[currentKey].assignedWounds, countLabel: "Saves falhados",
@@ -3510,6 +3529,7 @@ function renderAttackCycle(phaseKey) {
           c.groupFlow = "assign";
           render();
         },
+        adjust: { value: c.saveAdjust, onChange: v => { c.saveAdjust = Math.max(-5, Math.min(5, v)); render(); } },
         invertThreshold: true,
         roller: "defender", rollerName: defenderRollerName, rollWhy: "Roll de salvaguarda (save roll) — tenta evitar o dano com a armadura ou InvSv.",
         onConfirm: n => {
@@ -4409,7 +4429,7 @@ function renderPicker(instances, phaseKey) {
     c.step = 1; c.hits = null; c.wounds = null; c.failedSaves = null;
     c.allocOrder = target.groups.length > 1 ? null : target.groups.map(g => g.key);
     c.manualDamage = null; c.deadByGroup = null;
-    c.hitAdjust = 0; c.woundAdjust = 0;
+    c.hitAdjust = 0; c.woundAdjust = 0; c.saveAdjust = 0;
     c.critWounds = null; c.critInstances = null; c.critInstancesByGroup = null;
     c.sustainedHits = null; c.fnpSuccesses = null; c.fnpConditionAnswered = null; c.attacksRolled = null;
     c.heavyStationary = null; c.chargedThisTurn = null; c.lethalHitCrits = null;
