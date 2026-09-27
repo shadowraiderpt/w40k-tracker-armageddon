@@ -1084,6 +1084,42 @@ function adjustedThreshold(base, adjust) {
 function thresholdText(t) {
   return t > 6 ? "auto-falha" : (t + "+");
 }
+// Linha explicativa do passo de Ferir: narra a comparação S vs T que a
+// tabela oficial já usou para chegar ao limiar (core_rules_reference.md,
+// Passo 2 — Wound Rolls) — mesma ordem de condições que woundThreshold(),
+// nunca recalcula o limiar em si, só descreve o que já foi calculado. Se o
+// limiar final (efeito de ANTI-X, ajuste manual ou aura) for diferente do
+// puro S vs T, acrescenta a diferença em vez de reformular a frase toda.
+function woundCompareText(s, t) {
+  if (s >= t * 2) return "S" + s + " é o dobro ou mais de T" + t + " → 2+";
+  if (s > t) return "S" + s + " é maior que T" + t + " → 3+";
+  if (s === t) return "S" + s + " igual a T" + t + " → 4+";
+  if (s * 2 <= t) return "T" + t + " é o dobro ou mais de S" + s + " → 6+";
+  return "S" + s + " é menor que T" + t + " → 5+";
+}
+function woundExplainLine(weapon, targetT, effWoundThreshold) {
+  const rawThreshold = woundThreshold(weapon.S, targetT);
+  let line = woundCompareText(weapon.S, targetT);
+  if (effWoundThreshold !== rawThreshold) {
+    const delta = rawThreshold - effWoundThreshold; // positivo = ficou mais fácil
+    line += ", ajuste " + (delta > 0 ? "+" : "") + delta + " → " + thresholdText(effWoundThreshold);
+  }
+  return line;
+}
+// Linha explicativa do passo de Salvar: narra Sv + AP e, se houver
+// Invulnerable Save, qual dos dois é o usado (core_rules_reference.md,
+// Passo 4 — "O AP nunca modifica o Invulnerable Save"). Recebe sv/ap/inv já
+// resolvidos (inv já com a aura de InvSv, se aplicável) — os MESMOS valores
+// que effSaveFor() usa, nunca uma segunda conta em paralelo.
+function saveExplainLine(sv, apValue, inv) {
+  const modified = sv + Math.abs(apValue || 0);
+  const base = "Sv " + sv + "+ com AP" + (apValue || 0) + " → " + modified + "+";
+  if (inv === null || inv === undefined) {
+    return modified > 6 ? base + ", não há save possível" : base;
+  }
+  if (inv < modified) return base + "; InvSv " + inv + "+ não é afetada pela AP → usa " + inv + "+";
+  return base + "; melhor que a InvSv " + inv + "+ → usa " + modified + "+";
+}
 // Nome completo de uma estatística abreviada, para mostrar por extenso nos
 // passos do ciclo de ataque em vez de só "S", "T", "SV"... Mantido em
 // inglês (nome oficial da keyword no jogo), o resto da app fica em
@@ -3246,6 +3282,7 @@ function renderAttackCycle(phaseKey) {
     wrap.appendChild(renderNumberStep({
       title: "Precisas de " + thresholdText(effWoundThreshold) + " para ferir",
       bigNumber: thresholdText(effWoundThreshold),
+      explainLine: woundExplainLine(weapon, targetT, effWoundThreshold),
       bonusChips: woundBonusChips,
       hint: statLabel("S") + " " + weapon.S + " vs " + statLabel("T") + " " + targetT + " (" + target.label + ")" + (c.woundAdjust ? " · ajuste manual aplicado: " + (c.woundAdjust > 0 ? "+" : "") + c.woundAdjust : ""),
       threshold: effWoundThreshold > 6 ? 999 : effWoundThreshold, stepKey: "wounds", max: hitsForWoundRoll, countLabel: "Wounds",
@@ -3322,9 +3359,11 @@ function renderAttackCycle(phaseKey) {
       const hintParts = [statLabel("SV") + " " + defaultSaveGroup.stats.SV];
       if (defaultSaveGroup.stats.InvSV) hintParts.push(statLabel("InvSV") + " " + defaultSaveGroup.stats.InvSV + " (nunca modificado por AP)");
       hintParts.push("vs " + statLabel("AP") + " " + weapon.AP);
+      const defaultInv = (() => { let iv = parseThreshold(defaultSaveGroup.stats.InvSV); if (invSvAura && (iv === null || invSvAura.value < iv)) iv = invSvAura.value; return iv; })();
       wrap.appendChild(renderNumberStep({
         title: "O adversário precisa de " + svText + " para salvar",
         bigNumber: svText,
+        explainLine: saveExplainLine(parseThreshold(defaultSaveGroup.stats.SV), weapon.AP, defaultInv),
         bonusChips: (isDevWounds && c.critWounds) ? ["DEVASTATING WOUNDS: " + c.critWounds + " wound(s) resolvido(s) sem save"] : [],
         hint: hintParts.join(" / "),
         threshold: saveThreshold > 6 ? 999 : saveThreshold, stepKey: "saves", max: woundsForSave, countLabel: "Saves falhados",
@@ -3444,9 +3483,11 @@ function renderAttackCycle(phaseKey) {
       const hintParts = [progressLabel, statLabel("SV") + " " + currentGroup.stats.SV];
       if (currentGroup.stats.InvSV) hintParts.push(statLabel("InvSV") + " " + currentGroup.stats.InvSV + " (nunca modificado por AP)");
       hintParts.push("vs " + statLabel("AP") + " " + weapon.AP);
+      const currentInv = (() => { let iv = parseThreshold(currentGroup.stats.InvSV); if (invSvAura && (iv === null || invSvAura.value < iv)) iv = invSvAura.value; return iv; })();
       wrap.appendChild(renderNumberStep({
         title: currentGroup.label + " (" + c.groupResults[currentKey].assignedWounds + " wound(s)): precisa de " + svText + " para salvar",
         bigNumber: svText,
+        explainLine: saveExplainLine(parseThreshold(currentGroup.stats.SV), weapon.AP, currentInv),
         hint: hintParts.join(" / "),
         threshold: gSave > 6 ? 999 : gSave, stepKey: "save-" + currentKey,
         max: c.groupResults[currentKey].assignedWounds, countLabel: "Saves falhados",
@@ -4418,6 +4459,11 @@ function renderNumberStep(opts) {
   card.appendChild(el("div", { class: "step-hint", text: opts.hint }));
   card.appendChild(el("h3", { text: opts.title }));
   if (opts.bigNumber) card.appendChild(el("div", { class: "threshold-number", text: opts.bigNumber }));
+  // opts.explainLine: uma linha discreta a narrar a regra que produziu o
+  // limiar acima (S vs T no ferir, Sv/AP/InvSv no salvar) — construída a
+  // partir das MESMAS variáveis que calcularam esse limiar, nunca recalcula
+  // nada à parte, por isso nunca pode contradizer o número mostrado.
+  if (opts.explainLine) card.appendChild(el("div", { class: "step-hint", text: opts.explainLine, style: "font-size:11px;color:var(--text-sec);margin-top:-4px;margin-bottom:8px;" }));
   if (opts.bonusChips && opts.bonusChips.length) {
     const chipRow = el("div", { class: "bonus-chip-row" });
     opts.bonusChips.forEach(t => chipRow.appendChild(el("span", { class: "bonus-chip", text: t })));
