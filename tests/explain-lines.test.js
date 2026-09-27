@@ -93,6 +93,37 @@ test("Salvar: Sv 3+ com AP0, InvSv 4+ pior que o normal → usa Sv 3+", () => {
   assertEqual(explainText(wrap), "Sv 3+ com AP0 → 3+; melhor que a InvSv 4+ → usa 3+");
 });
 
+test("Ferir: Anti-X tem frase própria (crítico), nunca a palavra 'ajuste', quando o alvo tem a keyword", () => {
+  const win = loadApp();
+  const line = win.woundExplainLine({ S: 4 }, 5, 4, true, { targetKeyword: "INFANTRY", threshold: 4 });
+  assertEqual(line, "S4 é menor que T5 → 5+; ANTI-INFANTRY 4+ → um 4+ ou mais fere sempre (crítico)");
+  assert(!/ajuste/.test(line), "Anti-X não é um ajuste");
+});
+
+test("Ferir: Anti-X + ajuste manual por cima — a cláusula do Anti-X não é reescrita, o ajuste soma-se a seguir", () => {
+  const win = loadApp();
+  const line = win.woundExplainLine({ S: 4 }, 5, 3, true, { targetKeyword: "INFANTRY", threshold: 4 });
+  assertEqual(line, "S4 é menor que T5 → 5+; ANTI-INFANTRY 4+ → um 4+ ou mais fere sempre (crítico), ajuste +1 → 3+");
+});
+
+test("Ferir: sem a keyword do Anti-X, a linha fica só a comparação normal", () => {
+  const win = loadApp();
+  const atk = addFullUnit(win, "playerA", "Painboy"); // 'Urty syringe: ANTI-INFANTRY 4+, S2
+  const tgt = addFullUnit(win, "playerB", "Land Speeder"); // VEHICLE, não INFANTRY
+  const wrap = toWoundStep(win, atk, "'Urty syringe", tgt, "fight");
+  const line = explainText(wrap);
+  assert(!/ANTI-/.test(line), 'sem a keyword INFANTRY não devia mencionar Anti-X: "' + line + '"');
+});
+
+test("Ferir: com a keyword do Anti-X (Warboss é INFANTRY), a linha mostra a cláusula do crítico, via o ciclo real", () => {
+  const win = loadApp();
+  const atk = addFullUnit(win, "playerA", "Painboy"); // 'Urty syringe: ANTI-INFANTRY 4+, S2
+  const tgt = addFullUnit(win, "playerB", "Warboss"); // INFANTRY, T5
+  const wrap = toWoundStep(win, atk, "'Urty syringe", tgt, "fight");
+  const line = explainText(wrap);
+  assertEqual(line, "T5 é o dobro ou mais de S2 → 6+; ANTI-INFANTRY 4+ → um 4+ ou mais fere sempre (crítico)");
+});
+
 test("Salvar: quando fica impossível (>6), diz-o explicitamente", () => {
   const win = loadApp();
   const atk = addFullUnit(win, "playerA", "Land Speeder"); // Stormfury missile launcher AP-3

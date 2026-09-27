@@ -1097,10 +1097,22 @@ function woundCompareText(s, t) {
   if (s * 2 <= t) return "T" + t + " é o dobro ou mais de S" + s + " → 6+";
   return "S" + s + " é menor que T" + t + " → 5+";
 }
-function woundExplainLine(weapon, targetT, effWoundThreshold) {
+// antiApplies/antiInfo (opcional): ANTI-X não é um "ajuste" ao limiar — é uma
+// regra à parte (um wound roll não modificado ≥ Y é sempre critical wound,
+// relevante para Devastating Wounds), por isso tem a sua própria cláusula,
+// nunca a palavra "ajuste". Ajuste manual/auras continuam a somar-se por
+// cima disso normalmente, se ainda mudarem o limiar final mostrado.
+function woundExplainLine(weapon, targetT, effWoundThreshold, antiApplies, antiInfo) {
   const rawThreshold = woundThreshold(weapon.S, targetT);
   let line = woundCompareText(weapon.S, targetT);
-  if (effWoundThreshold !== rawThreshold) {
+  if (antiApplies) {
+    line += "; ANTI-" + antiInfo.targetKeyword + " " + antiInfo.threshold + "+ → um " + antiInfo.threshold + "+ ou mais fere sempre (crítico)";
+    const thresholdWithAntiOnly = Math.min(rawThreshold, antiInfo.threshold);
+    if (effWoundThreshold !== thresholdWithAntiOnly) {
+      const delta = thresholdWithAntiOnly - effWoundThreshold;
+      line += ", ajuste " + (delta > 0 ? "+" : "") + delta + " → " + thresholdText(effWoundThreshold);
+    }
+  } else if (effWoundThreshold !== rawThreshold) {
     const delta = rawThreshold - effWoundThreshold; // positivo = ficou mais fácil
     line += ", ajuste " + (delta > 0 ? "+" : "") + delta + " → " + thresholdText(effWoundThreshold);
   }
@@ -3282,7 +3294,7 @@ function renderAttackCycle(phaseKey) {
     wrap.appendChild(renderNumberStep({
       title: "Precisas de " + thresholdText(effWoundThreshold) + " para ferir",
       bigNumber: thresholdText(effWoundThreshold),
-      explainLine: woundExplainLine(weapon, targetT, effWoundThreshold),
+      explainLine: woundExplainLine(weapon, targetT, effWoundThreshold, antiApplies, antiInfo),
       bonusChips: woundBonusChips,
       hint: statLabel("S") + " " + weapon.S + " vs " + statLabel("T") + " " + targetT + " (" + target.label + ")" + (c.woundAdjust ? " · ajuste manual aplicado: " + (c.woundAdjust > 0 ? "+" : "") + c.woundAdjust : ""),
       threshold: effWoundThreshold > 6 ? 999 : effWoundThreshold, stepKey: "wounds", max: hitsForWoundRoll, countLabel: "Wounds",
