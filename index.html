@@ -1556,7 +1556,7 @@ function emptyCycle() {
     // por causa de modificadores da mesa física (cobertura, stratagems...).
     // A app nunca decide o modificador sozinha — só soma/subtrai o que o
     // jogador já sabe.
-    hitAdjust: 0, woundAdjust: 0, saveAdjust: 0,
+    hitAdjust: 0, bsAdjust: 0, woundAdjust: 0, saveAdjust: 0,
     // DEVASTATING WOUNDS: quantos dos wounds confirmados foram um 6 não
     // modificado (critical wound) — viram mortal wounds diretas, sem save.
     // critInstances: array com 1 instância de dano (= weapon.D) por critical
@@ -3068,7 +3068,17 @@ function renderAttackCycle(phaseKey) {
   const antiApplies = !!(antiInfo && targetHasUnitKeyword(target, antiInfo.targetKeyword));
   const critThreshold = antiApplies ? Math.min(6, antiInfo.threshold) : 6;
   const hitThreshold = parseThreshold(toHitValue(weapon, phaseKey));
-  const effHitThreshold = adjustedThreshold(hitThreshold, c.hitAdjust + heavyBonus + meleeHitBonusValue - damagedPenaltyValue - suppressedPenaltyValue - engagedPenaltyValue - sabHitPenaltyValue);
+  // Dois níveis, tal como nas regras (11ª): (1) a CARACTERÍSTICA BS/WS pode
+  // ser alterada sem limite (cobertura, Plunging Fire — c.bsAdjust); (2) o
+  // HIT ROLL nunca é modificado mais de -1/+1 no TOTAL, seja qual for o nº
+  // de fontes — por isso a soma de todos os modificadores ao roll (manual +
+  // heavyBonus + meleeHitBonusValue − damaged/suppressed/engaged/sabHit)
+  // é travada a ±1 aqui, num só sítio. O BS entra sem corte intermédio (um
+  // BS melhorado abaixo de 2+ ainda conta para o roll) e só o resultado
+  // final é limitado a 2+ (1 natural falha sempre) / 7 (auto-falha).
+  const hitRollModifiersRaw = c.hitAdjust + heavyBonus + meleeHitBonusValue - damagedPenaltyValue - suppressedPenaltyValue - engagedPenaltyValue - sabHitPenaltyValue;
+  const hitRollModifiersTotal = Math.max(-1, Math.min(1, hitRollModifiersRaw));
+  const effHitThreshold = hitThreshold === null ? null : Math.max(2, Math.min(7, hitThreshold - c.bsAdjust - hitRollModifiersTotal));
   // Toughness da unidade-alvo: a maior Toughness entre os grupos vivos, não
   // a do primeiro grupo da lista (que só por coincidência costuma ser a
   // mais alta, ex: Neurotyrant — numa Attached Unit com um líder mais
@@ -3259,24 +3269,20 @@ function renderAttackCycle(phaseKey) {
         // benefício de cobertura (-1 ao BS do atacante) mesmo sem terreno —
         // só lembrete (cobertura entra pelo ajuste manual), só tiro (BS).
         explainLine: (phaseKey === "shooting" && !hasKeyword(weapon, "IGNORES COVER") && target.groups.some(g => { const d = findDatasheet(library, g.datasheetName); return d && d.stealth; })) ? "Alvo com STEALTH — tem benefício de cobertura (-1 ao BS do atacante), mesmo sem terreno." : null,
-        bonusChips: (heavyBonus ? ["HEAVY: +1 ao acertar"] : []).concat(meleeHitBonusValue ? ["+" + meleeHitBonusValue + " ao acertar (melee, permanente)"] : []).concat(damagedPenaltyValue ? ["DAMAGED: -" + damagedPenaltyValue + " ao acertar"] : []).concat(suppressedPenaltyValue ? ["SUPPRESSED (Indiscriminate Detonations): -1 ao acertar"] : []).concat(engagedPenaltyValue ? ["ENGAGED (MONSTER/VEHICLE, arma não [CLOSE-QUARTERS]): -1 ao acertar"] : []).concat(sabHitPenaltyValue ? ["PSYCHOLOGICAL SABOTEUR: -1 ao acertar"] : []),
-        hint: statLabel(hitStat) + ": " + toHitValue(weapon, phaseKey) + (c.hitAdjust ? " · ajuste manual aplicado: " + (c.hitAdjust > 0 ? "+" : "") + c.hitAdjust : "") + attacksBonusSuffix,
-        // Hit roll nunca é modificado mais de -1/+1 no total (regra 11ª
-        // edição) — a app não trava o valor (o jogador pode estar a somar
-        // vários efeitos que ela não conhece todos), mas avisa sempre que
-        // o total ultrapassa esse limite.
-        // [PSYCHIC] ignora todos os modificadores a BS/WS e ao hit roll (incl.
-        // cobertura) — só avisa quando há ajuste manual, nunca bloqueia (a
-        // app não decide se o ajuste devia ou não aplicar-se).
-        // Numa arma PSYCHIC mostra-se SÓ o aviso PSYCHIC (o limite ±1 deixa
-        // de fazer sentido se os modificadores podem ser ignorados).
-        warning: hasKeyword(weapon, "PSYCHIC")
-          ? (c.hitAdjust !== 0 ? "Arma PSYCHIC — podes ignorar os modificadores a BS/WS e ao hit roll, incluindo cobertura." : null)
-          : (Math.abs(c.hitAdjust) > 1 ? "Ajuste de " + (c.hitAdjust > 0 ? "+" : "") + c.hitAdjust + " ao hit roll — a 11ª edição nunca permite modificar um hit roll mais de -1/+1 no total. Confirma se isto soma corretamente todas as fontes." : null),
+        bonusChips: (heavyBonus ? ["HEAVY: +1 ao acertar"] : []).concat(meleeHitBonusValue ? ["+" + meleeHitBonusValue + " ao acertar (melee, permanente)"] : []).concat(damagedPenaltyValue ? ["DAMAGED: -" + damagedPenaltyValue + " ao acertar"] : []).concat(suppressedPenaltyValue ? ["SUPPRESSED (Indiscriminate Detonations): -1 ao acertar"] : []).concat(engagedPenaltyValue ? ["ENGAGED (MONSTER/VEHICLE, arma não [CLOSE-QUARTERS]): -1 ao acertar"] : []).concat(sabHitPenaltyValue ? ["PSYCHOLOGICAL SABOTEUR: -1 ao acertar"] : []).concat(hitRollModifiersRaw !== hitRollModifiersTotal ? ["LIMITE ±1: modificadores ao hit roll somam " + (hitRollModifiersRaw > 0 ? "+" : "") + hitRollModifiersRaw + " → aplicado " + (hitRollModifiersTotal > 0 ? "+" : "") + hitRollModifiersTotal] : []),
+        hint: statLabel(hitStat) + ": " + toHitValue(weapon, phaseKey) + (c.bsAdjust ? " · ajuste ao " + hitStat + ": " + (c.bsAdjust > 0 ? "+" : "") + c.bsAdjust : "") + (c.hitAdjust ? " · ajuste manual ao hit roll: " + (c.hitAdjust > 0 ? "+" : "") + c.hitAdjust : "") + attacksBonusSuffix,
+        // [PSYCHIC] pode ignorar todos os modificadores a BS/WS e ao hit roll
+        // (incl. cobertura) — o aviso cobre os DOIS controlos manuais e só
+        // aparece com algum deles ≠ 0; nunca bloqueia (a app não decide se
+        // o ajuste devia ou não aplicar-se).
+        warning: (hasKeyword(weapon, "PSYCHIC") && (c.bsAdjust !== 0 || c.hitAdjust !== 0)) ? "Arma PSYCHIC — podes ignorar os modificadores a BS/WS e ao hit roll, incluindo cobertura." : null,
         threshold: effHitThreshold > 6 ? 999 : effHitThreshold, stepKey: "hits", max: effectiveAttacksMax, countLabel: "Hits",
         rollsDice: true,
         initialValue: c.hits,
-        adjust: { value: c.hitAdjust, onChange: v => { c.hitAdjust = Math.max(-5, Math.min(5, v)); render(); } },
+        adjusts: [
+          { label: (phaseKey === "shooting" ? "BS (cobertura, Plunging Fire)" : "WS (stratagems, etc.)") + ", sem limite:", value: c.bsAdjust, onChange: v => { c.bsAdjust = Math.max(-5, Math.min(5, v)); render(); } },
+          { label: "Hit roll (soma com os automáticos, limitada a ±1):", value: c.hitAdjust, onChange: v => { c.hitAdjust = Math.max(-5, Math.min(5, v)); render(); } },
+        ],
         roller: "attacker", rollerName: attackerRollerName, rollWhy: "Roll de ataque (hit roll) — ver se acertas no alvo.",
         onConfirm: n => { c.hits = n; c.step = 2; render(); },
         confirmLabel: "Confirmar hits →",
@@ -4491,7 +4497,7 @@ function renderPicker(instances, phaseKey) {
     c.step = 1; c.hits = null; c.wounds = null; c.failedSaves = null;
     c.allocOrder = target.groups.length > 1 ? null : target.groups.map(g => g.key);
     c.manualDamage = null; c.deadByGroup = null;
-    c.hitAdjust = 0; c.woundAdjust = 0; c.saveAdjust = 0;
+    c.hitAdjust = 0; c.bsAdjust = 0; c.woundAdjust = 0; c.saveAdjust = 0;
     c.critWounds = null; c.critInstances = null; c.critInstancesByGroup = null;
     c.sustainedHits = null; c.fnpSuccesses = null; c.fnpConditionAnswered = null; c.attacksRolled = null;
     c.heavyStationary = null; c.chargedThisTurn = null; c.lethalHitCrits = null;
@@ -4577,12 +4583,15 @@ function renderNumberStep(opts) {
   // "3" mesmo que as faces fossem 6,5,4). Só digitar o número já resolvido.
   const singleValueStep = opts.threshold === null;
 
-  if (opts.adjust) {
+  // opts.adjust (um controlo, rótulo por defeito) ou opts.adjusts (vários,
+  // cada um com o seu rótulo — ex: BS e Hit roll separados no passo de Hit).
+  const adjustList = opts.adjusts || (opts.adjust ? [Object.assign({ label: "Ajuste manual (cobertura, stratagems, etc.):" }, opts.adjust)] : []);
+  adjustList.forEach(a => {
     const row = el("div", { class: "adjust-row" });
-    row.appendChild(el("span", { class: "step-hint", text: "Ajuste manual (cobertura, stratagems, etc.):" }));
-    row.appendChild(renderAdjustControl(opts.adjust.value, opts.adjust.onChange));
+    row.appendChild(el("span", { class: "step-hint", text: a.label }));
+    row.appendChild(renderAdjustControl(a.value, a.onChange));
     card.appendChild(row);
-  }
+  });
 
   if (max !== null && opts.countLabel) {
     card.appendChild(el("div", { class: "step-hint", text: opts.countLabel + " — máximo " + max + " nesta etapa", style: "color:var(--gold);" }));

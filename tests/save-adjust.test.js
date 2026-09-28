@@ -134,9 +134,9 @@ test("Wound: o controlo de ajuste manual está travado a ±1 (regra 11ª: nunca 
   assertEqual(win.__state.cycle.woundAdjust, 1, "5 cliques em + só deviam levar a +1, nunca mais");
 });
 
-test("Hit: sem limite no controlo, mas mostra aviso visível quando |ajuste| > 1", () => {
+test("Hit roll: o controlo não trava, mas a SOMA dos modificadores é travada a ±1 e o chip explica o corte", () => {
   const win = loadApp();
-  const atk = addFullUnit(win, "playerA", "Termagants");
+  const atk = addFullUnit(win, "playerA", "Termagants"); // BS4+
   const tgt = addFullUnit(win, "playerB", "Intercessor Squad");
   win.__state.cycle = win.__emptyCycle();
   const c = win.__state.cycle;
@@ -144,11 +144,79 @@ test("Hit: sem limite no controlo, mas mostra aviso visível quando |ajuste| > 1
   c.step = 1; c.modelsAttacking = 10;
   c.hitAdjust = 1;
   let wrap = win.renderAttackCycle("shooting");
-  assert(!/nunca permite modificar um hit roll/.test(wrap.textContent), "com +1 ainda não devia avisar");
+  assert(!/LIMITE ±1/.test(wrap.textContent), "com +1 não há corte");
+  assertEqual(wrap.querySelector(".threshold-number").textContent, "3+");
   c.hitAdjust = 2;
   wrap = win.renderAttackCycle("shooting");
-  assert(/nunca permite modificar um hit roll mais de -1\/\+1/.test(wrap.textContent), "com +2 devia mostrar o aviso");
-  assertEqual(win.__state.cycle.hitAdjust, 2, "o Hit não trava o valor, só avisa");
+  assert(/LIMITE ±1: modificadores ao hit roll somam \+2 → aplicado \+1/.test(wrap.textContent), "com +2 devia cortar para +1");
+  assertEqual(wrap.querySelector(".threshold-number").textContent, "3+", "+2 cortado a +1: BS4+ → 3+ (não 2+)");
+  assertEqual(win.__state.cycle.hitAdjust, 2, "o controlo em si não trava");
+});
+
+test("BS (cobertura, Plunging Fire): sem limite e separado do hit roll — BS4+ com -2 → 6+", () => {
+  const win = loadApp();
+  const atk = addFullUnit(win, "playerA", "Termagants");
+  const tgt = addFullUnit(win, "playerB", "Intercessor Squad");
+  win.__state.cycle = win.__emptyCycle();
+  const c = win.__state.cycle;
+  c.attackerId = atk.id; c.weaponIdx = weaponByName(win, atk, "shooting", "Fleshborer"); c.targetId = tgt.id;
+  c.step = 1; c.modelsAttacking = 10; c.bsAdjust = -2;
+  const wrap = win.renderAttackCycle("shooting");
+  assertEqual(wrap.querySelector(".threshold-number").textContent, "6+");
+  assert(!/LIMITE ±1/.test(wrap.textContent), "o BS não entra no corte de ±1");
+  assert(/BS \(cobertura, Plunging Fire\)/.test(wrap.textContent) && /Hit roll \(soma com os automáticos/.test(wrap.textContent), "dois controlos separados, com os rótulos pedidos");
+});
+
+test("BS e hit roll somam-se corretamente: BS -1 (cobertura) + modificador ao roll +1 (HEAVY) → BS5+ dá 5+", () => {
+  const win = loadApp();
+  const atk = addFullUnit(win, "playerA", "Big Mek Dakkarig"); // Blitzkannon HEAVY, BS5+
+  const tgt = addFullUnit(win, "playerB", "Intercessor Squad");
+  win.__state.cycle = win.__emptyCycle();
+  const c = win.__state.cycle;
+  c.attackerId = atk.id; c.weaponIdx = weaponByName(win, atk, "shooting", "Blitzkannon"); c.targetId = tgt.id;
+  c.step = 1; c.modelsAttacking = 1; c.heavyStationary = true; c.bsAdjust = -1;
+  const wrap = win.renderAttackCycle("shooting");
+  // BS5+ pior 1 → 6; HEAVY +1 no roll → 5
+  assertEqual(wrap.querySelector(".threshold-number").textContent, "5+");
+});
+
+test("Hit roll: HEAVY +1 e ajuste manual +1 (soma +2) cortam para +1: BS5+ → 4+ (sem corte seria 3+)", () => {
+  const win = loadApp();
+  const atk = addFullUnit(win, "playerA", "Big Mek Dakkarig");
+  const tgt = addFullUnit(win, "playerB", "Intercessor Squad");
+  win.__state.cycle = win.__emptyCycle();
+  const c = win.__state.cycle;
+  c.attackerId = atk.id; c.weaponIdx = weaponByName(win, atk, "shooting", "Blitzkannon"); c.targetId = tgt.id;
+  c.step = 1; c.modelsAttacking = 1; c.heavyStationary = true; c.hitAdjust = 1;
+  const wrap = win.renderAttackCycle("shooting");
+  assertEqual(wrap.querySelector(".threshold-number").textContent, "4+");
+  assert(/LIMITE ±1: modificadores ao hit roll somam \+2 → aplicado \+1/.test(wrap.textContent));
+});
+
+test("Hit roll: suprimido (-1) e ajuste manual -1 (soma -2) cortam para -1: BS4+ → 5+", () => {
+  const win = loadApp();
+  const atk = addFullUnit(win, "playerA", "Termagants");
+  const tgt = addFullUnit(win, "playerB", "Intercessor Squad");
+  win.findRealUnit(atk.id).suppressedBy = "playerB";
+  win.__state.cycle = win.__emptyCycle();
+  const c = win.__state.cycle;
+  c.attackerId = atk.id; c.weaponIdx = weaponByName(win, atk, "shooting", "Fleshborer"); c.targetId = tgt.id;
+  c.step = 1; c.modelsAttacking = 10; c.hitAdjust = -1;
+  const wrap = win.renderAttackCycle("shooting");
+  assertEqual(wrap.querySelector(".threshold-number").textContent, "5+");
+  assert(/somam -2 → aplicado -1/.test(wrap.textContent));
+});
+
+test("Arma PSYCHIC: o aviso cobre os dois controlos (BS e hit roll)", () => {
+  const win = loadApp();
+  const atk = addFullUnit(win, "playerA", "Weirdboy");
+  const tgt = addFullUnit(win, "playerB", "Intercessor Squad");
+  const w1 = toHitStep(win, atk, "'Eadbanger", tgt, "shooting", { modelsAttacking: 1, bsAdjust: -1 });
+  assert(/Arma PSYCHIC — podes ignorar/.test(w1.textContent), "só o controlo de BS ≠ 0 já devia avisar");
+  const w2 = toHitStep(win, atk, "'Eadbanger", tgt, "shooting", { modelsAttacking: 1, hitAdjust: 1 });
+  assert(/Arma PSYCHIC — podes ignorar/.test(w2.textContent), "só o controlo de hit roll ≠ 0 também");
+  const w0 = toHitStep(win, atk, "'Eadbanger", tgt, "shooting", { modelsAttacking: 1 });
+  assert(!/Arma PSYCHIC — podes ignorar/.test(w0.textContent), "sem ajustes, sem aviso");
 });
 
 // --- Aviso [PSYCHIC] no Hit quando há ajuste manual (só avisa, não bloqueia) --
