@@ -414,6 +414,8 @@ const RAW_UNITS = {
         "Psychic Terror: reduz em 1 o teste de Battleshock que os inimigos fazem quando se ativa Shadow in the Warp",
         "Neuroloids: na Command Phase, até 2 unidades amigas a 18\" ficam sempre dentro do alcance de Synapse até à próxima Command Phase"
       ],
+      "nodeLash": {"hit": 1, "woundVsBattleshocked": 1},
+      "leadingOnly": ["nodeLash"],
       "leader_for":["Neurogaunts"],
       "defaultCount":1},
     {"name":"Screamer-Killer","points":125,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["MONSTER"],
@@ -1704,7 +1706,7 @@ function emptyCycle() {
     // roll contra alvo não-VEHICLE causa D6 mortal wounds extra.
     critMwAsked: null, critMwCritCount: null, critMwRoll: null,
     symbioticApplied: false, grislySelected: null, grislyAsked: false, suppressApplied: false,
-    saboteurHit: null, saboteurWound: null, feederApplied: false,
+    saboteurHit: null, saboteurWound: null, feederApplied: false, nodeLashWound: null,
     // EXHORTATION OF RAGE (Chaplain with Jump Pack): opcional, na Fight
     // Phase, antes dos ataques normais desta unidade — o jogador escolhe se
     // usa, contra que unidade inimiga (Engagement Range, físico, o jogador
@@ -2779,6 +2781,12 @@ function unitPointsFor(player, unit) {
   });
   return { points: total, approx };
 }
+// Estado gravado antigo pode ter um Support sozinho (inválido na 11ª): só avisa, não remove.
+function supportAloneWarning(unit) {
+  if (unit.datasheetNames.length !== 1) return null;
+  const ds = findDatasheet(library, unit.datasheetNames[0]);
+  return (ds && (ds.support_for || []).length && !(ds.leader_for || []).length) ? "Support sozinho — inválido na 11ª" : null;
+}
 function playerTotalPoints(player) {
   return player.units.reduce((sum, u) => sum + unitPointsFor(player, u).points, 0);
 }
@@ -2889,6 +2897,9 @@ function renderPlayerColumn(side, player) {
     if (u.disrupted) r.appendChild(renderDisruptedBadge());
     r.appendChild(el("button", { class: "small", text: "✕", onclick: () => { player.units = player.units.filter(x => x.id !== u.id); render(); } }));
     ui.appendChild(r);
+    if (supportAloneWarning(u)) {
+      ui.appendChild(el("div", { class: "support-alone-warning", text: "⚠️ " + supportAloneWarning(u) + " (só pode existir anexado a " + findDatasheet(library, u.datasheetNames[0]).support_for.join(" / ") + ")", style: "font-size:11px;color:var(--gold);font-weight:600;margin-bottom:4px;" }));
+    }
     if (uUnconf.length) {
       ui.appendChild(el("div", { text: "⚠️ pontos por confirmar no MFM (" + uUnconf.join(" | ") + ")", style: "font-size:10px;color:var(--gold);margin-bottom:4px;" }));
     }
@@ -3222,6 +3233,13 @@ function renderAttackCycle(phaseKey) {
   const sabWoundCandidate = attacker.faction === "Tyranids" && !!target.battleshocked && allInstances().some(u => u.owner === attacker.owner && hasSaboteur(u));
   const sabHitPenaltyValue = (sabHitCandidate && c.saboteurHit === true) ? 1 : 0;
   const sabWoundBonusValue = (sabWoundCandidate && c.saboteurWound === true) ? 1 : 0;
+  // NODE LASH (Neurotyrant, "while this model is leading a unit"): cada ataque de
+  // um modelo da unidade liderada tem +1 ao hit roll; +1 ao wound roll também se
+  // o alvo estiver Battle-shocked (a app pergunta). Ambos entram nas somas ±1.
+  const nodeLashDs = attacker.datasheetNames.map(n => findDatasheet(library, n)).find(d => d && d.nodeLash && !leadingBlocked(attacker, d, "nodeLash") && datasheetLiveInUnit(attacker, d.name));
+  const nodeLashHitValue = nodeLashDs ? nodeLashDs.nodeLash.hit : 0;
+  const nodeLashWoundCandidate = !!nodeLashDs && !!nodeLashDs.nodeLash.woundVsBattleshocked;
+  const nodeLashWoundValue = (nodeLashWoundCandidate && c.nodeLashWound === true) ? nodeLashDs.nodeLash.woundVsBattleshocked : 0;
   const suppressedPenaltyValue = attacker.suppressedBy ? 1 : 0;
   const engagedEnemyNow = phaseKey === "shooting" ? engagedEnemyOf(attacker) : null;
   const engagedPenaltyValue = (engagedEnemyNow && weaponSourceIsMV(weapon) && !isCloseQuarters(weapon)) ? 1 : 0;
@@ -3257,7 +3275,7 @@ function renderAttackCycle(phaseKey) {
   // é travada a ±1 aqui, num só sítio. O BS entra sem corte intermédio (um
   // BS melhorado abaixo de 2+ ainda conta para o roll) e só o resultado
   // final é limitado a 2+ (1 natural falha sempre) / 7 (auto-falha).
-  const hitRollModifiersRaw = c.hitAdjust + heavyBonus + ammoRuntBonusValue + meleeHitBonusValue - damagedPenaltyValue - suppressedPenaltyValue - engagedPenaltyValue - sabHitPenaltyValue;
+  const hitRollModifiersRaw = c.hitAdjust + heavyBonus + ammoRuntBonusValue + meleeHitBonusValue + nodeLashHitValue - damagedPenaltyValue - suppressedPenaltyValue - engagedPenaltyValue - sabHitPenaltyValue;
   const hitRollModifiersTotal = Math.max(-1, Math.min(1, hitRollModifiersRaw));
   const effHitThreshold = hitThreshold === null ? null : Math.max(2, Math.min(7, hitThreshold - c.bsAdjust - hitRollModifiersTotal));
   // Toughness da unidade-alvo: a maior Toughness entre os grupos vivos, não
@@ -3273,7 +3291,7 @@ function renderAttackCycle(phaseKey) {
   // (ajuste manual + bónus automáticos, incluindo futuros) é travada a ±1
   // aqui, num único sítio. Não afeta critThreshold (Anti-X usa o dado não
   // modificado).
-  const woundModifiersRaw = c.woundAdjust + meleeWoundBonusValue + sabWoundBonusValue;
+  const woundModifiersRaw = c.woundAdjust + meleeWoundBonusValue + sabWoundBonusValue + nodeLashWoundValue;
   const woundModifiersTotal = Math.max(-1, Math.min(1, woundModifiersRaw));
   const effWoundThreshold = adjustedThreshold(woundT, woundModifiersTotal);
 
@@ -3372,6 +3390,19 @@ function renderAttackCycle(phaseKey) {
       if (sabHitCandidate && c.saboteurHit === null) askOne("Esta unidade (Battle-shocked) está a 12\" de um Neurolictor inimigo? (-1 ao acertar)", "saboteurHit");
       if (sabWoundCandidate && c.saboteurWound === null) askOne("A unidade alvo (Battle-shocked) está a 12\" de um Neurolictor amigo? (+1 ao ferir)", "saboteurWound");
       wrap.appendChild(sc);
+      return wrap;
+    }
+
+    if (nodeLashWoundCandidate && c.nodeLashWound === null) {
+      const nc = el("div", { class: "card" });
+      nc.appendChild(renderRollerBadge("attacker", attackerRollerName, "Node Lash — confirma antes de rolar os hits."));
+      nc.appendChild(el("div", { class: "step-hint", text: "🧠 Node Lash (Neurotyrant a liderar): +1 ao hit roll da unidade; se o alvo estiver Battle-shocked, +1 ao wound roll também.", style: "color:var(--gold);font-weight:600;font-size:13px;" }));
+      nc.appendChild(el("h3", { text: "O alvo (" + target.label + ") está Battle-shocked?" }));
+      const nsel = el("select");
+      [["", "— escolher —"], ["yes", "Sim (+1 ao ferir)"], ["no", "Não"]].forEach(([v, t]) => nsel.appendChild(el("option", { value: v, text: t })));
+      nsel.onchange = e => { c.nodeLashWound = e.target.value === "" ? null : e.target.value === "yes"; render(); };
+      nc.appendChild(nsel);
+      wrap.appendChild(nc);
       return wrap;
     }
 
@@ -3487,7 +3518,7 @@ function renderAttackCycle(phaseKey) {
         // benefício de cobertura (-1 ao BS do atacante) mesmo sem terreno —
         // só lembrete (cobertura entra pelo ajuste manual), só tiro (BS).
         explainLine: (phaseKey === "shooting" && !hasKeyword(weapon, "IGNORES COVER") && target.groups.some(g => { const d = findDatasheet(library, g.datasheetName); return d && d.stealth; })) ? "Alvo com STEALTH — tem benefício de cobertura (-1 ao BS do atacante), mesmo sem terreno." : null,
-        bonusChips: (heavyBonus ? ["HEAVY: +1 ao acertar"] : []).concat(ammoRuntActive.map(r => r.name.toUpperCase() + ": +" + r.ability.value + " ao acertar (1x por batalha)")).concat(meleeHitBonusValue ? ["+" + meleeHitBonusValue + " ao acertar (melee, permanente)"] : []).concat(damagedPenaltyValue ? ["DAMAGED: -" + damagedPenaltyValue + " ao acertar"] : []).concat(suppressedPenaltyValue ? ["SUPPRESSED (Indiscriminate Detonations): -1 ao acertar"] : []).concat(engagedPenaltyValue ? ["ENGAGED (MONSTER/VEHICLE, arma não [CLOSE-QUARTERS]): -1 ao acertar"] : []).concat(sabHitPenaltyValue ? ["PSYCHOLOGICAL SABOTEUR: -1 ao acertar"] : []).concat(hitRollModifiersRaw !== hitRollModifiersTotal ? ["LIMITE ±1: modificadores ao hit roll somam " + (hitRollModifiersRaw > 0 ? "+" : "") + hitRollModifiersRaw + " → aplicado " + (hitRollModifiersTotal > 0 ? "+" : "") + hitRollModifiersTotal] : []),
+        bonusChips: (heavyBonus ? ["HEAVY: +1 ao acertar"] : []).concat(ammoRuntActive.map(r => r.name.toUpperCase() + ": +" + r.ability.value + " ao acertar (1x por batalha)")).concat(meleeHitBonusValue ? ["+" + meleeHitBonusValue + " ao acertar (melee, permanente)"] : []).concat(nodeLashHitValue ? ["NODE LASH: +" + nodeLashHitValue + " ao acertar"] : []).concat(damagedPenaltyValue ? ["DAMAGED: -" + damagedPenaltyValue + " ao acertar"] : []).concat(suppressedPenaltyValue ? ["SUPPRESSED (Indiscriminate Detonations): -1 ao acertar"] : []).concat(engagedPenaltyValue ? ["ENGAGED (MONSTER/VEHICLE, arma não [CLOSE-QUARTERS]): -1 ao acertar"] : []).concat(sabHitPenaltyValue ? ["PSYCHOLOGICAL SABOTEUR: -1 ao acertar"] : []).concat(hitRollModifiersRaw !== hitRollModifiersTotal ? ["LIMITE ±1: modificadores ao hit roll somam " + (hitRollModifiersRaw > 0 ? "+" : "") + hitRollModifiersRaw + " → aplicado " + (hitRollModifiersTotal > 0 ? "+" : "") + hitRollModifiersTotal] : []),
         hint: statLabel(hitStat) + ": " + toHitValue(weapon, phaseKey) + (c.bsAdjust ? " · ajuste ao " + hitStat + ": " + (c.bsAdjust > 0 ? "+" : "") + c.bsAdjust : "") + (c.hitAdjust ? " · ajuste manual ao hit roll: " + (c.hitAdjust > 0 ? "+" : "") + c.hitAdjust : "") + attacksBonusSuffix,
         // [PSYCHIC] pode ignorar todos os modificadores a BS/WS e ao hit roll
         // (incl. cobertura) — o aviso cobre os DOIS controlos manuais e só
@@ -3561,6 +3592,7 @@ function renderAttackCycle(phaseKey) {
     if (lethalCrits) woundBonusChips.push("LETHAL HITS: " + lethalCrits + " wound(s) automático(s)");
     if (sabWoundBonusValue) woundBonusChips.push("PSYCHOLOGICAL SABOTEUR: +1 ao ferir");
     if (meleeWoundBonusValue) woundBonusChips.push("+" + meleeWoundBonusValue + " ao ferir (melee, permanente)");
+    if (nodeLashWoundValue) woundBonusChips.push("NODE LASH: +" + nodeLashWoundValue + " ao ferir (alvo Battle-shocked)");
     if (woundModifiersRaw !== woundModifiersTotal) woundBonusChips.push("LIMITE ±1: modificadores somam " + (woundModifiersRaw > 0 ? "+" : "") + woundModifiersRaw + " → aplicado " + (woundModifiersTotal > 0 ? "+" : "") + woundModifiersTotal);
     // wound-roll anterior (sem a parte automática do Lethal Hits) — usado só
     // para pré-preencher se voltares aqui via "Corrigir passo anterior".
@@ -4910,7 +4942,7 @@ function renderPicker(instances, phaseKey) {
     c.hazardousFnpDone = null; c.hazardousFnpAnswered = null; c.hazardousFnpSuccesses = null;
     c.critMwAsked = null; c.critMwCritCount = null; c.critMwRoll = null;
     c.symbioticApplied = false; c.grislySelected = null; c.grislyAsked = false; c.suppressApplied = false;
-    c.saboteurHit = null; c.saboteurWound = null; c.feederApplied = false;
+    c.saboteurHit = null; c.saboteurWound = null; c.feederApplied = false; c.nodeLashWound = null;
     render();
   };
   card.appendChild(startBtn);
