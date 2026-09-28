@@ -107,9 +107,56 @@ test("As 11 unidades com pontos do MFM v1.4 têm a fonte certa e nenhum ⚠️",
   });
 });
 
+test("Termagants: 10 = 60, 20 = 110 (corrigido: a app tinha 120 para 20)", () => {
+  [[10, 60], [20, 110]].forEach(([n, pts]) => {
+    const win = loadApp();
+    const player = addUnits(win, "playerA", "Termagants", [n]);
+    assertEqual(win.unitPointsFor(player, player.units[0]).points, pts, n + " modelos");
+  });
+});
+
+test("Escalões por ordem: 3 Librarians = 220; 3 Vanguard de 5 = 325; 3 Exocrines = 415; Screamer-Killer/Haruspex 125,125,135; Neurolictor 80,80,90", () => {
+  const cases = [["Librarian", [null, null, null], 220], ["Vanguard Veteran Squad with Jump Packs", [5, 5, 5], 325], ["Exocrine", [null, null, null], 415],
+    ["Screamer-Killer", [null, null, null], 385], ["Haruspex", [null, null, null], 385], ["Neurolictor", [null, null, null], 250]];
+  cases.forEach(([name, sizes, expected]) => {
+    const win = loadApp();
+    addUnits(win, "playerA", name, sizes);
+    assertEqual(total(win, "playerA"), expected, name);
+  });
+  const win = loadApp();
+  const pv = addUnits(win, "playerA", "Vanguard Veteran Squad with Jump Packs", [10, 10, 10]);
+  assertEqual(pv.units.map(u => win.unitPointsFor(pv, u).points).join(","), "210,210,220", "Vanguard de 10");
+});
+
+test("Tamanhos das unidades Tyranids/Orks: Gretchin 10 = 45, 20 = 80; Neurogaunts 11 = 45, 22 = 90; Barbgaunts 5 = 55, 10 = 110; Gargoyles 10 = 80, 20 = 155", () => {
+  [["Gretchin", 10, 45], ["Gretchin", 20, 80], ["Neurogaunts", 11, 45], ["Neurogaunts", 22, 90], ["Barbgaunts", 5, 55], ["Barbgaunts", 10, 110], ["Gargoyles", 10, 80], ["Gargoyles", 20, 155]].forEach(([name, n, pts]) => {
+    const win = loadApp();
+    const player = addUnits(win, "playerA", name, [n]);
+    assertEqual(win.unitPointsFor(player, player.units[0]).points, pts, name + " " + n);
+  });
+});
+
+test("Pontos fixos confirmados: Weirdboy 65, Winged Prime 65, Psychophage 110, Captain 80, Chaplain 75, Ancient 40, Eradicator 3 = 80, Land Speeder 105", () => {
+  const win = loadApp();
+  [["Weirdboy", 65], ["Winged Tyranid Prime", 65], ["Psychophage", 110], ["Captain with Relic Shield", 80], ["Chaplain with Jump Pack", 75], ["Ancient", 40], ["Eradicator Squad with Heavy Bolters", 80], ["Land Speeder", 105]].forEach(([n, pts]) => {
+    const player = addUnits(win, "playerA", n, [null]);
+    assertEqual(win.unitPointsFor(player, player.units[player.units.length - 1]).points, pts, n);
+  });
+});
+
+test("As 30 unidades têm pointsSource do MFM v1.4 e nenhuma tem ⚠️", () => {
+  const win = loadApp();
+  let n = 0;
+  Object.keys(win.__RAW_UNITS).forEach(f => win.__RAW_UNITS[f].forEach(u => {
+    n++;
+    assertEqual(u.pointsSource, "MFM v1.4, consultado 2026-09-28", u.name);
+  }));
+  assertEqual(n, 30);
+});
+
 test("Ecrã inicial mostra 'Pontos: MFM v1.4' ao lado da versão das regras", () => {
   const win = loadApp();
-  assertEqual(win.document.getElementById("points-version").textContent, "Pontos: MFM v1.4");
+  assertEqual(win.document.getElementById("points-version").textContent, "Pontos: MFM v1.4 (30 de 30 confirmadas)");
   assert(/Regras: versão de 2026-09-28/.test(win.document.getElementById("rules-version").textContent));
 });
 

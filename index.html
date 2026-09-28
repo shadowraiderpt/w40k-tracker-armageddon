@@ -193,7 +193,7 @@
 // ---------------------------------------------------------------------------
 const RAW_UNITS = {
   space_marines: [
-    {"name":"Captain with Relic Shield","points":80,"source":"Wahapedia 11ª (datasheet Captain) | BSData 11ª","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["INFANTRY","CHARACTER","GRENADES","IMPERIUM","TACTICUS","CAPTAIN"],"stats":{"M":"6\"","T":4,"SV":"3+","InvSV":"4+","W":6,"LD":"6+","OC":1},
+    {"name":"Captain with Relic Shield","points":80,"source":"Wahapedia 11ª (datasheet Captain) | BSData 11ª","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","keywords":["INFANTRY","CHARACTER","GRENADES","IMPERIUM","TACTICUS","CAPTAIN"],"stats":{"M":"6\"","T":4,"SV":"3+","InvSV":"4+","W":6,"LD":"6+","OC":1},
       "note":"Datasheet 'Captain' (11ª) com o equipamento relic shield; W 6 e InvSv 4+ já incluem o relic shield — não somar outra vez",
       "ranged_weapons":[{"name":"Heavy bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"18\"","A":1,"BS":"2+","S":4,"AP":-1,"D":1}],
       "melee_weapons":[{"name":"Master-crafted power weapon","range":"Melee","A":6,"WS":"2+","S":5,"AP":-2,"D":2}],
@@ -204,7 +204,7 @@ const RAW_UNITS = {
         {"text":"Rites of Battle: o próximo stratagem usado por/para esta unidade (ou pelo exército, se for Warlord) custa -1CP (mínimo 0CP).", "scope":"battle_round", "kind":"stratagem"}
       ],
       "defaultCount":1, "leader_for":["Intercessor Squad"]},
-    {"name":"Librarian","points":70,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["INFANTRY","CHARACTER","PSYKER","EXPLOSIVES"],
+    {"name":"Librarian","points":70,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","pointsTiers":[{"upTo":2,"bySize":{"1":70}},{"from":3,"bySize":{"1":80}}],"keywords":["INFANTRY","CHARACTER","PSYKER","EXPLOSIVES"],
       "abilities":["Psychic Hood: Feel No Pain 4+ vs ataques psíquicos (todos os modelos da unidade)",
         "Mental Fortress: a unidade liderada tem Invulnerable Save 4+ (o Librarian não tem InvSv próprio no datasheet)"],
       "fnpCondition":{"type":"weapon_keyword","keyword":"PSYCHIC"},
@@ -219,7 +219,7 @@ const RAW_UNITS = {
       ],
       "melee_weapons":[{"name":"Force weapon","keywords":["PSYCHIC"],"range":"Melee","A":4,"WS":"3+","S":6,"AP":-1,"D":"D3"}],
       "defaultCount":1, "leader_for":["Intercessor Squad"]},
-    {"name":"Chaplain with Jump Pack","points":75,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["INFANTRY","CHARACTER","JUMP PACK","EXPLOSIVES"],
+    {"name":"Chaplain with Jump Pack","points":75,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","keywords":["INFANTRY","CHARACTER","JUMP PACK","EXPLOSIVES"],
       "abilities":["Exhortation of Rage: na Fight Phase, quando a unidade for selecionada para lutar (antes dos ataques normais), pode opcionalmente escolher uma unidade inimiga em Engagement Range e rolar 1D6 — 4-5: D3 mortal wounds; 6: 3 mortal wounds fixas",
         "Litany of Hate: this unit has +1 to wound rolls in melee (permanent)"],
       "exhortationOfRage": true,
@@ -229,7 +229,7 @@ const RAW_UNITS = {
       "ranged_weapons":[{"name":"Absolvor bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"18\"","A":1,"BS":"3+","S":5,"AP":-1,"D":2}],
       "melee_weapons":[{"name":"Crozius arcanum","range":"Melee","A":5,"WS":"2+","S":6,"AP":-1,"D":2}],
       "defaultCount":1, "leader_for":["Vanguard Veteran Squad with Jump Packs"]},
-    {"name":"Ancient","points":40,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["INFANTRY","CHARACTER","EXPLOSIVES"],
+    {"name":"Ancient","points":40,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","keywords":["INFANTRY","CHARACTER","EXPLOSIVES"],
       "abilities":["Unbreakable Resolve: este modelo tem Feel No Pain 4+ perto de objetivo ou a 6\" do centro",
         "Astartes Banner: enquanto este modelo lidera uma unidade, +1 Objective Control aos modelos dessa unidade (só informativo; texto do BSData 11ª)"],
       "fnpScope":"model",
@@ -255,7 +255,7 @@ const RAW_UNITS = {
         {"name":"Close-combat weapon","keywords":["PRECISION"],"range":"Melee","A":3,"WS":"3+","S":4,"AP":0,"D":1}
       ],
       "defaultCount":10},
-    {"name":"Vanguard Veteran Squad with Jump Packs","points":105,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["INFANTRY","JUMP PACK"],
+    {"name":"Vanguard Veteran Squad with Jump Packs","points":105,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","pointsTiers":[{"upTo":2,"bySize":{"5":105,"10":210}},{"from":3,"bySize":{"5":115,"10":220}}],"keywords":["INFANTRY","JUMP PACK"],
       "lethalHitsOnCharge":"Vanguard Assault: melee weapons gain LETHAL HITS in turn this unit made a charge move",
       "stats":{"M":"12\"","T":4,"SV":"3+","W":2,"LD":"6+","OC":1},
       "ranged_weapons":[
@@ -265,7 +265,7 @@ const RAW_UNITS = {
       ],
       "melee_weapons":[{"name":"Master-crafted power weapon","range":"Melee","A":3,"WS":"3+","S":5,"AP":-2,"D":2}],
       "defaultCount":5},
-    {"name":"Eradicator Squad with Heavy Bolters","points":80,"source":"Faction Pack Space Marines v1.2 (11ª) | Wahapedia 11ª","verifiedAt":"2026-09-28","pointsSource":"Faction Pack SM v1.2 — 80 pts confirmados pelo Gonçalo","keywords":["INFANTRY","IMPERIUM","GRAVIS"],
+    {"name":"Eradicator Squad with Heavy Bolters","points":80,"source":"Faction Pack Space Marines v1.2 (11ª) | Wahapedia 11ª","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","pointsBySize":{"3":80},"keywords":["INFANTRY","IMPERIUM","GRAVIS"],
       "abilities":["Overlapping Detonations: ao ser selecionada para disparar, escolhe 1 unidade inimiga visível que NÃO seja MONSTER/VEHICLE; os heavy bolters que a atacarem têm [BLAST 1]"],
       "conditionalBlastVsMonsterVehicle":{"weapon":"Heavy bolter","value":1},
       "stats":{"M":"5\"","T":6,"SV":"3+","W":3,"LD":"6+","OC":1},
@@ -275,7 +275,7 @@ const RAW_UNITS = {
       ],
       "melee_weapons":[{"name":"Close-combat weapon","range":"Melee","A":3,"WS":"3+","S":4,"AP":0,"D":1}],
       "defaultCount":3},
-    {"name":"Land Speeder","points":105,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["VEHICLE"],"stats":{"M":"14\"","T":8,"SV":"3+","W":9,"LD":"6+","OC":3},
+    {"name":"Land Speeder","points":105,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","keywords":["VEHICLE"],"stats":{"M":"14\"","T":8,"SV":"3+","W":9,"LD":"6+","OC":3},
       "ranged_weapons":[
         {"name":"Heavy Flamer","keywords":["TORRENT","IGNORES COVER"],"range":"12\"","A":"D6","BS":"N/A","S":5,"AP":-1,"D":1},
         {"name":"Multi-melta","keywords":["MELTA 2"],"range":"18\"","A":2,"BS":"3+","S":9,"AP":-4,"D":"D6"},
@@ -330,7 +330,7 @@ const RAW_UNITS = {
         {"name":"'Urty syringe","keywords":["ANTI-INFANTRY 4+","DEVASTATING WOUNDS","EXTRA ATTACKS"],"devastatingWoundsOnlyTargets":["INFANTRY"],"range":"Melee","A":1,"WS":"3+","S":2,"AP":0,"D":"D6"}
       ],
       "defaultCount":1, "support_for":["Boyz"]},
-    {"name":"Weirdboy","points":65,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["INFANTRY","CHARACTER","PSYKER"],"stats":{"M":"6\"","T":5,"SV":"5+","W":4,"LD":"7+","OC":1},
+    {"name":"Weirdboy","points":65,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","keywords":["INFANTRY","CHARACTER","PSYKER"],"stats":{"M":"6\"","T":5,"SV":"5+","W":4,"LD":"7+","OC":1},
       "ranged_weapons":[{"name":"Power Vomit","keywords":["BLAST 1","HAZARDOUS","PSYCHIC","TORRENT"],"range":"12\"","A":3,"BS":"N/A","S":5,"AP":-3,"D":2}],
       "melee_weapons":[{"name":"Copper Staff","keywords":["PSYCHIC"],"range":"Melee","A":3,"WS":"3+","S":8,"AP":-1,"D":2}],
       "defaultCount":1, "support_for":["Boyz"]},
@@ -357,7 +357,7 @@ const RAW_UNITS = {
         {"name":"Choppa","range":"Melee","A":3,"WS":"3+","S":5,"AP":-1,"D":1},
         {"name":"Big choppa","keywords":["CLEAVE 2"],"range":"Melee","A":4,"WS":"3+","S":7,"AP":-1,"D":2}
       ]},
-    {"name":"Gretchin","points":45,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["INFANTRY"],"stats":{"M":"6\"","T":2,"SV":"6+","W":1,"LD":"8+","OC":1},
+    {"name":"Gretchin","points":45,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","pointsBySize":{"10":45,"20":80},"keywords":["INFANTRY"],"stats":{"M":"6\"","T":2,"SV":"6+","W":1,"LD":"8+","OC":1},
       "abilities":["Thievin' Scavengers (só informativo — texto exato por acrescentar a partir do datasheet)"],
       "ranged_weapons":[{"name":"Grot Blasta","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"4+","S":3,"AP":0,"D":1}],
       "melee_weapons":[{"name":"Scavenged Shivs","range":"Melee","A":1,"WS":"5+","S":2,"AP":0,"D":1}],
@@ -387,7 +387,7 @@ const RAW_UNITS = {
   // geral das datasheets (classificação factual, não uma regra/ability),
   // só para o ANTI-X continuar a funcionar; convém confirmar/corrigir.
   tyranids: [
-    {"name":"Winged Tyranid Prime","points":65,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["INFANTRY","CHARACTER"],
+    {"name":"Winged Tyranid Prime","points":65,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","keywords":["INFANTRY","CHARACTER"],
       "stats":{"M":"12\"","T":5,"SV":"4+","W":6,"LD":"7+","OC":1},
       "ranged_weapons":[],
       "melee_weapons":[{"name":"Prime talons","range":"Melee","A":6,"WS":"2+","S":6,"AP":-1,"D":2}],
@@ -418,7 +418,7 @@ const RAW_UNITS = {
       "leadingOnly": ["nodeLash"],
       "leader_for":["Neurogaunts"],
       "defaultCount":1},
-    {"name":"Screamer-Killer","points":125,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["MONSTER"],
+    {"name":"Screamer-Killer","points":125,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","pointsTiers":[{"upTo":2,"bySize":{"1":125}},{"from":3,"bySize":{"1":135}}],"keywords":["MONSTER"],
       "stats":{"M":"8\"","T":9,"SV":"2+","W":10,"LD":"8+","OC":3},
       "ranged_weapons":[{"name":"Bio-plasmic scream","keywords":["ASSAULT","BLAST"],"range":"18\"","A":"D6+3","BS":"4+","S":8,"AP":-2,"D":1}],
       "melee_weapons":[{"name":"Screamer-killer talons","range":"Melee","A":10,"WS":"3+","S":10,"AP":-2,"D":3}],
@@ -430,7 +430,7 @@ const RAW_UNITS = {
       "deathScreamOnHit": "Death Scream: depois de disparar, uma unidade atingida tem de testar Battleshock com -1",
       "deadlyDemise": 1,
       "defaultCount":1},
-    {"name":"Psychophage","points":110,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["MONSTER"],
+    {"name":"Psychophage","points":110,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","keywords":["MONSTER"],
       "stats":{"M":"12\"","T":9,"SV":"3+","W":10,"LD":"8+","OC":3},
       "ranged_weapons":[{"name":"Psychoclastic torrent","keywords":["IGNORES COVER","TORRENT"],"range":"12\"","A":"D6","BS":"N/A","S":6,"AP":-1,"D":1}],
       "melee_weapons":[{"name":"Talons and betentacled maw","keywords":["ANTI-PSYKER 4+","DEVASTATING WOUNDS"],"range":"Melee","A":6,"WS":"3+","S":6,"AP":-2,"D":2}],
@@ -444,7 +444,7 @@ const RAW_UNITS = {
       "deadlyDemise": 1,
       "fnpAura": {"value": 6, "range": 6},
       "defaultCount":1},
-    {"name":"Haruspex","points":125,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["MONSTER","HARVESTER"],
+    {"name":"Haruspex","points":125,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","pointsTiers":[{"upTo":2,"bySize":{"1":125}},{"from":3,"bySize":{"1":135}}],"keywords":["MONSTER","HARVESTER"],
       "stats":{"M":"8\"","T":11,"SV":"3+","W":14,"LD":"8+","OC":4},
       "ranged_weapons":[{"name":"Grasping tongue","keywords":["PRECISION"],"range":"12\"","A":1,"BS":"3+","S":6,"AP":-2,"D":"D6+1"}],
       "melee_weapons":[
@@ -461,7 +461,7 @@ const RAW_UNITS = {
       "grislySpectacle":true,
       "damaged":{"maxWounds":5,"hitPenalty":1},
       "defaultCount":1},
-    {"name":"Exocrine","points":135,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["MONSTER"],
+    {"name":"Exocrine","points":135,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","pointsTiers":[{"upTo":2,"bySize":{"1":135}},{"from":3,"bySize":{"1":145}}],"keywords":["MONSTER"],
       "stats":{"M":"8\"","T":10,"SV":"3+","W":14,"LD":"8+","OC":4},
       "ranged_weapons":[{"name":"Bio-plasmic cannon","keywords":["BLAST","HEAVY"],"range":"36\"","A":"D6+3","BS":"3+","S":9,"AP":-3,"D":3}],
       "melee_weapons":[{"name":"Powerful limbs","range":"Melee","A":3,"WS":"3+","S":7,"AP":0,"D":2}],
@@ -475,7 +475,7 @@ const RAW_UNITS = {
       "symbioticTargeting":true,
       "damaged":{"maxWounds":5,"hitPenalty":1},
       "defaultCount":1},
-    {"name":"Neurolictor","points":80,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["INFANTRY","VANGUARD INVADER","SYNAPSE"],
+    {"name":"Neurolictor","points":80,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","pointsTiers":[{"upTo":2,"bySize":{"1":80}},{"from":3,"bySize":{"1":90}}],"keywords":["INFANTRY","VANGUARD INVADER","SYNAPSE"],
       "stats":{"M":"8\"","T":5,"SV":"4+","InvSV":"4+","W":7,"LD":"7+","OC":1},
       "ranged_weapons":[],
       "melee_weapons":[{"name":"Piercing claws and talons","keywords":["PRECISION"],"range":"Melee","A":6,"WS":"2+","S":6,"AP":-2,"D":1}],
@@ -488,7 +488,7 @@ const RAW_UNITS = {
       ],
       "feederTendrils":true,"neuralDisruption":true,"psychologicalSaboteur":true,"stealth":true,
       "defaultCount":1},
-    {"name":"Gargoyles","points":80,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["INFANTRY","BATTLELINE","FLY","ENDLESS MULTITUDE","VANGUARD INVADER"],
+    {"name":"Gargoyles","points":80,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","keywords":["INFANTRY","BATTLELINE","FLY","ENDLESS MULTITUDE","VANGUARD INVADER"],
       "stats":{"M":"12\"","T":3,"SV":"6+","W":1,"LD":"8+","OC":2},
       "ranged_weapons":[{"name":"Fleshborer","keywords":["ASSAULT"],"range":"18\"","A":1,"BS":"4+","S":5,"AP":0,"D":1}],
       "melee_weapons":[{"name":"Blinding venom","range":"Melee","A":1,"WS":"4+","S":3,"AP":0,"D":1}],
@@ -512,7 +512,7 @@ const RAW_UNITS = {
       ],
       "stealth":true,
       "defaultCount":3},
-    {"name":"Termagants","points":120,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["INFANTRY"],
+    {"name":"Termagants","points":110,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","pointsBySize":{"10":60,"20":110},"keywords":["INFANTRY"],
       "stats":{"M":"6\"","T":3,"SV":"5+","W":1,"LD":"8+","OC":2},
       "ranged_weapons":[
         {"name":"Fleshborer","keywords":["ASSAULT"],"range":"18\"","A":1,"BS":"4+","S":5,"AP":0,"D":1},
@@ -538,7 +538,7 @@ const RAW_UNITS = {
         "Chitinous Horrors: enquanto um inimigo estiver em Engagement Range desta unidade, o OC desse inimigo fica reduzido a metade"
       ],
       "defaultCount":2},
-    {"name":"Neurogaunts","points":45,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["INFANTRY"],
+    {"name":"Neurogaunts","points":45,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","pointsBySize":{"11":45,"22":90},"keywords":["INFANTRY"],
       "stats":{"M":"6\"","T":3,"SV":"6+","W":1,"LD":"8+","OC":1},
       "ranged_weapons":[],
       "melee_weapons":[{"name":"Chitinous claws and teeth","range":"Melee","A":1,"WS":"4+","S":3,"AP":0,"D":1}],
@@ -548,7 +548,7 @@ const RAW_UNITS = {
         "Composição: 11 modelos (inclui 1 Neurogaunt Nodebeast)"
       ],
       "defaultCount":11},
-    {"name":"Barbgaunts","points":55,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["INFANTRY"],
+    {"name":"Barbgaunts","points":55,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","pointsBySize":{"5":55,"10":110},"keywords":["INFANTRY"],
       "stats":{"M":"6\"","T":4,"SV":"4+","W":2,"LD":"8+","OC":1},
       "ranged_weapons":[{"name":"Barblauncher","keywords":["BLAST","HEAVY"],"range":"24\"","A":"D6","BS":"4+","S":5,"AP":0,"D":1}],
       "melee_weapons":[{"name":"Chitinous claws and teeth","range":"Melee","A":1,"WS":"4+","S":4,"AP":0,"D":1}],
@@ -1740,7 +1740,7 @@ function render() {
   root.appendChild(el("h1", { text: "⚔ W40K TRACKER — ARMAGEDDON" }));
   root.appendChild(el("div", { class: "subtitle", text: "Pré-visualização: Setup + sequência do turno (Command → Movement → Shooting → Charge → Fight)" }));
   root.appendChild(el("div", { class: "subtitle", id: "rules-version", text: "Regras: versão de " + RULES_VERSION_DATE + " (dados congelados — atualizados só quando decidido)" }));
-  root.appendChild(el("div", { class: "subtitle", id: "points-version", text: "Pontos: " + POINTS_VERSION }));
+  root.appendChild(el("div", { class: "subtitle", id: "points-version", text: "Pontos: " + POINTS_VERSION + " (" + POINTS_CONFIRMED.confirmed + " de " + POINTS_CONFIRMED.total + " confirmadas)" }));
   root.appendChild(el("div", { class: "devbanner", text:
     "⚠ Pré-visualização em JavaScript puro para validar o fluxo antes de construir a app completa em React+Vite (é preciso instalar Node.js para esse passo). " +
     "O estado grava-se sozinho neste dispositivo (localStorage) e a app funciona offline depois da primeira visita (service worker). Hits/wounds/saves têm ditado por voz (🎤, pt-PT) como alternativa ao clique. Cada fase mostra os Core Stratagems relevantes (referência — a app nunca os ativa sozinha)."
@@ -2754,6 +2754,11 @@ function supportersFor(ds) {
 // datasheet no exército do jogador (pointsTiers: {"upTo":3|"from":4, "bySize":{}}).
 // Fora de qualquer tabela, cai no preço base (`points`) e marca-se com "*".
 const POINTS_VERSION = "MFM v1.4";
+// "Pontos: MFM v1.4 (N de M confirmadas)" — conta as datasheets cujo pointsSource é do MFM v1.4.
+const POINTS_CONFIRMED = (() => {
+  const all = Object.keys(RAW_UNITS).reduce((acc, f) => acc.concat(RAW_UNITS[f]), []);
+  return { confirmed: all.filter(u => /^MFM v1\.4/.test(u.pointsSource || "")).length, total: all.length };
+})();
 function dsPointsFor(ds, size, rank) {
   let table = ds.pointsBySize || null;
   if (ds.pointsTiers) {

@@ -95,7 +95,7 @@ Gerado em 2026-09-28 a partir de `C:\Users\UTILIZ~1\AppData\Local\Temp\bsdata_tm
 
 - arma (ranged) só na app: Termagant spinefists
 - arma (ranged) só no BSData: Termagant spinefist
-- pontos: 120 → 60
+- pontos: 110 → 60
 
 ## Ripper Swarms (tyranids)
 
