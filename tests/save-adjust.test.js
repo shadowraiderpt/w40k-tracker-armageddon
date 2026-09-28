@@ -166,9 +166,9 @@ test("Arma PSYCHIC com ajuste manual ao Hit ≠ 0: mostra o aviso (sem bloquear 
   const atk = addFullUnit(win, "playerA", "Weirdboy"); // 'Eadbanger é PSYCHIC
   const tgt = addFullUnit(win, "playerB", "Intercessor Squad");
   let wrap = toHitStep(win, atk, "'Eadbanger", tgt, "shooting");
-  assert(!/ignora todos os modificadores/.test(wrap.textContent), "sem ajuste manual não devia avisar");
+  assert(!/Arma PSYCHIC/.test(wrap.textContent), "sem ajuste manual não devia avisar");
   wrap = toHitStep(win, atk, "'Eadbanger", tgt, "shooting", { hitAdjust: -1 });
-  assert(/Arma PSYCHIC — ignora todos os modificadores a BS\/WS e ao hit roll, incluindo cobertura\./.test(wrap.textContent), "com ajuste -1 devia avisar");
+  assert(/Arma PSYCHIC — podes ignorar os modificadores a BS\/WS e ao hit roll, incluindo cobertura\./.test(wrap.textContent), "com ajuste -1 devia avisar");
   assertEqual(win.__state.cycle.hitAdjust, -1, "o aviso não bloqueia nem altera o valor");
 });
 
@@ -180,13 +180,32 @@ test("Arma NÃO PSYCHIC com ajuste manual ao Hit: não mostra o aviso PSYCHIC", 
   assert(!/Arma PSYCHIC/.test(wrap.textContent), "Fleshborer não é PSYCHIC");
 });
 
-test("Arma PSYCHIC com ajuste +2: mostra os dois avisos (limite ±1 e PSYCHIC)", () => {
+test("Arma PSYCHIC com ajuste +2: mostra SÓ o aviso PSYCHIC, nunca o do limite ±1", () => {
   const win = loadApp();
   const atk = addFullUnit(win, "playerA", "Weirdboy");
   const tgt = addFullUnit(win, "playerB", "Intercessor Squad");
   const wrap = toHitStep(win, atk, "'Eadbanger", tgt, "shooting", { hitAdjust: 2 });
-  assert(/nunca permite modificar um hit roll mais de -1\/\+1/.test(wrap.textContent), "aviso do limite ±1");
+  assert(!/nunca permite modificar um hit roll/.test(wrap.textContent), "numa arma PSYCHIC o aviso ±1 não devia aparecer");
   assert(/Arma PSYCHIC/.test(wrap.textContent), "aviso PSYCHIC");
+});
+
+// --- Lembrete de STEALTH no alvo (só tiro) -----------------------------------
+test("Alvo com STEALTH (Von Ryan's Leapers) na Shooting: mostra o lembrete de cobertura", () => {
+  const win = loadApp();
+  const atk = addFullUnit(win, "playerA", "Intercessor Squad");
+  const tgt = addFullUnit(win, "playerB", "Von Ryan's Leapers");
+  const wrap = toHitStep(win, atk, "Bolt rifle", tgt, "shooting", { modelsAttacking: 10, heavyStationary: false });
+  assert(/Alvo com STEALTH — tem benefício de cobertura \(-1 ao BS do atacante\), mesmo sem terreno\./.test(wrap.textContent));
+});
+
+test("Alvo sem STEALTH: sem lembrete; alvo STEALTH em combate (WS): sem lembrete", () => {
+  const win = loadApp();
+  const atk = addFullUnit(win, "playerA", "Intercessor Squad");
+  const plain = addFullUnit(win, "playerB", "Gretchin");
+  assert(!/STEALTH/.test(toHitStep(win, atk, "Bolt rifle", plain, "shooting", { modelsAttacking: 10, heavyStationary: false }).textContent));
+  const stealthy = addFullUnit(win, "playerB", "Neurolictor");
+  assert(!/Alvo com STEALTH/.test(toHitStep(win, atk, "Chainsword", stealthy, "fight", { modelsAttacking: 1 }).textContent), "cobertura só afeta o BS (tiro)");
+  assert(/Alvo com STEALTH/.test(toHitStep(win, atk, "Bolt rifle", stealthy, "shooting", { modelsAttacking: 10, heavyStationary: false }).textContent), "Neurolictor também tem Stealth");
 });
 
 run();

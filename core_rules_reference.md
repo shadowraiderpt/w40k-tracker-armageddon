@@ -165,11 +165,18 @@ Um battle-shock roll é um leadership roll: 2D6, compara com o LD da unidade.
 |**Fights First**|A unidade luta antes das que não têm esta ability|
 |**\[HAZARDOUS]**|Depois de a unidade resolver TODOS os ataques, 1 hazard roll (1D6) por cada arma HAZARDOUS usada — falha em 1-2. Cada falha: 1 mortal wound à unidade; 3 mortal wounds se TODOS os modelos da unidade forem MONSTER/VEHICLE. Mortal wounds alocadas pela regra normal (06.02: não-character já ferido > não-character > character ferido > character) — nunca obrigatoriamente ao portador da arma. Nunca destrói um modelo diretamente|
 |**\[HEAVY]**|+1 ao hit roll se a unidade estiver unengaged, não foi posta em jogo este turno, e nenhum modelo moveu mais de 3"|
+|**\[IGNORES COVER]**|Ignora o benefício de cobertura do alvo (na 11ª, o -1 ao BS do atacante)|
+|**Infiltrators**|Descritivo: pode ser colocada em implantação fora da zona normal, a mais de 8" das unidades inimigas — **confirmar no PDF oficial**|
+|**Leader**|Descritivo: CHARACTER que se pode anexar a uma das unidades listadas na sua datasheet (campo `leader_for` na app)|
 |**\[LETHAL HITS]**|Critical hit pode escolher ferir automaticamente (sem wound roll)|
+|**Lone Operative X**|Só pode ser alvo de ataques à distância a X" ou menos (12" por defeito) — **confirmar no PDF oficial**|
 |**\[MELTA X]**|Dentro de metade do alcance, +X ao Damage da arma|
+|**\[PISTOL]**|Idêntico a \[CLOSE-QUARTERS]|
 |**\[PRECISION]**|Pode forçar o grupo de alocação a incluir um CHARACTER visível primeiro|
 |**\[PSYCHIC]**|Pode ignorar modificadores ao BS/WS e ao hit roll|
 |**\[RAPID FIRE X]**|Dentro de metade do alcance, +X dados de ataque|
+|**Stealth**|A unidade tem benefício de cobertura (11ª)|
+|**Support**|Descritivo: CHARACTER que se anexa a uma das unidades listadas na sua datasheet, além do Leader (campo `support_for` na app)|
 |**\[SUSTAINED HITS X]**|Critical hit gera X hits adicionais|
 |**\[TORRENT]**|Acerta automaticamente (sem hit roll)|
 |**\[TWIN-LINKED]**|Pode re-rolar o wound roll|

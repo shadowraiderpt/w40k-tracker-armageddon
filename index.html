@@ -448,7 +448,7 @@ const RAW_UNITS = {
         "Neural Disruption: no teu Command phase, escolhe uma unidade inimiga a 12\" deste modelo — essa unidade tem de fazer um teste de Battle-shock",
         "Psychological Saboteur (Aura): enquanto uma unidade inimiga estiver a 12\" deste modelo, se essa unidade estiver Battle-shocked: os ataques dela têm -1 ao Hit roll; os ataques de modelos Tyranids amigos contra ela têm +1 ao Wound roll"
       ],
-      "feederTendrils":true,"neuralDisruption":true,"psychologicalSaboteur":true,
+      "feederTendrils":true,"neuralDisruption":true,"psychologicalSaboteur":true,"stealth":true,
       "defaultCount":1},
     {"name":"Gargoyles","points":80,"keywords":["INFANTRY","BATTLELINE","FLY","ENDLESS MULTITUDE","VANGUARD INVADER"],
       "stats":{"M":"12\"","T":3,"SV":"6+","W":1,"LD":"8+","OC":2},
@@ -472,6 +472,7 @@ const RAW_UNITS = {
         "Pouncing Leap: pode ser alvo do stratagem Heroic Intervention por 0CP, mesmo que já tenha sido usado noutra unidade nesta fase",
         "Stealth (nota): ataques à distância contra esta unidade têm -1 ao hit roll — usar o ajuste manual já existente na app"
       ],
+      "stealth":true,
       "defaultCount":3},
     {"name":"Termagants","points":120,"keywords":["INFANTRY"],
       "stats":{"M":"6\"","T":3,"SV":"5+","W":1,"LD":"8+","OC":2},
@@ -3247,6 +3248,10 @@ function renderAttackCycle(phaseKey) {
       wrap.appendChild(renderNumberStep({
         title: "Precisas de " + thresholdText(effHitThreshold) + " para acertar",
         bigNumber: thresholdText(effHitThreshold),
+        // STEALTH no alvo (Von Ryan's Leapers, Neurolictor): 11ª edição dá-lhe
+        // benefício de cobertura (-1 ao BS do atacante) mesmo sem terreno —
+        // só lembrete (cobertura entra pelo ajuste manual), só tiro (BS).
+        explainLine: (phaseKey === "shooting" && target.groups.some(g => { const d = findDatasheet(library, g.datasheetName); return d && d.stealth; })) ? "Alvo com STEALTH — tem benefício de cobertura (-1 ao BS do atacante), mesmo sem terreno." : null,
         bonusChips: (heavyBonus ? ["HEAVY: +1 ao acertar"] : []).concat(meleeHitBonusValue ? ["+" + meleeHitBonusValue + " ao acertar (melee, permanente)"] : []).concat(damagedPenaltyValue ? ["DAMAGED: -" + damagedPenaltyValue + " ao acertar"] : []).concat(suppressedPenaltyValue ? ["SUPPRESSED (Indiscriminate Detonations): -1 ao acertar"] : []).concat(engagedPenaltyValue ? ["ENGAGED (MONSTER/VEHICLE, arma não [CLOSE-QUARTERS]): -1 ao acertar"] : []).concat(sabHitPenaltyValue ? ["PSYCHOLOGICAL SABOTEUR: -1 ao acertar"] : []),
         hint: statLabel(hitStat) + ": " + toHitValue(weapon, phaseKey) + (c.hitAdjust ? " · ajuste manual aplicado: " + (c.hitAdjust > 0 ? "+" : "") + c.hitAdjust : "") + attacksBonusSuffix,
         // Hit roll nunca é modificado mais de -1/+1 no total (regra 11ª
@@ -3256,10 +3261,11 @@ function renderAttackCycle(phaseKey) {
         // [PSYCHIC] ignora todos os modificadores a BS/WS e ao hit roll (incl.
         // cobertura) — só avisa quando há ajuste manual, nunca bloqueia (a
         // app não decide se o ajuste devia ou não aplicar-se).
-        warning: [
-          Math.abs(c.hitAdjust) > 1 ? "Ajuste de " + (c.hitAdjust > 0 ? "+" : "") + c.hitAdjust + " ao hit roll — a 11ª edição nunca permite modificar um hit roll mais de -1/+1 no total. Confirma se isto soma corretamente todas as fontes." : null,
-          (hasKeyword(weapon, "PSYCHIC") && c.hitAdjust !== 0) ? "Arma PSYCHIC — ignora todos os modificadores a BS/WS e ao hit roll, incluindo cobertura." : null,
-        ].filter(Boolean).join(" ") || null,
+        // Numa arma PSYCHIC mostra-se SÓ o aviso PSYCHIC (o limite ±1 deixa
+        // de fazer sentido se os modificadores podem ser ignorados).
+        warning: hasKeyword(weapon, "PSYCHIC")
+          ? (c.hitAdjust !== 0 ? "Arma PSYCHIC — podes ignorar os modificadores a BS/WS e ao hit roll, incluindo cobertura." : null)
+          : (Math.abs(c.hitAdjust) > 1 ? "Ajuste de " + (c.hitAdjust > 0 ? "+" : "") + c.hitAdjust + " ao hit roll — a 11ª edição nunca permite modificar um hit roll mais de -1/+1 no total. Confirma se isto soma corretamente todas as fontes." : null),
         threshold: effHitThreshold > 6 ? 999 : effHitThreshold, stepKey: "hits", max: effectiveAttacksMax, countLabel: "Hits",
         rollsDice: true,
         initialValue: c.hits,
