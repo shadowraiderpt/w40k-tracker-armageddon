@@ -164,7 +164,7 @@ test("BS (cobertura, Plunging Fire): sem limite e separado do hit roll — BS4+ 
   const wrap = win.renderAttackCycle("shooting");
   assertEqual(wrap.querySelector(".threshold-number").textContent, "6+");
   assert(!/LIMITE ±1/.test(wrap.textContent), "o BS não entra no corte de ±1");
-  assert(/BS \(cobertura, Plunging Fire\)/.test(wrap.textContent) && /Hit roll \(soma com os automáticos/.test(wrap.textContent), "dois controlos separados, com os rótulos pedidos");
+  assert(/BS \(cobertura = −1, Plunging Fire = \+1\)/.test(wrap.textContent) && /Hit roll \(soma com os automáticos/.test(wrap.textContent), "dois controlos separados, com os rótulos pedidos");
 });
 
 test("BS e hit roll somam-se corretamente: BS -1 (cobertura) + modificador ao roll +1 (HEAVY) → BS5+ dá 5+", () => {

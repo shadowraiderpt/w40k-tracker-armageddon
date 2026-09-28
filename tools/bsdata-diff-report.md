@@ -39,7 +39,6 @@ Gerado em 2026-09-28 a partir de `C:\Users\UTILIZ~1\AppData\Local\Temp\bsdata_tm
 - arma (ranged) só no BSData: Hand flamer
 - arma (ranged) só no BSData: ➤ Plasma pistol - supercharge
 - arma (ranged) só no BSData: ➤ Plasma pistol - standard
-- arma Close-combat weapon — keywords: PRECISION → —
 - arma (melee) só no BSData: Power weapon
 - arma (melee) só no BSData: Power fist
 - arma (melee) só no BSData: Thunder Hammer
@@ -109,4 +108,4 @@ Gerado em 2026-09-28 a partir de `C:\Users\UTILIZ~1\AppData\Local\Temp\bsdata_tm
 
 ---
 
-Total de diferenças: 58
+Total de diferenças: 57

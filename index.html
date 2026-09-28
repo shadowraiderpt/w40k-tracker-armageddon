@@ -252,7 +252,7 @@ const RAW_UNITS = {
       ],
       "melee_weapons":[
         {"name":"Chainsword","range":"Melee","A":5,"WS":"3+","S":4,"AP":-1,"D":1,"maxModels":1},
-        {"name":"Close-combat weapon","keywords":["PRECISION"],"range":"Melee","A":3,"WS":"3+","S":4,"AP":0,"D":1}
+        {"name":"Close-combat weapon","range":"Melee","A":3,"WS":"3+","S":4,"AP":0,"D":1}
       ],
       "defaultCount":10},
     {"name":"Vanguard Veteran Squad with Jump Packs","points":105,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","pointsTiers":[{"upTo":2,"bySize":{"5":105,"10":210}},{"from":3,"bySize":{"5":115,"10":220}}],"keywords":["INFANTRY","JUMP PACK"],
@@ -931,7 +931,7 @@ const WEAPON_KEYWORD_NOTES = {
   // do jogador ao save) — por isso não há nada para "ignorar" automaticamente
   // aqui, só o lembrete para não deixar o adversário aplicar +1 ao save por
   // estar coberto.
-  "IGNORES COVER": "Esta arma ignora bónus de cobertura — não deixes o adversário aplicar +1 ao save manual por estar coberto.",
+  "IGNORES COVER": "Esta arma ignora a cobertura — não apliques o −1 ao BS por o alvo estar coberto (11ª: a cobertura não mexe no save).",
 };
 function weaponKeywordNotes(weapon) {
   return (weapon.keywords || [])
@@ -3534,7 +3534,7 @@ function renderAttackCycle(phaseKey) {
         rollsDice: true,
         initialValue: c.hits,
         adjusts: [
-          { label: (phaseKey === "shooting" ? "BS (cobertura, Plunging Fire)" : "WS (stratagems, etc.)") + ", sem limite:", value: c.bsAdjust, onChange: v => { c.bsAdjust = Math.max(-5, Math.min(5, v)); render(); } },
+          { label: (phaseKey === "shooting" ? "BS (cobertura = −1, Plunging Fire = +1)" : "WS (stratagems, etc.)") + ", sem limite:", value: c.bsAdjust, onChange: v => { c.bsAdjust = Math.max(-5, Math.min(5, v)); render(); } },
           { label: "Hit roll (soma com os automáticos, limitada a ±1):", value: c.hitAdjust, onChange: v => { c.hitAdjust = Math.max(-5, Math.min(5, v)); render(); } },
         ],
         roller: "attacker", rollerName: attackerRollerName, rollWhy: "Roll de ataque (hit roll) — ver se acertas no alvo.",
@@ -3615,7 +3615,7 @@ function renderAttackCycle(phaseKey) {
       // Wound roll nunca é modificado mais de -1/+1 no total (regra 11ª
       // edição) — ao contrário do Save (sem este limite), aqui é travado
       // mesmo, não só avisado.
-      adjust: { value: c.woundAdjust, onChange: v => { c.woundAdjust = Math.max(-1, Math.min(1, v)); render(); } },
+      adjust: { label: "Ajuste manual (stratagems, abilities):", value: c.woundAdjust, onChange: v => { c.woundAdjust = Math.max(-1, Math.min(1, v)); render(); } },
       roller: "attacker", rollerName: attackerRollerName, rollWhy: "Roll de ferir (wound roll) — ver se o hit é forte o suficiente para ferir o alvo.",
       onConfirm: n => { c.wounds = n + lethalCrits; c.step = 3; render(); },
       confirmLabel: "Confirmar wounds →",
@@ -3728,7 +3728,7 @@ function renderAttackCycle(phaseKey) {
         rollsDice: true,
         initialValue: c.failedSaves,
         onBack: backToWounds,
-        adjust: { value: c.saveAdjust, onChange: v => { c.saveAdjust = Math.max(-5, Math.min(5, v)); render(); } },
+        adjust: { label: "Ajuste manual (stratagems, abilities — a cobertura NÃO entra aqui, já está no BS):", value: c.saveAdjust, onChange: v => { c.saveAdjust = Math.max(-5, Math.min(5, v)); render(); } },
         invertThreshold: true,
         roller: "defender", rollerName: defenderRollerName, rollWhy: "Roll de salvaguarda (save roll) — tenta evitar o dano com a armadura ou InvSv.",
         onConfirm: n => {
@@ -3863,7 +3863,7 @@ function renderAttackCycle(phaseKey) {
           c.groupFlow = "assign";
           render();
         },
-        adjust: { value: c.saveAdjust, onChange: v => { c.saveAdjust = Math.max(-5, Math.min(5, v)); render(); } },
+        adjust: { label: "Ajuste manual (stratagems, abilities — a cobertura NÃO entra aqui, já está no BS):", value: c.saveAdjust, onChange: v => { c.saveAdjust = Math.max(-5, Math.min(5, v)); render(); } },
         invertThreshold: true,
         roller: "defender", rollerName: defenderRollerName, rollWhy: "Roll de salvaguarda (save roll) — tenta evitar o dano com a armadura ou InvSv.",
         onConfirm: n => {
@@ -5024,7 +5024,7 @@ function renderNumberStep(opts) {
 
   // opts.adjust (um controlo, rótulo por defeito) ou opts.adjusts (vários,
   // cada um com o seu rótulo — ex: BS e Hit roll separados no passo de Hit).
-  const adjustList = opts.adjusts || (opts.adjust ? [Object.assign({ label: "Ajuste manual (cobertura, stratagems, etc.):" }, opts.adjust)] : []);
+  const adjustList = opts.adjusts || (opts.adjust ? [Object.assign({ label: "Ajuste manual (stratagems, abilities):" }, opts.adjust)] : []);
   adjustList.forEach(a => {
     const row = el("div", { class: "adjust-row" });
     row.appendChild(el("span", { class: "step-hint", text: a.label }));
