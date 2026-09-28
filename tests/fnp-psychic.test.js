@@ -29,6 +29,7 @@ function renderStep5With1Dead(win, { attackerDs, attackerPlayerKey, weaponName, 
   c.targetId = target.id;
   c.step = 5;
   c.hits = 1;
+  c.hazardousFailCount = 0; // Power Vomit é HAZARDOUS — o hazard roll já foi feito (sem falhas)
   c.deadByGroup = { [deadGroupKey]: 1 };
   return win.renderAttackCycle(phaseKey);
 }
@@ -53,16 +54,16 @@ test("Psychophage ataca com Psychoclastic torrent (sem [PSYCHIC]) — Psychic Ho
   assert(!FNP_TITLE.test(wrap.textContent), "Psychoclastic torrent não tem [PSYCHIC] — não devia oferecer o roll de Feel No Pain do Psychic Hood");
 });
 
-test("Weirdboy ataca com 'Eadbanger (tem [PSYCHIC]) — Psychic Hood dispara", () => {
+test("Weirdboy ataca com Power Vomit (tem [PSYCHIC]) — Psychic Hood dispara", () => {
   const win = loadApp();
   const target = addLibrarianIntercessorTarget(win, "playerB");
   const mainGroupKey = target.groups.find(g => g.key !== "leader").key;
   const wrap = renderStep5With1Dead(win, {
     attackerDs: "Weirdboy", attackerPlayerKey: "playerA",
-    weaponName: "'Eadbanger", phaseKey: "shooting",
+    weaponName: "Power Vomit", phaseKey: "shooting",
     target, deadGroupKey: mainGroupKey,
   });
-  assert(FNP_TITLE.test(wrap.textContent), "'Eadbanger tem [PSYCHIC] — devia oferecer o roll de Feel No Pain do Psychic Hood");
+  assert(FNP_TITLE.test(wrap.textContent), "Power Vomit tem [PSYCHIC] — devia oferecer o roll de Feel No Pain do Psychic Hood");
 });
 
 test("A morte a cancelar pode ser no grupo do Librarian (líder) — Psychic Hood continua a aplicar-se à unidade toda", () => {
@@ -70,7 +71,7 @@ test("A morte a cancelar pode ser no grupo do Librarian (líder) — Psychic Hoo
   const target = addLibrarianIntercessorTarget(win, "playerB");
   const wrap = renderStep5With1Dead(win, {
     attackerDs: "Weirdboy", attackerPlayerKey: "playerA",
-    weaponName: "'Eadbanger", phaseKey: "shooting",
+    weaponName: "Power Vomit", phaseKey: "shooting",
     target, deadGroupKey: "leader",
   });
   assert(FNP_TITLE.test(wrap.textContent), "a keyword [PSYCHIC] da arma é a única condição — não deve importar em qual grupo (líder ou tropa) caiu a morte");

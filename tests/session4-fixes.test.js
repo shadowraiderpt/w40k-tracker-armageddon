@@ -79,35 +79,30 @@ test("Bug3: Overlapping Detonations dá BLAST 1 contra alvos que NÃO são MONST
   assert(!win.hasKeyword(win.conditionalWeaponKeywords(attacker, rawWeapon, monsterTarget), "BLAST"), "alvo MONSTER não devia ganhar BLAST 1");
 });
 
-// --- Bug 4: Alpha Warrior reescrito (buff a outra unidade no Command phase) --
-test("Bug4: Alpha Warrior pergunta no Command phase, aplica-se à unidade escolhida e não repete a pergunta na mesma instância de fase", () => {
+// --- Bug 4 (revisto, Pedido Mestre 28/09/2026): Alpha Warrior 11ª = enquanto
+// lidera, as armas da unidade têm [SUSTAINED HITS 1] (o reroll de 1s do Command
+// phase estava desatualizado e foi removido).
+test("Bug4 (revisto): Alpha Warrior dá SUSTAINED HITS 1 às armas da unidade liderada pelo Winged Tyranid Prime", () => {
   const win = loadApp();
-  const prime = addFullUnit(win, "playerA", "Winged Tyranid Prime");
-  const gaunts = addFullUnit(win, "playerA", "Neurogaunts");
-  win.__state.game.activePlayerKey = "playerA";
-
-  let wrap = win.renderCommandPhase();
-  assert(/Alpha Warrior/.test(wrap.textContent), "devia aparecer o cartão de Alpha Warrior no Command phase do dono do Prime");
-  const sel = Array.from(wrap.querySelectorAll("select")).find(s => Array.from(s.options).some(o => o.textContent.includes("Não usar este Command phase")));
-  assert(Array.from(sel.options).some(o => String(o.value) === String(gaunts.id)), "o dropdown devia listar os Neurogaunts como alvo possível");
-  sel.value = String(gaunts.id);
-  sel.onchange({ target: sel });
-  assertEqual(String(win.__state.game.alphaWarriorTargetId), String(gaunts.id), "devia guardar a unidade escolhida");
-
-  wrap = win.renderCommandPhase();
-  assert(!/Alpha Warrior/.test(wrap.textContent), "não devia voltar a perguntar dentro da mesma instância de Command phase");
-
+  const primeDs = win.findDatasheet(win.__library, "Winged Tyranid Prime");
+  const gargDs = win.findDatasheet(win.__library, "Gargoyles");
+  win.addUnitToPlayer("playerA", gargDs, { leaderDs: primeDs });
+  const attacker = win.__state.setup.playerA.units[0];
   const target = addDummyTarget(win, "playerB");
-  const weaponIdx = weaponByName(win, gaunts, "fight", "Chitinous claws and teeth");
-  win.__state.cycle = win.__emptyCycle();
-  const c = win.__state.cycle;
-  c.attackerId = gaunts.id; c.weaponIdx = weaponIdx; c.targetId = target.id; c.step = 1; c.modelsAttacking = 1;
-  const cycleWrap = win.renderAttackCycle("fight");
-  assert(/Alpha Warrior ativo/.test(cycleWrap.textContent), "devia mostrar o lembrete de reroll de 1s no ciclo de ataque da unidade buffada");
-
-  win.__state.game.round = 2;
-  wrap = win.renderCommandPhase();
-  assert(/Alpha Warrior/.test(wrap.textContent), "no próximo Command phase (nova ronda), a pergunta deve voltar a aparecer");
+  const fleshborer = win.weaponsForPhase(attacker, "shooting").find(w => w.name === "Fleshborer");
+  assert(!win.hasKeyword(fleshborer, "SUSTAINED HITS"), "sem o Prime a arma base não tem SUSTAINED HITS");
+  const buffed = win.conditionalWeaponKeywords(attacker, fleshborer, target);
+  assert(win.hasKeyword(buffed, "SUSTAINED HITS 1"), "com o Prime a liderar, a arma devia ganhar SUSTAINED HITS 1");
+  const talons = win.conditionalWeaponKeywords(attacker, win.weaponsForPhase(attacker, "fight").find(w => w.name === "Prime talons"), target);
+  assert(win.hasKeyword(talons, "SUSTAINED HITS 1"), "também as armas do próprio Prime");
+  // Gargoyles sem líder: sem bónus
+  win.addUnitToPlayer("playerA", win.findDatasheet(win.__library, "Termagants"), {});
+  const plain = win.__state.setup.playerA.units[1];
+  const plainW = win.conditionalWeaponKeywords(plain, win.weaponsForPhase(plain, "shooting").find(w => w.name === "Fleshborer"), target);
+  assert(!win.hasKeyword(plainW, "SUSTAINED HITS"), "sem o Prime, sem SUSTAINED HITS");
+  // O cartão antigo do Command phase já não existe
+  win.__state.game.activePlayerKey = "playerA";
+  assert(!/Alpha Warrior/.test(win.renderCommandPhase().textContent), "o Command phase já não pergunta pelo Alpha Warrior");
 });
 
 // --- Bug 5: Might Is Right (Warboss) ---------------------------------------
@@ -117,12 +112,17 @@ test("Bug5 (revisto): Warboss já NÃO tem meleeHitBonus — Might Is Right pass
   assertEqual(win.unitAuraBonus(warboss, "meleeHitBonus"), 0);
 });
 
-// --- Bug 6: Breakin' Heads (Bigboss) ---------------------------------------
-test("Bug6: Two-handed big choppa do Bigboss tem [SUSTAINED HITS 1]", () => {
+// --- Bug 6 (revisto): Bigboss 11ª — sem Breakin' Heads/Two-handed big choppa ---
+test("Bug6 (revisto): Bigboss tem Big Choppa [PRECISION] A5 S7 AP-2 D2 e Sumfin' to Prove (+1 hit melee da unidade)", () => {
   const win = loadApp();
   const bigboss = addFullUnit(win, "playerA", "Bigboss");
-  const w = win.weaponsForPhase(bigboss, "fight").find(x => x.name === "Two-handed big choppa");
-  assert(win.hasKeyword(w, "SUSTAINED HITS"), "Two-handed big choppa devia ter SUSTAINED HITS");
+  const melee = win.weaponsForPhase(bigboss, "fight");
+  assertEqual(melee.length, 1, "só a Big Choppa");
+  const w = melee[0];
+  assertEqual(w.name, "Big Choppa");
+  assert(win.hasKeyword(w, "PRECISION") && !win.hasKeyword(w, "SUSTAINED HITS") && !win.hasKeyword(w, "CLEAVE"));
+  assertEqual([w.A, w.WS, w.S, w.AP, w.D].join("/"), "5/3+/7/-2/2");
+  assertEqual(win.unitAuraBonus(bigboss, "meleeHitBonus"), 1, "Sumfin' to Prove: +1 ao hit roll melee");
 });
 
 // --- Bug 7: Hyper Regeneration (Psychophage) -------------------------------
@@ -150,35 +150,56 @@ test("Bug8: Chaplain with Jump Pack tem meleeWoundBonus 1 (+1 to wound em melee,
   assertEqual(win.unitAuraBonus(chaplain, "meleeWoundBonus"), 1);
 });
 
-// --- Bug 9: Waaagh! Energy (Weirdboy) --------------------------------------
-test("Bug9: 'Eadbanger escala S/D com o Nº de Boyz liderados (multiProfile somado corretamente) e ganha HAZARDOUS a 10+", () => {
+// --- Bug 9 / 10: mecanismos mantidos no código mas sem datasheet 11ª que os use ---
+// (Pedido Mestre 28/09/2026: Weirdboy já não tem 'Eadbanger/Waaagh! Energy nem o
+// Painboy o Hold Still and Say Aargh — o texto novo do Waaagh! Energy está
+// pendente.) Os testes injetam o campo na datasheet em memória para manter a
+// cobertura do mecanismo (scalingWeaponByLedSquad, critMortalWounds).
+function injectScaling(win) {
+  win.findDatasheet(win.__library, "Weirdboy").scalingWeaponByLedSquad = { weapon: "Power Vomit", ledDatasheet: "Boyz", perModels: 5, sBonusPer: 1, dBonusPer: 1, hazardousAtModels: 10 };
+}
+test("Bug9 (mecanismo, campo injetado): escala S/D com o Nº de Boyz liderados (multiProfile somado corretamente) e ganha HAZARDOUS a 10+", () => {
   const win = loadApp();
+  injectScaling(win);
   const weirdboyDs = win.findDatasheet(win.__library, "Weirdboy");
   const boyzDs = win.findDatasheet(win.__library, "Boyz");
   win.addUnitToPlayer("playerA", boyzDs, { leaderDs: weirdboyDs }); // default: 1 boss_nob + 9 boyz = 10
   const attacker = win.__state.setup.playerA.units[0];
-  const rawWeapon = win.weaponsForPhase(attacker, "shooting").find(w => w.name === "'Eadbanger");
+  const rawWeapon = win.weaponsForPhase(attacker, "shooting").find(w => w.name === "Power Vomit");
   const scaled = win.conditionalWeaponKeywords(attacker, rawWeapon, addDummyTarget(win, "playerB"));
-  assertEqual(scaled.S, 8, "10 modelos (2 steps de 5) devia dar S base 6 + 2 = 8");
-  assertEqual(scaled.D, 3, "10 modelos devia dar D base 1 + 2 = 3");
+  assertEqual(scaled.S, 7, "10 modelos (2 steps de 5): S base 5 + 2");
+  assertEqual(scaled.D, 4, "10 modelos: D base 2 + 2");
   assert(win.hasKeyword(scaled, "HAZARDOUS"), "com 10+ modelos a arma devia ganhar HAZARDOUS");
 });
 
-test("Bug9: com menos de 5 Boyz liderados, a 'Eadbanger não escala nem ganha HAZARDOUS", () => {
+test("Bug9 (mecanismo, campo injetado): com menos de 5 Boyz liderados, não escala nem ganha HAZARDOUS extra", () => {
   const win = loadApp();
+  injectScaling(win);
   const weirdboyDs = win.findDatasheet(win.__library, "Weirdboy");
   const boyzDs = win.findDatasheet(win.__library, "Boyz");
   win.addUnitToPlayer("playerA", boyzDs, { leaderDs: weirdboyDs, count: 4 });
   const attacker = win.__state.setup.playerA.units[0];
-  const rawWeapon = win.weaponsForPhase(attacker, "shooting").find(w => w.name === "'Eadbanger");
+  const rawWeapon = win.weaponsForPhase(attacker, "shooting").find(w => w.name === "Power Vomit");
   const scaled = win.conditionalWeaponKeywords(attacker, rawWeapon, addDummyTarget(win, "playerB"));
-  assertEqual(scaled.S, 6, "abaixo de 5 modelos não devia haver bónus nenhum");
-  assert(!win.hasKeyword(scaled, "HAZARDOUS"), "abaixo de 10 modelos não devia ganhar HAZARDOUS");
+  assertEqual(scaled.S, 5, "abaixo de 5 modelos não devia haver bónus nenhum");
 });
 
-// --- Bug 10: Hold Still and Say Aargh (Painboy) ----------------------------
-test("Bug10: crítico com 'Urty syringe contra alvo não-VEHICLE aplica D6 mortal wounds extra", () => {
+test("Weirdboy 11ª: Copper Staff e Power Vomit; sem 'Eadbanger nem Waaagh! staff", () => {
   const win = loadApp();
+  const wb = addFullUnit(win, "playerA", "Weirdboy");
+  assertEqual(win.weaponsForPhase(wb, "shooting").map(w => w.name).join(","), "Power Vomit");
+  assertEqual(win.weaponsForPhase(wb, "fight").map(w => w.name).join(","), "Copper Staff");
+  const pv = win.weaponsForPhase(wb, "shooting")[0];
+  ["BLAST", "HAZARDOUS", "PSYCHIC", "TORRENT"].forEach(k => assert(win.hasKeyword(pv, k), "Power Vomit devia ter " + k));
+  assertEqual([pv.range, pv.A, pv.S, pv.AP, pv.D].join("/"), '12"/3/5/-3/2');
+});
+
+function injectCritMw(win) {
+  win.findDatasheet(win.__library, "Painboy").melee_weapons.find(w => w.name === "'Urty syringe").critMortalWounds = { dice: "D6", excludeTargetKeyword: "VEHICLE" };
+}
+test("Bug10 (mecanismo, campo injetado): crítico com 'Urty syringe contra alvo não-VEHICLE aplica D6 mortal wounds extra", () => {
+  const win = loadApp();
+  injectCritMw(win);
   const attacker = addFullUnit(win, "playerA", "Painboy");
   const target = addFullUnit(win, "playerB", "Gretchin");
   const liveBefore = target.groups[0].liveCount;
@@ -197,8 +218,9 @@ test("Bug10: crítico com 'Urty syringe contra alvo não-VEHICLE aplica D6 morta
   assertEqual(win.findRealUnit(target.id).groups[0].liveCount, liveBefore - 4, "devia aplicar 4 mortal wounds extra ao alvo");
 });
 
-test("Bug10: contra VEHICLE, não pergunta nada de Hold Still and Say Aargh", () => {
+test("Bug10 (mecanismo, campo injetado): contra VEHICLE, não pergunta nada", () => {
   const win = loadApp();
+  injectCritMw(win);
   const attacker = addFullUnit(win, "playerA", "Painboy");
   const target = addFullUnit(win, "playerB", "Land Speeder");
   const weaponIdx = weaponByName(win, attacker, "fight", "'Urty syringe");

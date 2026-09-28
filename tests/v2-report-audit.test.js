@@ -80,14 +80,26 @@ test("multiProfile: Boyz (Boss Nob+Boyz) com Bannernob anexado — Shoota dos Bo
   assertEqual(win.maxModelsAttacking(attacker, bannernobShoota), 1, "a Shoota do Bannernob é uma arma à parte, não mistura com os Boyz");
 });
 
-test("Aura de InvSv do Bannernob (Waaagh! Banner) aplica-se à unidade Boyz+Bannernob toda", () => {
+// (Pedido Mestre 28/09/2026: o Bannernob 11ª já não tem InvSv nem a aura; a aura
+// de InvSv é agora testada com o Mental Fortress do Librarian — invSvAura 4.)
+test("Aura de InvSv (Mental Fortress do Librarian) aplica-se à unidade Intercessor Squad + Librarian toda", () => {
   const win = loadApp();
-  const boyzDs = win.findDatasheet(win.__library, "Boyz");
-  const bannernobDs = win.findDatasheet(win.__library, "Bannernob");
-  win.addUnitToPlayer("playerA", boyzDs, { supportDs: bannernobDs });
-  const unit = win.allInstances().find(u => u.datasheetNames.includes("Boyz"));
+  const intDs = win.findDatasheet(win.__library, "Intercessor Squad");
+  const libDs = win.findDatasheet(win.__library, "Librarian");
+  win.addUnitToPlayer("playerA", intDs, { leaderDs: libDs });
+  const unit = win.allInstances().find(u => u.datasheetNames.includes("Intercessor Squad"));
   const aura = win.invSvAuraFor(unit);
-  assert(aura && aura.value === 5, "devia haver uma aura de InvSv 5+ (Waaagh! Banner) aplicável a toda a unidade");
+  assert(aura && aura.value === 4, "devia haver uma aura de InvSv 4+ (Mental Fortress) aplicável a toda a unidade");
+});
+test("Bannernob 11ª: sem InvSv e sem aura; OC 3", () => {
+  const win = loadApp();
+  const ds = win.findDatasheet(win.__library, "Bannernob");
+  assert(!ds.stats.InvSV, "Bannernob não tem InvSv na 11ª");
+  assertEqual(ds.stats.OC, 3);
+  const boyz = win.findDatasheet(win.__library, "Boyz");
+  win.addUnitToPlayer("playerA", boyz, { supportDs: ds });
+  const unit = win.allInstances().find(u => u.datasheetNames.includes("Boyz"));
+  assertEqual(win.invSvAuraFor(unit), null);
 });
 
 test("Bug G: PSYKER estava em falta em todas as unidades com arma [PSYCHIC] — Anti-Psyker do Psychophage nunca disparava", () => {
@@ -110,11 +122,12 @@ test("Bug G corrigido: Anti-Psyker 4+ do Psychophage aplica-se de facto contra o
   assert(/ANTI-PSYKER 4\+ aplicado/.test(wrap.textContent), "com o Librarian a ter PSYKER, o Anti-Psyker 4+ devia aparecer aplicado no passo de ferir");
 });
 
-test("Bug H: Captain/Chaplain/Ancient/Intercessor Squad têm EXPLOSIVES, como o texto do Stratagem já dizia", () => {
+// (11ª: o Captain tem GRENADES — o texto do Stratagem aceita EXPLOSIVES ou GRENADES.)
+test("Bug H: Captain/Chaplain/Ancient/Intercessor Squad têm EXPLOSIVES ou GRENADES, como o texto do Stratagem já dizia", () => {
   const win = loadApp();
   ["Captain with Relic Shield", "Chaplain with Jump Pack", "Ancient", "Intercessor Squad"].forEach(name => {
     const ds = win.findDatasheet(win.__library, name);
-    assert(ds.keywords.includes("EXPLOSIVES"), name + " devia ter EXPLOSIVES (o texto do Stratagem Explosives já afirmava isto)");
+    assert(ds.keywords.includes("EXPLOSIVES") || ds.keywords.includes("GRENADES"), name + " devia ter EXPLOSIVES ou GRENADES (o texto do Stratagem Explosives já afirmava isto)");
   });
 });
 

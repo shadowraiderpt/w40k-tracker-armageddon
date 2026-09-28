@@ -31,6 +31,16 @@ function weaponByName(win, instance, phaseKey, weaponName) {
 // Prepara state.cycle para ir DIRETO ao passo de hits (step 1) de um dado
 // ataque, saltando o picker (UI pura) — espelha exatamente os campos que o
 // picker preenche antes de chamar renderAttackCycle.
+// Hail of Bolts (Intercessor Squad) pergunta, no passo dos hits, se o alvo é o
+// escolhido — os testes que não são sobre isso recusam-no para chegar
+// diretamente ao passo de hits.
+function declineHail(win, attacker, target) {
+  const key = win.phaseInstanceKey() + "-" + attacker.id + "-hail";
+  const cur = win.__state.game.hailChoice[key] || { chosen: null, declined: {} };
+  cur.declined[target.id] = true;
+  win.__state.game.hailChoice[key] = cur;
+}
+
 function setupCycle(win, { attacker, weaponIdx, target, phaseKey, modelsAttacking, attacksRolled, heavyStationary, chargedThisTurn }) {
   win.__state.cycle = win.__emptyCycle();
   const c = win.__state.cycle;
@@ -42,6 +52,7 @@ function setupCycle(win, { attacker, weaponIdx, target, phaseKey, modelsAttackin
   if (attacksRolled !== undefined) c.attacksRolled = attacksRolled;
   if (heavyStationary !== undefined) c.heavyStationary = heavyStationary;
   if (chargedThisTurn !== undefined) c.chargedThisTurn = chargedThisTurn;
+  declineHail(win, attacker, target);
   return win.renderAttackCycle(phaseKey);
 }
 
@@ -86,4 +97,4 @@ function addDummyTarget(win, playerKey) {
   return inst;
 }
 
-module.exports = { loadApp, findDatasheetByName, addFullUnit, weaponByName, setupCycle, diceCallCount, stepTitle, addDummyTarget };
+module.exports = { loadApp, findDatasheetByName, addFullUnit, weaponByName, setupCycle, diceCallCount, stepTitle, addDummyTarget, declineHail };

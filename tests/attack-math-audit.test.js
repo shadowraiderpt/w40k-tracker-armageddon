@@ -19,14 +19,15 @@ function auditWeapon(datasheetName, phaseKey, weaponName) {
     assertEqual(typeof weapon.A, "number", "esta função de auditoria só cobre Attacks fixo — " + weaponName + " tem A:" + weapon.A);
     const isTorrent = phaseKey === "shooting" && win.hasKeyword(weapon, "TORRENT");
     // Boss' Ammo Runt (pergunta antes dos hits) — a auditoria não o usa.
-    win.__state.game.ammoRuntChoice[win.phaseInstanceKey() + "-" + attacker.id] = "no";
+    attacker.datasheetNames.forEach(n => { win.__state.game.ammoRuntChoice[win.phaseInstanceKey() + "-" + attacker.id + "-" + n] = "no"; });
     const wrap = setupCycle(win, {
       attacker, weaponIdx, target, phaseKey, modelsAttacking: maxModels,
       // false (não true): evita os bónus de Might Is Right (+3 A) — o bónus
       // de charge tem testes dedicados em warboss-eradicator.test.js.
       heavyStationary: true, chargedThisTurn: false,
     });
-    const expected = weapon.A * maxModels;
+    // Attacks efetivos (com condicionais de datasheet, ex: Blitz Dem Gitz +6 A vs não-M/V).
+    const expected = win.conditionalWeaponKeywords(attacker, weapon, target).A * maxModels;
     if (isTorrent) {
       // TORRENT não rola hits (acerta sempre) — o campo é de valor único,
       // sem "dice-call"; o que importa é o teto (max) aceite no campo.

@@ -12,11 +12,16 @@ function cycle(win, attacker, weaponName, target, phaseKey, extra) {
 }
 
 // --- Bug 11 ---
-test("Wartrakk acerta: alvo fica suprimido e leva -1 ao acertar; limpa no Command phase do dono do Wartrakk", () => {
+// Nota (Pedido Mestre 28/09/2026): o datasheet 11ª dos Wartrakks já não tem
+// Indiscriminate Detonations — o mecanismo (suppressOnHit) mantém-se no código
+// e é coberto injetando o campo na datasheet em memória.
+function enableSuppress(win) { win.findDatasheet(win.__library, "Wartrakks").suppressOnHit = true; }
+test("Wartrakks (suppressOnHit injetado) acerta: alvo fica suprimido e leva -1 ao acertar; limpa no Command phase do dono do Wartrakk", () => {
   const win = loadApp();
-  const wart = addFullUnit(win, "playerA", "Wartrakk");
+  enableSuppress(win);
+  const wart = addFullUnit(win, "playerA", "Wartrakks");
   const tgt = addFullUnit(win, "playerB", "Termagants");
-  const c = cycle(win, wart, "Kustom shoota", tgt, "shooting", { step: 5, hits: 2, deadByGroup: {} });
+  const c = cycle(win, wart, "Kustom Shoota", tgt, "shooting", { step: 5, hits: 2, deadByGroup: {} });
   win.renderAttackCycle("shooting");
   assertEqual(win.findRealUnit(tgt.id).suppressedBy, "playerA");
 
@@ -35,11 +40,12 @@ test("Wartrakk acerta: alvo fica suprimido e leva -1 ao acertar; limpa no Comman
   assertEqual(win.findRealUnit(tgt.id).suppressedBy, null, "no início do Command phase do dono do Wartrakk limpa");
 });
 
-test("Wartrakk sem hits não suprime", () => {
+test("Wartrakks (suppressOnHit injetado) sem hits não suprime", () => {
   const win = loadApp();
-  const wart = addFullUnit(win, "playerA", "Wartrakk");
+  enableSuppress(win);
+  const wart = addFullUnit(win, "playerA", "Wartrakks");
   const tgt = addFullUnit(win, "playerB", "Termagants");
-  cycle(win, wart, "Kustom shoota", tgt, "shooting", { step: 5, hits: 0, deadByGroup: {} });
+  cycle(win, wart, "Kustom Shoota", tgt, "shooting", { step: 5, hits: 0, deadByGroup: {} });
   win.renderAttackCycle("shooting");
   assert(!win.findRealUnit(tgt.id).suppressedBy);
 });

@@ -1,5 +1,5 @@
 const { test, setFile, assert, assertEqual, run } = require("./tiny-test");
-const { loadApp, addFullUnit, weaponByName, addDummyTarget } = require("./helpers");
+const { loadApp, addFullUnit, weaponByName, addDummyTarget , declineHail } = require("./helpers");
 setFile("neurolictor-gargoyles.test.js");
 
 function cyc(win, atk, wname, tgt, phaseKey, extra) {
@@ -7,6 +7,7 @@ function cyc(win, atk, wname, tgt, phaseKey, extra) {
   const c = win.__state.cycle;
   c.attackerId = atk.id; c.weaponIdx = weaponByName(win, atk, phaseKey, wname); c.targetId = tgt.id;
   Object.assign(c, extra || {});
+  declineHail(win, atk, tgt);
   return c;
 }
 

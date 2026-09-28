@@ -193,20 +193,24 @@
 // ---------------------------------------------------------------------------
 const RAW_UNITS = {
   space_marines: [
-    {"name":"Captain with Relic Shield","points":80,"keywords":["INFANTRY","CHARACTER","EXPLOSIVES"],"stats":{"M":"6\"","T":4,"SV":"3+","InvSV":"4+","W":5,"LD":"6+","OC":1},
+    {"name":"Captain with Relic Shield","points":80,"source":"Wahapedia 11ª (datasheet Captain) | BSData 11ª","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["INFANTRY","CHARACTER","GRENADES","IMPERIUM","TACTICUS","CAPTAIN"],"stats":{"M":"6\"","T":4,"SV":"3+","InvSV":"4+","W":6,"LD":"6+","OC":1},
+      "note":"Datasheet 'Captain' (11ª) com o equipamento relic shield; W 6 e InvSv 4+ já incluem o relic shield — não somar outra vez",
       "ranged_weapons":[{"name":"Heavy bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"18\"","A":1,"BS":"2+","S":4,"AP":-1,"D":1}],
       "melee_weapons":[{"name":"Master-crafted power weapon","range":"Melee","A":6,"WS":"2+","S":5,"AP":-2,"D":2}],
-      "abilities":["Finest Hour: once per battle, quando esta unidade for selecionada para lutar na Fight phase, até ao fim da fase esta unidade ganha +3 Attacks e a keyword Devastating Wounds",
+      "abilities":["Finest Hour: once per battle, no início da Fight phase, até ao fim da fase esta unidade ganha +3 Attacks e a keyword Devastating Wounds",
         "Rites of Battle: once per battle round, quando esta unidade (ou, se for o Warlord, qualquer unidade do exército) usa um stratagem, esse stratagem custa -1CP (mínimo 0CP)"],
       "onceAbilities":[
         {"text":"Finest Hour: até ao fim da fase, esta unidade ganha +3 Attacks e a keyword Devastating Wounds.", "scope":"battle", "kind":"combat"},
         {"text":"Rites of Battle: o próximo stratagem usado por/para esta unidade (ou pelo exército, se for Warlord) custa -1CP (mínimo 0CP).", "scope":"battle_round", "kind":"stratagem"}
       ],
       "defaultCount":1, "leader_for":["Intercessor Squad"]},
-    {"name":"Librarian","points":70,"keywords":["INFANTRY","CHARACTER","PSYKER","EXPLOSIVES"],
-      "abilities":["Psychic Hood: Feel No Pain 4+ vs ataques psíquicos"],
+    {"name":"Librarian","points":70,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["INFANTRY","CHARACTER","PSYKER","EXPLOSIVES"],
+      "abilities":["Psychic Hood: Feel No Pain 4+ vs ataques psíquicos (todos os modelos da unidade)",
+        "Mental Fortress: a unidade liderada tem Invulnerable Save 4+ (o Librarian não tem InvSv próprio no datasheet)"],
       "fnpCondition":{"type":"weapon_keyword","keyword":"PSYCHIC"},
-      "stats":{"M":"6\"","T":4,"SV":"3+","InvSV":"4+","W":4,"LD":"6+","OC":1},
+      "fnpScope":"unit",
+      "invSvAura":4,
+      "stats":{"M":"6\"","T":4,"SV":"3+","W":4,"LD":"6+","OC":1},
       "ranged_weapons":[
         {"name":"Bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"3+","S":4,"AP":0,"D":1},
         {"name":"Smite - witchfire","profileOf":"Smite","keywords":["PSYCHIC"],"range":"24\"","A":"D6","BS":"3+","S":5,"AP":-1,"D":"D3"},
@@ -214,17 +218,19 @@ const RAW_UNITS = {
       ],
       "melee_weapons":[{"name":"Force weapon","keywords":["PSYCHIC"],"range":"Melee","A":4,"WS":"3+","S":6,"AP":-1,"D":"D3"}],
       "defaultCount":1, "leader_for":["Intercessor Squad"]},
-    {"name":"Chaplain with Jump Pack","points":75,"keywords":["INFANTRY","CHARACTER","JUMP PACK","EXPLOSIVES"],
+    {"name":"Chaplain with Jump Pack","points":75,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["INFANTRY","CHARACTER","JUMP PACK","EXPLOSIVES"],
       "abilities":["Exhortation of Rage: na Fight Phase, quando a unidade for selecionada para lutar (antes dos ataques normais), pode opcionalmente escolher uma unidade inimiga em Engagement Range e rolar 1D6 — 4-5: D3 mortal wounds; 6: 3 mortal wounds fixas",
         "Litany of Hate: this unit has +1 to wound rolls in melee (permanent)"],
       "exhortationOfRage": true,
       "meleeWoundBonus":1,
       "stats":{"M":"12\"","T":4,"SV":"3+","InvSV":"4+","W":4,"LD":"5+","OC":1},
-      "ranged_weapons":[{"name":"Absolvor bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"3+","S":5,"AP":-1,"D":1}],
+      "ranged_weapons":[{"name":"Absolvor bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"18\"","A":1,"BS":"3+","S":5,"AP":-1,"D":2}],
       "melee_weapons":[{"name":"Crozius arcanum","range":"Melee","A":5,"WS":"2+","S":6,"AP":-1,"D":2}],
       "defaultCount":1, "leader_for":["Vanguard Veteran Squad with Jump Packs"]},
-    {"name":"Ancient","points":40,"keywords":["INFANTRY","CHARACTER","EXPLOSIVES"],
-      "abilities":["Unbreakable Resolve: Feel No Pain 4+ perto de objetivo ou a 6\" do centro"],
+    {"name":"Ancient","points":40,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["INFANTRY","CHARACTER","EXPLOSIVES"],
+      "abilities":["Unbreakable Resolve: este modelo tem Feel No Pain 4+ perto de objetivo ou a 6\" do centro",
+        "Astartes Banner: enquanto este modelo lidera uma unidade, +1 Objective Control aos modelos dessa unidade (só informativo; texto do BSData 11ª)"],
+      "fnpScope":"model",
       "fnpCondition":{"type":"ask","question":"Esta unidade está perto de um objetivo, ou a 6\\\" ou menos do centro da mesa, neste momento?"},
       "stats":{"M":"6\"","T":4,"SV":"3+","W":4,"LD":"6+","OC":1},
       "ranged_weapons":[
@@ -233,7 +239,9 @@ const RAW_UNITS = {
       ],
       "melee_weapons":[{"name":"Close-combat weapon","range":"Melee","A":5,"WS":"2+","S":4,"AP":0,"D":1}],
       "defaultCount":1, "support_for":["Intercessor Squad"]},
-    {"name":"Intercessor Squad","points":150,"keywords":["INFANTRY","EXPLOSIVES"],"stats":{"M":"6\"","T":4,"SV":"3+","W":2,"LD":"6+","OC":2},
+    {"name":"Intercessor Squad","points":150,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"POR CONFIRMAR — app: 150 (10 modelos); BSData: 80 (5 modelos) (MFM)","keywords":["INFANTRY","EXPLOSIVES"],"stats":{"M":"6\"","T":4,"SV":"3+","W":2,"LD":"6+","OC":2},
+      "abilities":["Hail of Bolts: ao ser selecionada para disparar, escolhe até 1 unidade inimiga visível; os Bolt rifles que a atacarem têm +2 Attacks"],
+      "hailOfBolts":{"weapon":"Bolt rifle","attacks":2},
       "ranged_weapons":[
         {"name":"Bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"3+","S":4,"AP":0,"D":1},
         {"name":"Bolt rifle","keywords":["ASSAULT","HEAVY"],"range":"24\"","A":2,"BS":"3+","S":4,"AP":-1,"D":1},
@@ -245,17 +253,17 @@ const RAW_UNITS = {
         {"name":"Close-combat weapon","keywords":["PRECISION"],"range":"Melee","A":3,"WS":"3+","S":4,"AP":0,"D":1}
       ],
       "defaultCount":10},
-    {"name":"Vanguard Veteran Squad with Jump Packs","points":105,"keywords":["INFANTRY","JUMP PACK"],
+    {"name":"Vanguard Veteran Squad with Jump Packs","points":105,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["INFANTRY","JUMP PACK"],
       "lethalHitsOnCharge":"Vanguard Assault: melee weapons gain LETHAL HITS in turn this unit made a charge move",
       "stats":{"M":"12\"","T":4,"SV":"3+","W":2,"LD":"6+","OC":1},
       "ranged_weapons":[
         {"name":"Heavy bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"18\"","A":1,"BS":"3+","S":4,"AP":-1,"D":1,"maxModels":4},
         {"name":"Plasma pistol - standard","profileOf":"Plasma pistol","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"3+","S":7,"AP":-2,"D":1,"maxModels":1},
-        {"name":"Plasma pistol - supercharge","profileOf":"Plasma pistol","keywords":["CLOSE-QUARTERS","HAZARDOUS"],"range":"12\"","A":"D3","BS":"3+","S":8,"AP":-3,"D":2,"maxModels":1}
+        {"name":"Plasma pistol - supercharge","profileOf":"Plasma pistol","keywords":["CLOSE-QUARTERS","HAZARDOUS"],"range":"12\"","A":1,"BS":"3+","S":8,"AP":-3,"D":2,"maxModels":1}
       ],
       "melee_weapons":[{"name":"Master-crafted power weapon","range":"Melee","A":3,"WS":"3+","S":5,"AP":-2,"D":2}],
       "defaultCount":5},
-    {"name":"Eradicator Squad with Heavy Bolters","points":80,"keywords":["INFANTRY","IMPERIUM","GRAVIS"],
+    {"name":"Eradicator Squad with Heavy Bolters","points":80,"source":"Faction Pack Space Marines v1.2 (11ª) | Wahapedia 11ª","verifiedAt":"2026-09-28","pointsSource":"Faction Pack SM v1.2 — 80 pts confirmados pelo Gonçalo","keywords":["INFANTRY","IMPERIUM","GRAVIS"],
       "abilities":["Overlapping Detonations: ao ser selecionada para disparar, escolhe 1 unidade inimiga visível que NÃO seja MONSTER/VEHICLE; os heavy bolters que a atacarem têm [BLAST 1]"],
       "conditionalBlastVsMonsterVehicle":{"weapon":"Heavy bolter","value":1},
       "stats":{"M":"5\"","T":6,"SV":"3+","W":3,"LD":"6+","OC":1},
@@ -265,18 +273,19 @@ const RAW_UNITS = {
       ],
       "melee_weapons":[{"name":"Close-combat weapon","range":"Melee","A":3,"WS":"3+","S":4,"AP":0,"D":1}],
       "defaultCount":3},
-    {"name":"Land Speeder","points":105,"keywords":["VEHICLE"],"stats":{"M":"14\"","T":8,"SV":"3+","W":9,"LD":"6+","OC":3},
+    {"name":"Land Speeder","points":105,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["VEHICLE"],"stats":{"M":"14\"","T":8,"SV":"3+","W":9,"LD":"6+","OC":3},
       "ranged_weapons":[
-        {"name":"Heavy Flamer","keywords":["TORRENT"],"range":"12\"","A":"D6","BS":"N/A","S":5,"AP":-1,"D":1},
+        {"name":"Heavy Flamer","keywords":["TORRENT","IGNORES COVER"],"range":"12\"","A":"D6","BS":"N/A","S":5,"AP":-1,"D":1},
         {"name":"Multi-melta","keywords":["MELTA 2"],"range":"18\"","A":2,"BS":"3+","S":9,"AP":-4,"D":"D6"},
         {"name":"Onslaught gatling cannon","keywords":["DEVASTATING WOUNDS"],"range":"24\"","A":8,"BS":"3+","S":5,"AP":0,"D":1},
         {"name":"Stormfury missile launcher","range":"48\"","A":1,"BS":"3+","S":12,"AP":-3,"D":"D6+1"}
       ],
       "melee_weapons":[{"name":"Close-combat weapon","range":"Melee","A":4,"WS":"3+","S":4,"AP":0,"D":1}],
+      "abilities":["Purgation Run: no Shooting phase, depois de disparar, pode fazer um Normal move de até D6\"; se o fizer, até ao fim do turno não pode declarar charge (só informativo; texto do BSData 11ª)"],
       "defaultCount":1}
   ],
   orks: [
-    {"name":"Warboss","points":85,"keywords":["INFANTRY","CHARACTER"],"stats":{"M":"6\"","T":6,"SV":"4+","InvSV":"5+","W":6,"LD":"6+","OC":1},
+    {"name":"Warboss","points":85,"source":"Faction Pack Orks (11ª) | Wahapedia 11ª | BSData 11ª","verifiedAt":"2026-09-28","pointsSource":"POR CONFIRMAR — app: 85; BSData: 100 (MFM)","keywords":["INFANTRY","CHARACTER"],"stats":{"M":"6\"","T":6,"SV":"4+","InvSV":"5+","W":6,"LD":"6+","OC":1},
       "abilities":[
         "Might Is Right: se a unidade fez charge move este turno, os ataques melee DESTE modelo têm +3 Attacks e +2 Strength",
         "Boss' Ammo Runt: 1x por batalha por unidade, ao ser selecionada para disparar, os ataques ranged deste modelo têm +1 ao hit roll"
@@ -297,67 +306,75 @@ const RAW_UNITS = {
         {"name":"Power klaw","range":"Melee","A":6,"WS":"2+","S":12,"AP":-2,"D":2}
       ],
       "defaultCount":1, "leader_for":["Boyz"]},
-    {"name":"Bigboss","points":55,"keywords":["INFANTRY","CHARACTER"],"stats":{"M":"6\"","T":5,"SV":"4+","W":5,"LD":"7+","OC":1},
-      "abilities":["Breakin' Heads: this model's melee weapons have [SUSTAINED HITS 1] (permanent)"],
-      "ranged_weapons":[{"name":"Slugga","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"5+","S":4,"AP":0,"D":1}],
-      "melee_weapons":[{"name":"Two-handed big choppa","keywords":["CLEAVE 1","SUSTAINED HITS 1"],"range":"Melee","A":5,"WS":"3+","S":7,"AP":-1,"D":2}],
-      "defaultCount":1, "leader_for":["Boyz"]},
-    {"name":"Bannernob","points":50,"keywords":["INFANTRY","CHARACTER"],
-      "abilities":["Waaagh! Banner: unit has 5+ InvSv; while Waaagh! active, unit has +1T"],
-      "stats":{"M":"6\"","T":5,"SV":"4+","InvSV":"5+","W":4,"LD":"7+","OC":6},
-      "ranged_weapons":[{"name":"Shoota","keywords":["RAPID FIRE 1"],"range":"18\"","A":2,"BS":"5+","S":4,"AP":0,"D":1}],
-      "melee_weapons":[{"name":"Choppa","range":"Melee","A":5,"WS":"3+","S":4,"AP":-1,"D":1}],
+    {"name":"Bigboss","points":55,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"POR CONFIRMAR — app: 55; BSData: 50 (MFM)","keywords":["INFANTRY","CHARACTER"],"stats":{"M":"6\"","T":5,"SV":"4+","W":5,"LD":"7+","OC":1},
+      "abilities":["Sumfin' to Prove: os ataques melee da unidade têm +1 ao hit roll (permanente)"],
+      "meleeHitBonus":1,
+      "ranged_weapons":[{"name":"Slugga","keywords":["CLOSE-QUARTERS","LETHAL HITS"],"lethalHitsExceptTargets":["MONSTER","VEHICLE"],"range":"12\"","A":1,"BS":"5+","S":4,"AP":0,"D":1}],
+      "melee_weapons":[{"name":"Big Choppa","keywords":["PRECISION"],"range":"Melee","A":5,"WS":"3+","S":7,"AP":-2,"D":2}],
       "defaultCount":1, "support_for":["Boyz"]},
-    {"name":"Painboy","points":90,"keywords":["INFANTRY","CHARACTER"],
-      "abilities":["Dok's Toolz: Feel No Pain 5+","Hold Still and Say Aargh: um critical wound com a 'Urty syringe contra um alvo que não é VEHICLE causa D6 mortal wounds extra"],
+    {"name":"Bannernob","points":50,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"POR CONFIRMAR — app: 50; BSData: 35 (MFM)","keywords":["INFANTRY","CHARACTER"],
+      "abilities":["Waaagh! Banner: +1 aos charge rolls (só informativo)"],
+      "stats":{"M":"6\"","T":5,"SV":"4+","W":4,"LD":"7+","OC":3},
+      "ranged_weapons":[{"name":"Shoota","keywords":["LETHAL HITS","RAPID FIRE 1"],"lethalHitsExceptTargets":["MONSTER","VEHICLE"],"range":"18\"","A":2,"BS":"5+","S":4,"AP":0,"D":1}],
+      "melee_weapons":[{"name":"Kustom Choppa","range":"Melee","A":4,"WS":"3+","S":5,"AP":-2,"D":2}],
+      "defaultCount":1, "support_for":["Boyz"]},
+    {"name":"Painboy","points":90,"source":"Wahapedia 11ª | BSData 11ª","verifiedAt":"2026-09-28","pointsSource":"POR CONFIRMAR — app: 90; BSData: 45 (MFM)","keywords":["INFANTRY","CHARACTER"],
+      "abilities":["Crude Surgery: no Command phase, a unidade cura 3 wounds (só informativo)",
+        "Catch Dat Red Bit: 1x por batalha por unidade, ao usar Crude Surgery soma D3 às wounds curadas (só informativo; texto do BSData 11ª)"],
       "stats":{"M":"6\"","T":5,"SV":"5+","W":3,"LD":"7+","OC":1},
       "ranged_weapons":[],
       "melee_weapons":[
-        {"name":"Dok's toolz","range":"Melee","A":3,"WS":"4+","S":9,"AP":-2,"D":2},
-        {"name":"'Urty syringe","keywords":["ANTI-INFANTRY 4+","EXTRA ATTACKS","PRECISION"],"range":"Melee","A":1,"WS":"3+","S":2,"AP":0,"D":1,"critMortalWounds":{"dice":"D6","excludeTargetKeyword":"VEHICLE"}}
+        {"name":"Dok's Toolz","range":"Melee","A":3,"WS":"3+","S":10,"AP":-2,"D":2},
+        {"name":"'Urty syringe","keywords":["ANTI-INFANTRY 4+","DEVASTATING WOUNDS","EXTRA ATTACKS"],"devastatingWoundsOnlyTargets":["INFANTRY"],"range":"Melee","A":1,"WS":"3+","S":2,"AP":0,"D":"D6"}
       ],
       "defaultCount":1, "support_for":["Boyz"]},
-    {"name":"Weirdboy","points":65,"keywords":["INFANTRY","CHARACTER","PSYKER"],"stats":{"M":"6\"","T":5,"SV":"5+","W":4,"LD":"7+","OC":1},
-      "abilities":["Waaagh! Energy: enquanto lidera uma unidade de Boyz, por cada 5 modelos vivos nessa unidade a 'Eadbanger ganha +1 Strength e +1 Damage; com 10+ modelos, a 'Eadbanger ganha [HAZARDOUS]"],
-      "scalingWeaponByLedSquad": {"weapon":"'Eadbanger","ledDatasheet":"Boyz","perModels":5,"sBonusPer":1,"dBonusPer":1,"hazardousAtModels":10},
-      "ranged_weapons":[{"name":"'Eadbanger","keywords":["PRECISION","PSYCHIC"],"range":"24\"","A":1,"BS":"4+","S":6,"AP":-3,"D":1}],
-      "melee_weapons":[{"name":"Waaagh! staff","keywords":["PSYCHIC"],"range":"Melee","A":3,"WS":"3+","S":8,"AP":-1,"D":"D3"}],
-      "defaultCount":1, "leader_for":["Boyz"]},
-    {"name":"Boyz","points":75,"keywords":["INFANTRY"],
+    {"name":"Weirdboy","points":65,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["INFANTRY","CHARACTER","PSYKER"],"stats":{"M":"6\"","T":5,"SV":"5+","W":4,"LD":"7+","OC":1},
+      "ranged_weapons":[{"name":"Power Vomit","keywords":["BLAST 1","HAZARDOUS","PSYCHIC","TORRENT"],"range":"12\"","A":3,"BS":"N/A","S":5,"AP":-3,"D":2}],
+      "melee_weapons":[{"name":"Copper Staff","keywords":["PSYCHIC"],"range":"Melee","A":3,"WS":"3+","S":8,"AP":-1,"D":2}],
+      "defaultCount":1, "support_for":["Boyz"]},
+    {"name":"Boyz","points":75,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"POR CONFIRMAR — app: 75; BSData: 90 (MFM; confirmar também o tamanho da unidade)","keywords":["INFANTRY"],
+      "abilities":["Ammo Runts: 1x por batalha, ao ser selecionada para disparar, os ataques ranged da unidade têm +1 ao hit roll",
+        "Tide of Muscle: se a unidade fez charge move este turno, as armas melee da unidade têm LETHAL HITS"],
+      "lethalHitsOnCharge":"Tide of Muscle: melee weapons gain LETHAL HITS in turn this unit made a charge move",
+      "onceAbilities":[
+        {"text":"Ammo Runts: ao ser selecionada para disparar, os ataques ranged da unidade têm +1 ao hit roll.","scope":"battle","kind":"shooting","effect":"hitRollBonusRanged","value":1}
+      ],
       "multiProfile":[
-        {"key":"boss_nob","label":"Boss Nob","stats":{"M":"6\"","T":5,"SV":"5+","W":2,"LD":"7+","OC":2},"count":1},
+        {"key":"boss_nob","label":"Boss Nob","stats":{"M":"6\"","T":5,"SV":"5+","W":3,"LD":"7+","OC":2},"count":1},
         {"key":"boyz","label":"Boyz","stats":{"M":"6\"","T":5,"SV":"5+","W":1,"LD":"7+","OC":2},"count":9}
       ],
       "ranged_weapons":[
-        {"name":"Slugga","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"5+","S":4,"AP":0,"D":1},
-        {"name":"Shoota","keywords":["RAPID FIRE 1"],"range":"18\"","A":2,"BS":"5+","S":4,"AP":0,"D":1},
+        {"name":"Slugga","keywords":["CLOSE-QUARTERS","LETHAL HITS"],"lethalHitsExceptTargets":["MONSTER","VEHICLE"],"range":"12\"","A":1,"BS":"5+","S":4,"AP":0,"D":1},
+        {"name":"Shoota","keywords":["LETHAL HITS","RAPID FIRE 1"],"lethalHitsExceptTargets":["MONSTER","VEHICLE"],"range":"18\"","A":2,"BS":"5+","S":4,"AP":0,"D":1},
         {"name":"Kombi-shoota","range":"24\"","A":2,"BS":"5+","S":4,"AP":0,"D":1},
         {"name":"Kombi-rokkit","range":"24\"","A":1,"BS":"5+","S":10,"AP":-2,"D":3},
-        {"name":"Kustom shoota","keywords":["RAPID FIRE 2"],"range":"18\"","A":4,"BS":"5+","S":4,"AP":0,"D":1}
+        {"name":"Kustom shoota","keywords":["LETHAL HITS","RAPID FIRE 2"],"lethalHitsExceptTargets":["MONSTER","VEHICLE"],"range":"18\"","A":4,"BS":"5+","S":4,"AP":0,"D":1}
       ],
       "melee_weapons":[
-        {"name":"Choppa","range":"Melee","A":3,"WS":"3+","S":4,"AP":-1,"D":1},
-        {"name":"Big choppa","range":"Melee","A":3,"WS":"3+","S":7,"AP":-1,"D":2}
+        {"name":"Choppa","range":"Melee","A":3,"WS":"3+","S":5,"AP":-1,"D":1},
+        {"name":"Big choppa","keywords":["CLEAVE 2"],"range":"Melee","A":4,"WS":"3+","S":7,"AP":-1,"D":2}
       ]},
-    {"name":"Gretchin","points":45,"keywords":["INFANTRY"],"stats":{"M":"6\"","T":2,"SV":"7+","W":1,"LD":"8+","OC":2},
-      "ranged_weapons":[{"name":"Blasta","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"4+","S":3,"AP":0,"D":1}],
-      "melee_weapons":[{"name":"Close-combat weapon","range":"Melee","A":1,"WS":"5+","S":2,"AP":0,"D":1}],
+    {"name":"Gretchin","points":45,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["INFANTRY"],"stats":{"M":"6\"","T":2,"SV":"6+","W":1,"LD":"8+","OC":1},
+      "abilities":["Thievin' Scavengers (só informativo — texto exato por acrescentar a partir do datasheet)"],
+      "ranged_weapons":[{"name":"Grot Blasta","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"4+","S":3,"AP":0,"D":1}],
+      "melee_weapons":[{"name":"Scavenged Shivs","range":"Melee","A":1,"WS":"5+","S":2,"AP":0,"D":1}],
       "defaultCount":10},
-    {"name":"Wartrakk","points":60,"keywords":["VEHICLE"],"stats":{"M":"12\"","T":6,"SV":"4+","InvSV":"6+","W":7,"LD":"7+","OC":3},
+    {"name":"Wartrakks","points":60,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"POR CONFIRMAR — app: 60; BSData: 70 (MFM)","keywords":["VEHICLE"],"stats":{"M":"12\"","T":6,"SV":"4+","InvSV":"6+","W":7,"LD":"7+","OC":3},
       "ranged_weapons":[
-        {"name":"Kustom shoota","keywords":["RAPID FIRE 2"],"range":"18\"","A":2,"BS":"5+","S":4,"AP":0,"D":1},
-        {"name":"Rokkit launcha","range":"24\"","A":"D3+3","BS":"5+","S":10,"AP":-2,"D":3}
+        {"name":"Kustom Shoota","keywords":["LETHAL HITS","RAPID FIRE 2"],"lethalHitsExceptTargets":["MONSTER","VEHICLE"],"range":"18\"","A":4,"BS":"5+","S":4,"AP":0,"D":1},
+        {"name":"Multi-busta Launcha","range":"24\"","A":"D3+3","BS":"5+","S":10,"AP":-2,"D":3}
       ],
-      "melee_weapons":[{"name":"Choppas","range":"Melee","A":5,"WS":"3+","S":4,"AP":-1,"D":1}],
-      "abilities":["Indiscriminate Detonations: suppress an enemy unit hit by this unit's attacks, -1 to hit rolls until start of next Command phase"],
-      "suppressOnHit":true,
+      "melee_weapons":[{"name":"Kustom Choppa","range":"Melee","A":4,"WS":"3+","S":5,"AP":-2,"D":2}],
       "defaultCount":1},
-    {"name":"Big Mek Dakkarig","points":115,"keywords":["VEHICLE","CHARACTER"],"stats":{"M":"8\"","T":8,"SV":"3+","InvSV":"5+","W":11,"LD":"7+","OC":3},
+    {"name":"Big Mek Dakkarig","points":115,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"POR CONFIRMAR — app: 115; BSData: 135 (MFM)","keywords":["VEHICLE","CHARACTER"],"stats":{"M":"8\"","T":8,"SV":"3+","InvSV":"5+","W":11,"LD":"7+","OC":3},
+      "abilities":["Blitz Dem Gitz!: o Blitzkannon tem +6 Attacks contra alvos que NÃO sejam MONSTER/VEHICLE",
+        "Even More Dakka (\"riled up\" → SUSTAINED HITS 1 — mecânica de facção Orks, só lembrete de texto)"],
+      "attacksBonusVsNonMV":{"weapon":"Blitzkannon","attacks":6},
       "ranged_weapons":[
-        {"name":"Blitzkannon","keywords":["HEAVY","SUSTAINED HITS 1"],"range":"24\"","A":8,"BS":"5+","S":7,"AP":-2,"D":2},
-        {"name":"Rokkit launcha","keywords":["HEAVY"],"range":"24\"","A":6,"BS":"5+","S":10,"AP":-2,"D":3}
+        {"name":"Blitzkannon","keywords":["IGNORES COVER","LETHAL HITS"],"lethalHitsExceptTargets":["MONSTER","VEHICLE"],"range":"24\"","A":8,"BS":"4+","S":7,"AP":-2,"D":2},
+        {"name":"Multi-busta Launcha","keywords":["IGNORES COVER","LETHAL HITS"],"range":"24\"","A":6,"BS":"5+","S":10,"AP":-2,"D":3}
       ],
-      "melee_weapons":[{"name":"Stompy feet","range":"Melee","A":4,"WS":"3+","S":6,"AP":-1,"D":1}],
+      "melee_weapons":[{"name":"Stompy Feet","range":"Melee","A":4,"WS":"3+","S":6,"AP":-1,"D":1}],
       "defaultCount":1}
   ],
   // Tyranids — adicionados via pedido do utilizador (fonte: wahapedia.ru,
@@ -367,22 +384,22 @@ const RAW_UNITS = {
   // geral das datasheets (classificação factual, não uma regra/ability),
   // só para o ANTI-X continuar a funcionar; convém confirmar/corrigir.
   tyranids: [
-    {"name":"Winged Tyranid Prime","points":65,"keywords":["INFANTRY","CHARACTER"],
+    {"name":"Winged Tyranid Prime","points":65,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["INFANTRY","CHARACTER"],
       "stats":{"M":"12\"","T":5,"SV":"4+","W":6,"LD":"7+","OC":1},
       "ranged_weapons":[],
       "melee_weapons":[{"name":"Prime talons","range":"Melee","A":6,"WS":"2+","S":6,"AP":-1,"D":2}],
       "abilities":[
         "Core: Deep Strike, Leader",
         "Faction: Shadow in the Warp, Synapse",
-        "Alpha Warrior: no seu Command phase, escolhe uma unidade Tyranids amiga a 12\" ou menos — reroll de hit rolls e wound rolls de 1 para essa unidade até ao próximo Command phase",
+        "Alpha Warrior: enquanto lidera uma unidade, as armas dessa unidade têm [SUSTAINED HITS 1]",
         "Death Blow: se for destruído em combate antes de ter lutado nesta fase, rola 1D6 — num 4+, não é removido, luta depois do atacante terminar os ataques, e só depois é removido"
       ],
-      "alphaWarrior": true,
+      "sustainedHitsAura": 1,
       // Pode liderar os Gargoyles (confirmado pelo utilizador). Os Neurogaunts
       // continuam a ser liderados só pelo Neurotyrant.
       "leader_for":["Gargoyles"],
       "defaultCount":1},
-    {"name":"Neurotyrant","points":105,"keywords":["MONSTER","CHARACTER","PSYKER"],
+    {"name":"Neurotyrant","points":105,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"POR CONFIRMAR — app: 105; BSData: 130 (MFM)","keywords":["MONSTER","CHARACTER","PSYKER"],
       "stats":{"M":"6\"","T":8,"SV":"4+","InvSV":"4+","W":9,"LD":"7+","OC":3},
       "ranged_weapons":[{"name":"Psychic scream","keywords":["IGNORES COVER","PSYCHIC","TORRENT"],"range":"18\"","A":"2D6","BS":"N/A","S":5,"AP":-1,"D":2}],
       "melee_weapons":[{"name":"Neurotyrant claws and lashes","range":"Melee","A":6,"WS":"3+","S":5,"AP":0,"D":1}],
@@ -395,7 +412,7 @@ const RAW_UNITS = {
       ],
       "leader_for":["Neurogaunts"],
       "defaultCount":1},
-    {"name":"Screamer-Killer","points":125,"keywords":["MONSTER"],
+    {"name":"Screamer-Killer","points":125,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["MONSTER"],
       "stats":{"M":"8\"","T":9,"SV":"2+","W":10,"LD":"8+","OC":3},
       "ranged_weapons":[{"name":"Bio-plasmic scream","keywords":["ASSAULT","BLAST"],"range":"18\"","A":"D6+3","BS":"4+","S":8,"AP":-2,"D":1}],
       "melee_weapons":[{"name":"Screamer-killer talons","range":"Melee","A":10,"WS":"3+","S":10,"AP":-2,"D":3}],
@@ -407,7 +424,7 @@ const RAW_UNITS = {
       "deathScreamOnHit": "Death Scream: depois de disparar, uma unidade atingida tem de testar Battleshock com -1",
       "deadlyDemise": 1,
       "defaultCount":1},
-    {"name":"Psychophage","points":110,"keywords":["MONSTER"],
+    {"name":"Psychophage","points":110,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["MONSTER"],
       "stats":{"M":"12\"","T":9,"SV":"3+","W":10,"LD":"8+","OC":3},
       "ranged_weapons":[{"name":"Psychoclastic torrent","keywords":["IGNORES COVER","TORRENT"],"range":"12\"","A":"D6","BS":"N/A","S":6,"AP":-1,"D":1}],
       "melee_weapons":[{"name":"Talons and betentacled maw","keywords":["ANTI-PSYKER 4+","DEVASTATING WOUNDS"],"range":"Melee","A":6,"WS":"3+","S":6,"AP":-2,"D":2}],
@@ -421,7 +438,7 @@ const RAW_UNITS = {
       "deadlyDemise": 1,
       "fnpAura": {"value": 6, "range": 6},
       "defaultCount":1},
-    {"name":"Haruspex","points":125,"keywords":["MONSTER","HARVESTER"],
+    {"name":"Haruspex","points":125,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["MONSTER","HARVESTER"],
       "stats":{"M":"8\"","T":11,"SV":"3+","W":14,"LD":"8+","OC":4},
       "ranged_weapons":[{"name":"Grasping tongue","keywords":["PRECISION"],"range":"12\"","A":1,"BS":"3+","S":6,"AP":-2,"D":"D6+1"}],
       "melee_weapons":[
@@ -438,7 +455,7 @@ const RAW_UNITS = {
       "grislySpectacle":true,
       "damaged":{"maxWounds":5,"hitPenalty":1},
       "defaultCount":1},
-    {"name":"Exocrine","points":135,"keywords":["MONSTER"],
+    {"name":"Exocrine","points":135,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["MONSTER"],
       "stats":{"M":"8\"","T":10,"SV":"3+","W":14,"LD":"8+","OC":4},
       "ranged_weapons":[{"name":"Bio-plasmic cannon","keywords":["BLAST","HEAVY"],"range":"36\"","A":"D6+3","BS":"3+","S":9,"AP":-3,"D":3}],
       "melee_weapons":[{"name":"Powerful limbs","range":"Melee","A":3,"WS":"3+","S":7,"AP":0,"D":2}],
@@ -452,7 +469,7 @@ const RAW_UNITS = {
       "symbioticTargeting":true,
       "damaged":{"maxWounds":5,"hitPenalty":1},
       "defaultCount":1},
-    {"name":"Neurolictor","points":80,"keywords":["INFANTRY","VANGUARD INVADER","SYNAPSE"],
+    {"name":"Neurolictor","points":80,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["INFANTRY","VANGUARD INVADER","SYNAPSE"],
       "stats":{"M":"8\"","T":5,"SV":"4+","InvSV":"4+","W":7,"LD":"7+","OC":1},
       "ranged_weapons":[],
       "melee_weapons":[{"name":"Piercing claws and talons","keywords":["PRECISION"],"range":"Melee","A":6,"WS":"2+","S":6,"AP":-2,"D":1}],
@@ -465,7 +482,7 @@ const RAW_UNITS = {
       ],
       "feederTendrils":true,"neuralDisruption":true,"psychologicalSaboteur":true,"stealth":true,
       "defaultCount":1},
-    {"name":"Gargoyles","points":80,"keywords":["INFANTRY","BATTLELINE","FLY","ENDLESS MULTITUDE","VANGUARD INVADER"],
+    {"name":"Gargoyles","points":80,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["INFANTRY","BATTLELINE","FLY","ENDLESS MULTITUDE","VANGUARD INVADER"],
       "stats":{"M":"12\"","T":3,"SV":"6+","W":1,"LD":"8+","OC":2},
       "ranged_weapons":[{"name":"Fleshborer","keywords":["ASSAULT"],"range":"18\"","A":1,"BS":"4+","S":5,"AP":0,"D":1}],
       "melee_weapons":[{"name":"Blinding venom","range":"Melee","A":1,"WS":"4+","S":3,"AP":0,"D":1}],
@@ -477,19 +494,19 @@ const RAW_UNITS = {
       "wingedSwarm":true,
       "pointsBySize":{"10":80,"20":155},
       "defaultCount":10},
-    {"name":"Von Ryan's Leapers","points":70,"keywords":["INFANTRY"],
+    {"name":"Von Ryan's Leapers","points":70,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"POR CONFIRMAR — app: 70; BSData: 55 (MFM)","keywords":["INFANTRY"],
       "stats":{"M":"10\"","T":5,"SV":"4+","InvSV":"6+","W":3,"LD":"8+","OC":1},
       "ranged_weapons":[],
       "melee_weapons":[{"name":"Leaper's talons","range":"Melee","A":6,"WS":"3+","S":5,"AP":-1,"D":1}],
       "abilities":[
         "Core: Fights First, Infiltrators, Stealth",
         "Faction: Synapse",
-        "Pouncing Leap: pode ser alvo do stratagem Heroic Intervention por 0CP, mesmo que já tenha sido usado noutra unidade nesta fase",
+        "Pouncing Leap: o stratagem Heroic Intervention custa -1CP quando usado nesta unidade",
         "Stealth (nota): ataques à distância contra esta unidade têm -1 ao hit roll — usar o ajuste manual já existente na app"
       ],
       "stealth":true,
       "defaultCount":3},
-    {"name":"Termagants","points":120,"keywords":["INFANTRY"],
+    {"name":"Termagants","points":120,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["INFANTRY"],
       "stats":{"M":"6\"","T":3,"SV":"5+","W":1,"LD":"8+","OC":2},
       "ranged_weapons":[
         {"name":"Fleshborer","keywords":["ASSAULT"],"range":"18\"","A":1,"BS":"4+","S":5,"AP":0,"D":1},
@@ -502,10 +519,10 @@ const RAW_UNITS = {
       "melee_weapons":[{"name":"Chitinous claws and teeth","range":"Melee","A":1,"WS":"4+","S":3,"AP":0,"D":1}],
       "abilities":[
         "Faction: Synapse",
-        "Skulking Horrors: se um inimigo terminar um movimento a 9\" desta unidade (e ela não estiver em combate), pode fazer um movimento normal de até D6\""
+        "Skulking Horrors: se um inimigo terminar um movimento a 8\" desta unidade (e ela não estiver em combate), pode fazer um movimento normal de até D6\""
       ],
       "defaultCount":20},
-    {"name":"Ripper Swarms","points":40,"keywords":["SWARM"],
+    {"name":"Ripper Swarms","points":40,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"POR CONFIRMAR — app: 40; BSData: 30 (MFM; confirmar também o tamanho)","keywords":["SWARM"],
       "stats":{"M":"6\"","T":2,"SV":"6+","W":4,"LD":"8+","OC":0},
       "ranged_weapons":[{"name":"Spinemaws","keywords":["PISTOL"],"range":"6\"","A":4,"BS":"5+","S":3,"AP":0,"D":1,"wargear_note":"opcional, qualquer modelo"}],
       "melee_weapons":[{"name":"Chitinous claws and teeth","keywords":["SUSTAINED HITS 1"],"range":"Melee","A":6,"WS":"5+","S":2,"AP":0,"D":1}],
@@ -515,7 +532,7 @@ const RAW_UNITS = {
         "Chitinous Horrors: enquanto um inimigo estiver em Engagement Range desta unidade, o OC desse inimigo fica reduzido a metade"
       ],
       "defaultCount":2},
-    {"name":"Neurogaunts","points":45,"keywords":["INFANTRY"],
+    {"name":"Neurogaunts","points":45,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["INFANTRY"],
       "stats":{"M":"6\"","T":3,"SV":"6+","W":1,"LD":"8+","OC":1},
       "ranged_weapons":[],
       "melee_weapons":[{"name":"Chitinous claws and teeth","range":"Melee","A":1,"WS":"4+","S":3,"AP":0,"D":1}],
@@ -525,18 +542,22 @@ const RAW_UNITS = {
         "Composição: 11 modelos (inclui 1 Neurogaunt Nodebeast)"
       ],
       "defaultCount":11},
-    {"name":"Barbgaunts","points":55,"keywords":["INFANTRY"],
+    {"name":"Barbgaunts","points":55,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"app = BSData 11ª (sem divergência na auditoria de 28/09/2026); MFM não confirmado","keywords":["INFANTRY"],
       "stats":{"M":"6\"","T":4,"SV":"4+","W":2,"LD":"8+","OC":1},
       "ranged_weapons":[{"name":"Barblauncher","keywords":["BLAST","HEAVY"],"range":"24\"","A":"D6","BS":"4+","S":5,"AP":0,"D":1}],
       "melee_weapons":[{"name":"Chitinous claws and teeth","range":"Melee","A":1,"WS":"4+","S":4,"AP":0,"D":1}],
       "abilities":[
         "Faction: Synapse",
-        "Disruption Bombardment: unidade inimiga atingida pelos ataques de tiro desta unidade tem -2 ao Move e aos rolls de Advance e Charge, até ao fim do próximo turno do adversário (sem restrição a INFANTRY — corrigido a partir do texto oficial da carta, que não tem essa restrição)"
+        "Disruption Bombardment: 1 unidade INFANTRY inimiga atingida pelos ataques de tiro desta unidade (escolhida pelo atacante) tem -2 ao Move e aos rolls de Advance e Charge, até ao fim do próximo turno do adversário"
       ],
       "disruptedOnHit": "Disruption Bombardment: unidade inimiga atingida pelos ataques de tiro desta unidade tem -2 ao Move e aos rolls de Advance e Charge, até ao fim do próximo turno do adversário",
       "defaultCount":5}
   ]
 };
+
+// Data da última verificação dos dados (máximo de verifiedAt das datasheets) —
+// mostrada no ecrã inicial como "Regras: versão de <data>".
+const RULES_VERSION_DATE = Object.keys(RAW_UNITS).reduce((mx, f) => RAW_UNITS[f].reduce((m, u) => (u.verifiedAt && u.verifiedAt > m) ? u.verifiedAt : m, mx), "");
 
 // ---------------------------------------------------------------------------
 // Lista de facções — ponto único de verdade para tudo o que hoje dependia de
@@ -865,36 +886,6 @@ function renderNeuralDisruptionCard() {
   return card;
 }
 
-function renderAlphaWarriorCard() {
-  const activeOwner = state.game.activePlayerKey === "playerA" ? "A" : "B";
-  const primeInPlay = allInstances().find(u => u.owner === activeOwner && u.datasheetNames.some(name => {
-    const ds = findDatasheet(library, name);
-    return ds && ds.alphaWarrior;
-  }));
-  if (!primeInPlay) return null;
-  const key = phaseInstanceKey();
-  if (state.game.alphaWarriorAskedInstance === key) return null;
-
-  const card = el("div", { class: "card" });
-  card.appendChild(renderRollerBadge("attacker", primeInPlay.ownerName + " (" + unitLiveLabel(primeInPlay) + ")", "Alpha Warrior — opcional, no início do Command phase."));
-  card.appendChild(el("div", { text: "🧠 Alpha Warrior: escolhe uma unidade Tyranids amiga a 12\" ou menos do Winged Tyranid Prime — essa unidade ganha reroll de hit rolls e wound rolls de 1 até ao próximo Command phase. É opcional.", style: "color:var(--gold);font-weight:600;font-size:13px;margin-bottom:8px;" }));
-  const sel = el("select");
-  sel.appendChild(el("option", { value: "", text: "— escolher —" }));
-  sel.appendChild(el("option", { value: "none", text: "Não usar este Command phase" }));
-  allInstances().filter(u => u.faction === "Tyranids" && u.owner === primeInPlay.owner).forEach(u => {
-    sel.appendChild(el("option", { value: u.id, text: u.ownerName + ": " + unitLiveLabel(u) }));
-  });
-  sel.onchange = e => {
-    const v = e.target.value;
-    if (!v) return;
-    state.game.alphaWarriorAskedInstance = key;
-    state.game.alphaWarriorTargetId = v === "none" ? null : v;
-    render();
-  };
-  card.appendChild(sel);
-  return card;
-}
-
 // Referência fixa da ordem de resolução da Fight Phase — só texto, a app
 // nunca decide de quem é a vez nem quem já lutou. Aberta por defeito (ao
 // contrário dos Stratagems) porque é consultada a toda a hora dentro da
@@ -950,7 +941,7 @@ const BOX_LIMITS = {
   "Intercessor Squad": 10, "Vanguard Veteran Squad with Jump Packs": 5,
   "Eradicator Squad with Heavy Bolters": 3, "Land Speeder": 1,
   "Warboss": 1, "Bigboss": 1, "Bannernob": 1, "Painboy": 1, "Weirdboy": 1,
-  "Boyz": 20, "Gretchin": 10, "Wartrakk": 1, "Big Mek Dakkarig": 1,
+  "Boyz": 20, "Gretchin": 10, "Wartrakks": 1, "Big Mek Dakkarig": 1,
   // Tyranids — miniaturas físicas que o utilizador possui (confirmado com
   // ele; nunca assumir "sem limite" para uma facção nova sem perguntar).
   "Winged Tyranid Prime": 1, "Neurotyrant": 1, "Screamer-Killer": 1, "Psychophage": 1,
@@ -1293,7 +1284,38 @@ function chargeBonusWeapon(weapon, c, phaseKey) {
   if (!cb) return weapon;
   return Object.assign({}, weapon, { A: addToDiceOrNumber(weapon.A, cb.attacks || 0), S: addToDiceOrNumber(weapon.S, cb.strength || 0) });
 }
+function hailKey(attacker) { return phaseInstanceKey() + "-" + attacker.id + "-hail"; }
+// Efeitos de datasheet que alteram a ARMA e que a app sabe aplicar sozinha
+// (ou com a resposta já registada): Alpha Warrior (Winged Tyranid Prime:
+// as armas da unidade têm SUSTAINED HITS 1), Blitz Dem Gitz (Big Mek
+// Dakkarig: Blitzkannon +6 A contra alvos que NÃO sejam MONSTER/VEHICLE) e
+// Hail of Bolts (Intercessor Squad: +2 A nos Bolt rifles contra o alvo
+// escolhido pelo jogador, perguntado no ciclo de ataque).
+function auraAdjustedWeapon(attacker, weapon, target) {
+  let w = weapon;
+  for (const name of attacker.datasheetNames) {
+    const ds = findDatasheet(library, name);
+    if (!ds) continue;
+    if (ds.sustainedHitsAura && !hasKeyword(w, "SUSTAINED HITS")) {
+      w = Object.assign({}, w, { keywords: (w.keywords || []).concat(["SUSTAINED HITS " + ds.sustainedHitsAura]) });
+    }
+    const bv = ds.attacksBonusVsNonMV;
+    if (target && bv && bv.weapon === w.name && w.sourceDatasheet === ds.name && !unitIsMV(target)) {
+      w = Object.assign({}, w, { A: addToDiceOrNumber(w.A, bv.attacks) });
+    }
+    const hb = ds.hailOfBolts;
+    if (target && hb && hb.weapon === w.name && w.sourceDatasheet === ds.name) {
+      const ch = (state.game.hailChoice || {})[hailKey(attacker)];
+      if (ch && ch.chosen != null && String(ch.chosen) === String(target.id)) w = Object.assign({}, w, { A: addToDiceOrNumber(w.A, hb.attacks) });
+    }
+  }
+  return w;
+}
 function conditionalWeaponKeywords(attacker, weapon, target) {
+  if (!attacker || !weapon) return weapon;
+  return conditionalWeaponKeywordsBase(attacker, auraAdjustedWeapon(attacker, weapon, target), target);
+}
+function conditionalWeaponKeywordsBase(attacker, weapon, target) {
   if (!attacker || !weapon) return weapon;
   for (const name of attacker.datasheetNames) {
     const ds = findDatasheet(library, name);
@@ -1374,7 +1396,10 @@ function feelNoPainFor(target) {
   target.groups.forEach(g => {
     const ds = findDatasheet(library, g.datasheetName);
     const fnp = ds && findFeelNoPain(ds.abilities);
-    if (fnp && (!best || fnp.value < best.value)) best = Object.assign({}, fnp, { condition: ds.fnpCondition || null, sourceDatasheet: ds.name });
+    // fnpScope: "model" = só ESTE modelo (ex: Ancient: "this model has FNP
+    // 4+") — aplica-se apenas ao dano alocado a este grupo; "unit"/omitido =
+    // a unidade toda (ex: Psychic Hood: "models in that unit").
+    if (fnp && (!best || fnp.value < best.value)) best = Object.assign({}, fnp, { condition: ds.fnpCondition || null, sourceDatasheet: ds.name, groupKeys: ds.fnpScope === "model" ? [g.key] : null });
   });
   fnpAuraSourcesFor(target).forEach(({ unit, ds, aura }) => {
     if (!best || aura.value < best.value) {
@@ -1405,7 +1430,9 @@ function invSvAuraFor(target) {
   let best = null;
   target.groups.forEach(g => {
     const ds = findDatasheet(library, g.datasheetName);
-    const aura = ds && findInvSvAura(ds.abilities);
+    const aura = ds && (typeof ds.invSvAura === "number"
+      ? { value: ds.invSvAura, label: ds.name + ": Invulnerable Save " + ds.invSvAura + "+ à unidade" }
+      : findInvSvAura(ds.abilities));
     if (aura && (!best || aura.value < best.value)) best = aura;
   });
   return best;
@@ -1569,6 +1596,10 @@ const state = {
     neuralAskedInstance: null, neuralTargetId: null,
     // Boss' Ammo Runt: decisão por ativação (unidade+fase) -> "yes"/"no".
     ammoRuntChoice: {},
+    // Hail of Bolts (Intercessor Squad): alvo escolhido por ativação + alvos recusados.
+    hailChoice: {},
+    // Disruption Bombardment (Barbgaunts): alvo INFANTRY escolhido por ativação.
+    disruptChosen: {},
   },
 };
 
@@ -1673,6 +1704,7 @@ function render() {
   root.innerHTML = "";
   root.appendChild(el("h1", { text: "⚔ W40K TRACKER — ARMAGEDDON" }));
   root.appendChild(el("div", { class: "subtitle", text: "Pré-visualização: Setup + sequência do turno (Command → Movement → Shooting → Charge → Fight)" }));
+  root.appendChild(el("div", { class: "subtitle", id: "rules-version", text: "Regras: versão de " + RULES_VERSION_DATE + " (dados congelados — atualizados só quando decidido)" }));
   root.appendChild(el("div", { class: "devbanner", text:
     "⚠ Pré-visualização em JavaScript puro para validar o fluxo antes de construir a app completa em React+Vite (é preciso instalar Node.js para esse passo). " +
     "O estado grava-se sozinho neste dispositivo (localStorage) e a app funciona offline depois da primeira visita (service worker). Hits/wounds/saves têm ditado por voz (🎤, pt-PT) como alternativa ao clique. Cada fase mostra os Core Stratagems relevantes (referência — a app nunca os ativa sozinha)."
@@ -1731,7 +1763,7 @@ function startNewGame() {
       u.groups.forEach(g => { g.liveCount = g.initialCount; g.woundsRemainingOnCurrent = g.stats.W; });
     });
   });
-  state.game = { round: 1, activePlayerKey: "playerA", phase: "command", ended: false, checklist: {}, battleshockRolls: {}, battleshockSynapse: {}, advanceRoll: { unitId: "", die: null }, chargeRoll: { unitId: "", dice: [] }, score: { playerA: [], playerB: [] }, actedByPhaseInstance: {}, usedWeaponsByUnit: {}, onceAbilityUsed: {}, alphaWarriorAskedInstance: null, alphaWarriorTargetId: null, symbioticTarget: null, grislyDone: {}, neuralAskedInstance: null, neuralTargetId: null, ammoRuntChoice: {} };
+  state.game = { round: 1, activePlayerKey: "playerA", phase: "command", ended: false, checklist: {}, battleshockRolls: {}, battleshockSynapse: {}, advanceRoll: { unitId: "", die: null }, chargeRoll: { unitId: "", dice: [] }, score: { playerA: [], playerB: [] }, actedByPhaseInstance: {}, usedWeaponsByUnit: {}, onceAbilityUsed: {}, alphaWarriorAskedInstance: null, alphaWarriorTargetId: null, symbioticTarget: null, grislyDone: {}, neuralAskedInstance: null, neuralTargetId: null, ammoRuntChoice: {}, hailChoice: {}, disruptChosen: {} };
   state.cycle = emptyCycle();
   state.attackLog = [];
 }
@@ -2373,8 +2405,6 @@ function renderCommandPhase() {
   wrap.appendChild(renderStratagemsCard("command"));
   const onceCardCommand = renderOnceAbilitiesCard("stratagem", "Abilities \"once per battle round\" ligadas a stratagems");
   if (onceCardCommand) wrap.appendChild(onceCardCommand);
-  const alphaWarriorCard = renderAlphaWarriorCard();
-  if (alphaWarriorCard) wrap.appendChild(alphaWarriorCard);
   const neuralCard = renderNeuralDisruptionCard();
   if (neuralCard) wrap.appendChild(neuralCard);
   wrap.appendChild(renderChecklist("command", [
@@ -2733,6 +2763,7 @@ function addUnitToPlayer(playerKey, ds, opts) {
     label: baseLabel + (needsNumber ? " #" + (existing + 1) : ""),
     points,
     pointsApprox: customCount && !exactPoints,
+    pointsUnconfirmed: [ds, leaderDs, supportDs].filter(d => d && /^POR CONFIRMAR/.test(d.pointsSource || "")).map(d => d.name + ": " + d.pointsSource),
     battleshocked: false,
     disrupted: false,
     groups,
@@ -2778,11 +2809,16 @@ function renderPlayerColumn(side, player) {
     nameField.value = u.label; nameField.style.fontSize = "13px";
     nameField.oninput = e => { u.label = e.target.value; };
     r.appendChild(nameField);
-    r.appendChild(el("span", { text: u.points + " pts" + (u.pointsApprox ? "*" : ""), style: "font-size:11px;color:var(--text-sec);white-space:nowrap;" }));
+    const ptsSpan = el("span", { text: u.points + " pts" + (u.pointsApprox ? "*" : "") + ((u.pointsUnconfirmed && u.pointsUnconfirmed.length) ? " ⚠️" : ""), style: "font-size:11px;color:var(--text-sec);white-space:nowrap;" });
+    if (u.pointsUnconfirmed && u.pointsUnconfirmed.length) ptsSpan.title = "Pontos por confirmar no MFM — " + u.pointsUnconfirmed.join(" | ");
+    r.appendChild(ptsSpan);
     if (u.battleshocked) r.appendChild(renderBattleshockBadge());
     if (u.disrupted) r.appendChild(renderDisruptedBadge());
     r.appendChild(el("button", { class: "small", text: "✕", onclick: () => { player.units = player.units.filter(x => x.id !== u.id); render(); } }));
     ui.appendChild(r);
+    if (u.pointsUnconfirmed && u.pointsUnconfirmed.length) {
+      ui.appendChild(el("div", { text: "⚠️ pontos por confirmar no MFM (" + u.pointsUnconfirmed.join(" | ") + ")", style: "font-size:10px;color:var(--gold);margin-bottom:4px;" }));
+    }
     if (u.pointsApprox) {
       ui.appendChild(el("div", { text: "*pontos listados para a composição padrão da datasheet, não escalam com o nº de modelos ajustado", style: "font-size:10px;color:var(--text-sec);margin-bottom:4px;" }));
     }
@@ -3027,11 +3063,20 @@ function renderAttackCycle(phaseKey) {
     const idx = dsA ? (dsA.onceAbilities || []).findIndex(a => a.effect === "hitRollBonusRanged") : -1;
     if (idx < 0) return null;
     const ability = dsA.onceAbilities[idx];
-    return { ability, key: onceAbilityKey(attacker, dsA, idx), actKey: phaseInstanceKey() + "-" + attacker.id };
+    return { ability, key: onceAbilityKey(attacker, dsA, idx), actKey: phaseInstanceKey() + "-" + attacker.id + "-" + dsA.name };
   })();
   const ammoRuntChoice = ammoRuntInfo ? state.game.ammoRuntChoice[ammoRuntInfo.actKey] : undefined;
   const ammoRuntAvailable = !!ammoRuntInfo && ammoRuntChoice === undefined && !isOnceAbilityUsed(ammoRuntInfo.key, ammoRuntInfo.ability);
   const ammoRuntBonusValue = (ammoRuntInfo && ammoRuntChoice === "yes") ? ammoRuntInfo.ability.value : 0;
+  // HAIL OF BOLTS (Intercessor Squad): ao ser selecionada para disparar,
+  // escolhe até 1 unidade inimiga visível; os Bolt rifles contra ela têm +2 A.
+  // A app não sabe qual foi escolhida — pergunta 1x por alvo (a escolha fica
+  // registada por ativação; recusar não impede escolher outro alvo depois).
+  const hailDs = phaseKey === "shooting" ? findDatasheet(library, weapon.sourceDatasheet) : null;
+  const hailInfo = (hailDs && hailDs.hailOfBolts && hailDs.hailOfBolts.weapon === weapon.name) ? { hb: hailDs.hailOfBolts, key: hailKey(attacker) } : null;
+  const hailState = hailInfo ? ((state.game.hailChoice || {})[hailInfo.key] || { chosen: null, declined: {} }) : null;
+  const hailNeedsAsk = !!hailInfo && hailState.chosen == null && !hailState.declined[target.id];
+  const hailApplied = !!hailInfo && hailState.chosen != null && String(hailState.chosen) === String(target.id);
   // Might Is Right: pergunta "fez charge move?" quando a arma tem chargeBonus.
   const chargeBonusInfo = (phaseKey === "fight" && (findDatasheet(library, weapon.sourceDatasheet) || {}).chargeBonus) || null;
   // Nome a mostrar na badge "quem rola" de cada passo — sempre o jogador
@@ -3056,11 +3101,12 @@ function renderAttackCycle(phaseKey) {
   if (weapon.wargear_note) {
     banner.appendChild(el("div", { text: "ℹ️ " + weapon.wargear_note, style: "font-size:11px;color:var(--text-sec);margin-top:6px;clear:both;" }));
   }
-  // ALPHA WARRIOR (Winged Tyranid Prime): só um lembrete — o reroll de 1s
-  // em si é feito fisicamente pelo jogador antes de reportar o resultado
-  // final, a app não recalcula nada por causa disto.
-  if (state.game.alphaWarriorTargetId && String(state.game.alphaWarriorTargetId) === String(attacker.id)) {
-    banner.appendChild(el("div", { text: "🧠 Alpha Warrior ativo nesta unidade: podes re-rolar resultados de 1 nos hit rolls e wound rolls, até ao próximo Command phase.", style: "font-size:11px;color:var(--gold);margin-top:6px;clear:both;" }));
+  if (hailApplied) {
+    banner.appendChild(el("div", { text: "🎯 Hail of Bolts ativo: " + weapon.name + " com +" + hailInfo.hb.attacks + " Attacks contra esta unidade.", style: "font-size:11px;color:var(--gold);margin-top:6px;clear:both;" }));
+  }
+  if (weapon.devastatingWoundsOnlyTargets) {
+    const dwOn = weapon.devastatingWoundsOnlyTargets.some(k => targetHasUnitKeyword(target, k));
+    banner.appendChild(el("div", { text: "ℹ️ DEVASTATING WOUNDS só contra " + weapon.devastatingWoundsOnlyTargets.join("/") + " — neste alvo: " + (dwOn ? "ATIVO" : "inativo") + ".", style: "font-size:11px;color:var(--text-sec);margin-top:6px;clear:both;" }));
   }
   const symb = state.game.symbioticTarget;
   if (symb && symb.key === phaseInstanceKey() && attacker.faction === "Tyranids" && String(symb.targetId) === String(target.id)) {
@@ -3069,7 +3115,7 @@ function renderAttackCycle(phaseKey) {
   wrap.appendChild(banner);
 
   const isTorrent = phaseKey === "shooting" && hasKeyword(weapon, "TORRENT");
-  const isDevWounds = hasKeyword(weapon, "DEVASTATING WOUNDS");
+  const isDevWounds = hasKeyword(weapon, "DEVASTATING WOUNDS") && (!weapon.devastatingWoundsOnlyTargets || weapon.devastatingWoundsOnlyTargets.some(k => targetHasUnitKeyword(target, k)));
   const sustainedX = !isTorrent && hasKeyword(weapon, "SUSTAINED HITS") ? keywordValue(weapon, "SUSTAINED HITS") : null;
   // HEAVY: +1 ao hit roll se a unidade não se moveu mais de 3" este turno —
   // condição física respondida pelo jogador antes do passo de hits.
@@ -3243,6 +3289,25 @@ function renderAttackCycle(phaseKey) {
       if (sabHitCandidate && c.saboteurHit === null) askOne("Esta unidade (Battle-shocked) está a 12\" de um Neurolictor inimigo? (-1 ao acertar)", "saboteurHit");
       if (sabWoundCandidate && c.saboteurWound === null) askOne("A unidade alvo (Battle-shocked) está a 12\" de um Neurolictor amigo? (+1 ao ferir)", "saboteurWound");
       wrap.appendChild(sc);
+      return wrap;
+    }
+
+    if (hailNeedsAsk) {
+      const card = el("div", { class: "card" });
+      card.appendChild(renderRollerBadge("attacker", attackerRollerName, "Hail of Bolts — ao selecionar a unidade para disparar."));
+      card.appendChild(el("div", { class: "step-hint", text: "🎯 Hail of Bolts: escolhe até 1 unidade inimiga visível; os Bolt rifles contra ela têm +2 Attacks.", style: "color:var(--gold);font-weight:600;font-size:13px;" }));
+      card.appendChild(el("h3", { text: "Esta unidade (" + target.label + ") é o alvo escolhido para o Hail of Bolts?" }));
+      const sel = el("select");
+      [["", "— escolher —"], ["yes", "Sim, é o alvo escolhido (+2 A)"], ["no", "Não"]].forEach(([v, t]) => sel.appendChild(el("option", { value: v, text: t })));
+      sel.onchange = e => {
+        if (e.target.value === "") return;
+        const cur = (state.game.hailChoice || (state.game.hailChoice = {}))[hailInfo.key] || { chosen: null, declined: {} };
+        if (e.target.value === "yes") cur.chosen = target.id; else cur.declined[target.id] = true;
+        state.game.hailChoice[hailInfo.key] = cur;
+        render();
+      };
+      card.appendChild(sel);
+      wrap.appendChild(card);
       return wrap;
     }
 
@@ -3442,7 +3507,7 @@ function renderAttackCycle(phaseKey) {
     if (target.groups.length > 1 && !c.allocOrder) {
       const card = el("div", { class: "card" });
       card.appendChild(el("h2", { text: "Ordem de alocação (grupos)" }));
-      card.appendChild(el("div", { class: "step-hint", text: target.label + " tem mais que um grupo de alocação. Declara a ordem — grupos já feridos primeiro, characters sempre por último." }));
+      card.appendChild(el("div", { class: "step-hint", text: target.label + " tem mais que um grupo de alocação. Declara a ordem — não-characters já feridos primeiro; nenhum character antes de um não-character (as setas que dariam uma ordem inválida ficam desativadas)." }));
       card.appendChild(renderAllocOrderPicker(target.groups, order => { c.allocOrder = order; render(); }));
       wrap.appendChild(card);
       return wrap;
@@ -3511,6 +3576,14 @@ function renderAttackCycle(phaseKey) {
       }
     }
     if (isDevWounds && c.wounds - (c.critWounds || 0) <= 0) {
+      // Bug A: com 0 wounds (ou só críticos já alocados) o ramo acima pode
+      // nunca ter corrido allocateDamage — o passo 5 lê deadByGroup, por
+      // isso garante-se sempre um resultado (com zeros) antes de saltar.
+      if (!c.deadByGroup || !c.woundsLeftByGroup) {
+        allocateDamage(target, c.critInstances || []);
+        c.manualDamage = c.manualDamage != null ? c.manualDamage : 0;
+        c.failedSaves = c.failedSaves != null ? c.failedSaves : 0;
+      }
       c.step = 5;
       return renderAttackCycle(phaseKey);
     }
@@ -3877,10 +3950,31 @@ function renderAttackCycle(phaseKey) {
     const disruptText = disruptionAbility(attacker, phaseKey);
     let disruptionJustApplied = false;
     if (disruptText && c.disruptionApplied === null) {
-      if (c.hits > 0) {
-        const realTarget = findRealUnit(target.id);
-        if (realTarget) realTarget.disrupted = true;
-        disruptionJustApplied = true;
+      // 11ª: só 1 unidade INFANTRY atingida, escolhida pelo atacante, por
+      // ativação — só se pergunta se este alvo é INFANTRY, teve hits e ainda
+      // não há uma unidade escolhida nesta ativação.
+      const dKey = phaseInstanceKey() + "-" + attacker.id + "-disrupt";
+      if (c.hits > 0 && targetHasUnitKeyword(target, "INFANTRY") && !state.game.disruptChosen[dKey]) {
+        const dCard = el("div", { class: "card" });
+        dCard.appendChild(renderRollerBadge("attacker", attackerRollerName, "Disruption Bombardment — escolhe a unidade INFANTRY atingida."));
+        dCard.appendChild(el("div", { class: "step-hint", text: "🐌 " + disruptText, style: "color:var(--gold);font-weight:600;font-size:13px;" }));
+        dCard.appendChild(el("h3", { text: "Escolhes " + target.label + " como a unidade afetada?" }));
+        const dSel = el("select");
+        [["", "— escolher —"], ["yes", "Sim (só 1 unidade INFANTRY por ativação)"], ["no", "Não"]].forEach(([v, t]) => dSel.appendChild(el("option", { value: v, text: t })));
+        dSel.onchange = e => {
+          if (e.target.value === "") return;
+          if (e.target.value === "yes") {
+            state.game.disruptChosen[dKey] = target.id;
+            const realTarget = findRealUnit(target.id);
+            if (realTarget) realTarget.disrupted = true;
+            disruptionJustApplied = true;
+          }
+          c.disruptionApplied = true;
+          render();
+        };
+        dCard.appendChild(dSel);
+        wrap.appendChild(dCard);
+        return wrap;
       }
       c.disruptionApplied = true;
     }
@@ -3895,47 +3989,13 @@ function renderAttackCycle(phaseKey) {
       c.suppressApplied = true;
     }
 
-    // DEADLY DEMISE X (Screamer-Killer, Psychophage): dispara quando a
-    // unidade morre POR COMPLETO nesta resolução — pergunta o roll 1D6 uma
-    // vez; a app não sabe quem está a 6", só regista o resultado e lembra o
-    // jogador de aplicar o dano manualmente se disparar (num 6).
-    const deadlyDemiseX = (() => {
-      for (const name of target.datasheetNames) {
-        const ds = findDatasheet(library, name);
-        if (ds && ds.deadlyDemise) return ds.deadlyDemise;
-      }
-      return null;
-    })();
-    if (deadlyDemiseX && c.deadlyDemiseAsked === null) {
-      const survivingLive = target.groups.reduce((s, g) => s + Math.max(0, g.liveCount - ((c.deadByGroup && c.deadByGroup[g.key]) || 0)), 0);
-      if (survivingLive === 0) {
-        const ddCard = el("div", { class: "card" });
-        ddCard.appendChild(renderRollerBadge("defender", defenderRollerName, "Deadly Demise " + deadlyDemiseX + " — a unidade foi destruída."));
-        ddCard.appendChild(el("div", { class: "step-hint", text: "☠️ Ao morrer, rola 1D6 — num 6, TODAS as unidades a 6\" (de qualquer jogador) sofrem " + deadlyDemiseX + " mortal wound(s) cada. A app não sabe quem está a 6\" — se disparar, aplica o dano manualmente (aba Estado do Jogo).", style: "color:var(--gold);font-weight:600;font-size:13px;" }));
-        const inp = el("input", { type: "number" });
-        inp.min = "1"; inp.max = "6"; inp.value = c.deadlyDemiseRoll || 1;
-        inp.oninput = e => { c.deadlyDemiseRoll = Math.max(1, Math.min(6, parseInt(e.target.value) || 1)); };
-        ddCard.appendChild(inp);
-        const btn = el("button", { class: "primary", text: "Confirmar resultado →" });
-        btn.style.cssText = "width:100%;margin-top:8px;";
-        btn.onclick = () => {
-          c.deadlyDemiseAsked = true;
-          c.deadlyDemiseTriggered = (c.deadlyDemiseRoll || 0) === 6;
-          render();
-        };
-        ddCard.appendChild(btn);
-        wrap.appendChild(ddCard);
-        return wrap;
-      }
-      c.deadlyDemiseAsked = true;
-    }
-
     // FEEL NO PAIN: ability de UNIDADE (não de arma), detetada no campo
     // "abilities" da datasheet do alvo — sempre DEPOIS do save normal e das
     // mortal wounds de Devastating Wounds, nunca antes. Passo adicional, só
     // aparece se houver mortes já calculadas para cancelar.
     const fnp = feelNoPainFor(target);
-    const rawTotalDead = Object.values(c.deadByGroup || {}).reduce((a, b) => a + b, 0);
+    const fnpKeys = (fnp && fnp.groupKeys) ? fnp.groupKeys : target.groups.map(g => g.key);
+    const rawTotalDead = fnpKeys.reduce((a, k) => a + ((c.deadByGroup && c.deadByGroup[k]) || 0), 0);
     // fnp.condition: nem toda Feel No Pain é incondicional (bug corrigido —
     // antes aplicava-se sempre). "weapon_keyword": a app verifica sozinha se
     // a arma atacante tem essa keyword (ex: Librarian só vs PSYCHIC).
@@ -3972,13 +4032,51 @@ function renderAttackCycle(phaseKey) {
         roller: "defender", rollerName: defenderRollerName, rollWhy: "Roll de Feel No Pain — tenta cancelar uma morte já calculada.",
         onConfirm: n => {
           c.fnpSuccesses = n;
-          const order = (c.allocOrder && c.allocOrder.length) ? c.allocOrder : target.groups.map(g => g.key);
+          const order = ((c.allocOrder && c.allocOrder.length) ? c.allocOrder : target.groups.map(g => g.key)).filter(k => fnpKeys.includes(k));
           c.deadByGroup = applyFeelNoPain(c.deadByGroup, order, n);
           render();
         },
         confirmLabel: "Confirmar Feel No Pain →",
       }));
       return wrap;
+    }
+
+    // (Bug C, Pedido Mestre 28/09/2026: o Deadly Demise passa a ser verificado
+    // DEPOIS do Feel No Pain — se o FNP salva o último modelo, a unidade não
+    // morre e não há Deadly Demise.)
+    // DEADLY DEMISE X (Screamer-Killer, Psychophage): dispara quando a
+    // unidade morre POR COMPLETO nesta resolução — pergunta o roll 1D6 uma
+    // vez; a app não sabe quem está a 6", só regista o resultado e lembra o
+    // jogador de aplicar o dano manualmente se disparar (num 6).
+    const deadlyDemiseX = (() => {
+      for (const name of target.datasheetNames) {
+        const ds = findDatasheet(library, name);
+        if (ds && ds.deadlyDemise) return ds.deadlyDemise;
+      }
+      return null;
+    })();
+    if (deadlyDemiseX && c.deadlyDemiseAsked === null) {
+      const survivingLive = target.groups.reduce((s, g) => s + Math.max(0, g.liveCount - ((c.deadByGroup && c.deadByGroup[g.key]) || 0)), 0);
+      if (survivingLive === 0) {
+        const ddCard = el("div", { class: "card" });
+        ddCard.appendChild(renderRollerBadge("defender", defenderRollerName, "Deadly Demise " + deadlyDemiseX + " — a unidade foi destruída."));
+        ddCard.appendChild(el("div", { class: "step-hint", text: "☠️ Ao morrer, rola 1D6 — num 6, TODAS as unidades a 6\" (de qualquer jogador) sofrem " + deadlyDemiseX + " mortal wound(s) cada. A app não sabe quem está a 6\" — se disparar, aplica o dano manualmente (aba Estado do Jogo).", style: "color:var(--gold);font-weight:600;font-size:13px;" }));
+        const inp = el("input", { type: "number" });
+        inp.min = "1"; inp.max = "6"; inp.value = c.deadlyDemiseRoll || 1;
+        inp.oninput = e => { c.deadlyDemiseRoll = Math.max(1, Math.min(6, parseInt(e.target.value) || 1)); };
+        ddCard.appendChild(inp);
+        const btn = el("button", { class: "primary", text: "Confirmar resultado →" });
+        btn.style.cssText = "width:100%;margin-top:8px;";
+        btn.onclick = () => {
+          c.deadlyDemiseAsked = true;
+          c.deadlyDemiseTriggered = (c.deadlyDemiseRoll || 0) === 6;
+          render();
+        };
+        ddCard.appendChild(btn);
+        wrap.appendChild(ddCard);
+        return wrap;
+      }
+      c.deadlyDemiseAsked = true;
     }
 
     // SYMBIOTIC TARGETING (Exocrine): depois de disparar e acertar, a unidade
@@ -4109,7 +4207,7 @@ function renderAttackCycle(phaseKey) {
     // para o próximo ataque, por isso mostra-se já aqui, não só depois na
     // tab "Estado do Jogo".
     target.groups.forEach(g => {
-      const survivingLive = g.liveCount - (c.deadByGroup[g.key] || 0);
+      const survivingLive = g.liveCount - ((c.deadByGroup && c.deadByGroup[g.key]) || 0);
       const wLeft = c.woundsLeftByGroup && c.woundsLeftByGroup[g.key];
       if (survivingLive > 0 && g.stats.W > 1 && wLeft != null) {
         card.appendChild(el("div", { class: "step-hint", text: g.label + ": fica com " + wLeft + "/" + g.stats.W + " wounds no modelo atual." }));
@@ -4121,7 +4219,7 @@ function renderAttackCycle(phaseKey) {
       target.groups.forEach(g => {
         const tr = el("tr");
         tr.appendChild(el("td", { text: g.label }));
-        const td2 = el("td", { text: (c.deadByGroup[g.key] || 0) + " morto(s) (de " + g.liveCount + " vivos)" });
+        const td2 = el("td", { text: ((c.deadByGroup && c.deadByGroup[g.key]) || 0) + " morto(s) (de " + g.liveCount + " vivos)" });
         td2.style.textAlign = "right";
         tr.appendChild(td2);
         tbody.appendChild(tr);
@@ -4910,16 +5008,34 @@ function startVoiceListening(stepKey) {
   }
 }
 
+// Restrições da 11ª (Bug D): (1) nenhum grupo CHARACTER antes de um grupo
+// não-CHARACTER; (2) entre os não-CHARACTER, os grupos com um modelo já ferido
+// vão primeiro. As setas que levariam a uma ordem inválida ficam desativadas.
+function allocOrderIsValid(order, groups) {
+  const isChar = k => k === "leader" || k === "support";
+  const isWounded = k => { const g = groups.find(gr => gr.key === k); return !!g && g.woundsRemainingOnCurrent != null && g.woundsRemainingOnCurrent < g.stats.W; };
+  let seenChar = false, seenUnwoundedNonChar = false;
+  for (const k of order) {
+    if (isChar(k)) { seenChar = true; continue; }
+    if (seenChar) return false;                       // character antes de um não-character
+    if (isWounded(k)) { if (seenUnwoundedNonChar) return false; } else seenUnwoundedNonChar = true;
+  }
+  return true;
+}
 function renderAllocOrderPicker(groups, onConfirm) {
   const wrap = el("div");
-  // Ordem sugerida por defeito: corpo do esquadrão primeiro, characters
-  // (líder/support anexados) por último — a regra oficial que já está
-  // escrita na dica acima do picker. O jogador pode sempre reordenar com
-  // as setas se o caso concreto for diferente (ex: grupo já ferido antes).
   const isCharacterGroup = key => key === "leader" || key === "support";
-  let order = groups
-    .map(g => g.key)
-    .sort((a, b) => (isCharacterGroup(a) === isCharacterGroup(b) ? 0 : isCharacterGroup(a) ? 1 : -1));
+  const isWounded = key => { const g = groups.find(gr => gr.key === key); return !!g && g.woundsRemainingOnCurrent != null && g.woundsRemainingOnCurrent < g.stats.W; };
+  // Ordem inicial (já válida): não-characters feridos, não-characters, characters.
+  let order = groups.map(g => g.key).sort((a, b) => {
+    const rank = k => isCharacterGroup(k) ? 2 : (isWounded(k) ? 0 : 1);
+    return rank(a) - rank(b);
+  });
+  function swapValid(i, j) {
+    const t = order.slice();
+    [t[i], t[j]] = [t[j], t[i]];
+    return allocOrderIsValid(t, groups);
+  }
   function draw() {
     wrap.innerHTML = "";
     order.forEach((key, i) => {
@@ -4927,10 +5043,10 @@ function renderAllocOrderPicker(groups, onConfirm) {
       const row = el("div", { class: "allocgroup" });
       row.appendChild(el("span", { text: (i + 1) + ". " + g.label + " (vivos: " + g.liveCount + ", W:" + g.stats.W + ")" }));
       const btns = el("div", { class: "row" }); btns.style.gap = "4px";
-      const up = el("button", { class: "small", text: "↑" }); up.disabled = i === 0;
-      up.onclick = () => { if (i > 0) { [order[i - 1], order[i]] = [order[i], order[i - 1]]; draw(); } };
-      const down = el("button", { class: "small", text: "↓" }); down.disabled = i === order.length - 1;
-      down.onclick = () => { if (i < order.length - 1) { [order[i], order[i + 1]] = [order[i + 1], order[i]]; draw(); } };
+      const up = el("button", { class: "small", text: "↑" }); up.disabled = i === 0 || !swapValid(i - 1, i);
+      up.onclick = () => { if (!up.disabled) { [order[i - 1], order[i]] = [order[i], order[i - 1]]; draw(); } };
+      const down = el("button", { class: "small", text: "↓" }); down.disabled = i === order.length - 1 || !swapValid(i, i + 1);
+      down.onclick = () => { if (!down.disabled) { [order[i], order[i + 1]] = [order[i + 1], order[i]]; draw(); } };
       btns.appendChild(up); btns.appendChild(down);
       row.appendChild(btns);
       wrap.appendChild(row);

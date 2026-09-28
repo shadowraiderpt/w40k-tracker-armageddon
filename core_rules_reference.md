@@ -80,7 +80,10 @@ Um 1 não modificado falha sempre. Um 6 não modificado é sempre critical wound
 
 ### Modificadores e Cobertura (secção 13.08, 11ª edição)
 
-* Hit rolls e wound rolls nunca podem ser modificados mais de -1/+1 no total, seja qual for o número de fontes a somar.
+* Hit rolls e wound rolls nunca podem ser modificados mais de -1/+1 no total, seja qual for o número de fontes a somar. As alterações à CARACTERÍSTICA BS/WS (ex: cobertura, Plunging Fire) não contam para este limite.
+* **MONSTER/VEHICLE engaged a disparar** com uma arma que não seja [CLOSE-QUARTERS]: -1 ao hit roll.
+* **[HEAVY]:** +1 ao hit roll (só se a unidade estiver unengaged, não tiver entrado em jogo neste turno e nenhum modelo se tiver movido mais de 3").
+* **[ANTI-X Y+]:** um wound roll não modificado de Y+ é critical wound e é sempre sucesso.
 * Benefit of cover: piora o BS do ataque em 1 (i.e. -1 ao hit roll de quem dispara contra a unidade em cobertura). Não mexe no save — isto é diferente da 10ª edição, onde a cobertura dava +1 ao save.
 
 ### Passo 3 — Save Rolls
@@ -159,16 +162,16 @@ Um battle-shock roll é um leadership roll: 2D6, compara com o LD da unidade.
 |**\[CLOSE-QUARTERS]**|Permite close-quarters shooting; idêntico a \[PISTOL]|
 |**Deadly Demise X**|Ao morrer, rola 1D6; num 6, unidades a 6" sofrem X mortal wounds. Em TRANSPORT, resolve-se depois de as unidades embarcadas desembarcarem (11ª).|
 |**Deep Strike** (core, não arma)|Pode fazer ingress move fora de 8" de unidades inimigas|
-|**\[DEVASTATING WOUNDS]**|Critical wound = X mortal wounds direto (X = Damage da arma), sem save, máx. 1 modelo morto por critical wound. Melta + Devastating Wounds: interação por confirmar na 11ª (nenhuma arma do roster atual tem as duas keywords em simultâneo, por isso a app não teve de decidir isto ainda)|
+|**\[DEVASTATING WOUNDS]**|Critical wound = X mortal wounds direto (X = Damage da arma), sem save, máx. 1 modelo morto por critical wound; o excesso perde-se; resolvidos depois do dano normal. Algumas armas só o têm contra certas keywords do alvo (ex: 'Urty syringe do Painboy: só INFANTRY — campo `devastatingWoundsOnlyTargets` na app). Melta + Devastating Wounds: interação por confirmar na 11ª (nenhuma arma do roster atual tem as duas keywords em simultâneo, por isso a app não teve de decidir isto ainda)|
 |**\[EXTRA ATTACKS]**|Ataques adicionais a somar aos da arma principal|
-|**Feel No Pain X+**|Cada ferida perdida: rola 1D6, num X+ não é perdida|
+|**Feel No Pain X+**|Cada vez que um modelo perderia uma wound, rola 1D6; num X+ essa wound não é perdida — é **por ponto de dano, não por morte** (a app ainda trata o FNP por morte — Bug B do Pedido Mestre, à espera da UX aprovada). Âmbito: "this model" = só esse modelo; "models in that unit" = a unidade toda (campo `fnpScope` na app)|
 |**Fights First**|A unidade luta antes das que não têm esta ability|
 |**\[HAZARDOUS]**|Depois de a unidade resolver TODOS os ataques, 1 hazard roll (1D6) por cada arma HAZARDOUS usada — falha em 1-2. Cada falha: 1 mortal wound à unidade; 3 mortal wounds se TODOS os modelos da unidade forem MONSTER/VEHICLE. Mortal wounds alocadas pela regra normal (06.02: não-character já ferido > não-character > character ferido > character) — nunca obrigatoriamente ao portador da arma. Nunca destrói um modelo diretamente. **POR CONFIRMAR no PDF oficial (24.15):** se um CHARACTER anexado dispara a arma, os mortal wounds vão obrigatoriamente para ele? Fontes secundárias divergem|
 |**\[HEAVY]**|+1 ao hit roll se a unidade estiver unengaged, não foi posta em jogo este turno, e nenhum modelo moveu mais de 3"|
 |**\[IGNORES COVER]**|Ignora o benefício de cobertura do alvo (na 11ª, o -1 ao BS do atacante)|
 |**Infiltrators**|Descritivo: pode ser colocada em implantação fora da zona normal, a mais de 8" das unidades inimigas — **confirmar no PDF oficial**|
 |**Leader**|Descritivo: CHARACTER que se pode anexar a uma das unidades listadas na sua datasheet (campo `leader_for` na app)|
-|**\[LETHAL HITS]**|Critical hit pode escolher ferir automaticamente (sem wound roll)|
+|**\[LETHAL HITS]**|Critical hit pode escolher ferir automaticamente (sem wound roll) — é **opcional** ("you can choose"); a app ainda não implementa a escolha (aplica-o sempre). Algumas armas só o têm contra alvos SEM certas keywords (ex: "non-MONSTER/VEHICLE" — campo `lethalHitsExceptTargets` na app)|
 |**Lone Operative X**|Só pode ser alvo de ataques à distância a X" ou menos (12" por defeito) — **confirmar no PDF oficial**|
 |**\[MELTA X]**|Dentro de metade do alcance, +X ao Damage da arma|
 |**\[PISTOL]**|Idêntico a \[CLOSE-QUARTERS]|
@@ -215,7 +218,7 @@ Todos custam 1CP, exceto onde indicado. "Fase" refere-se sempre a "any/your/oppo
 |**Heroic Intervention**|Fim da Charge phase do adversário|Unidade amiga unengaged a 12" de um inimigo (VEHICLE só se for CHARACTER/WALKER) faz uma carga. Modo "Leap to Defend": só pode alvejar quem carregou nesta fase. Modo "Into the Fray" (**+1CP**): resultado de carga acima de 6 passa a 6, e pode alvejar qualquer inimigo a 6"|
 |**Counteroffensive**|**2CP.** Fight step da fase de combate do adversário, logo depois de uma unidade inimiga resolver os ataques dela|Uma unidade amiga elegível para lutar ganha Fights First e tem de ser a próxima a lutar|
 
-**Nota:** o "Explosives" só se aplica a unidades com a keyword EXPLOSIVES ou GRENADES (o Captain, o Chaplain, o Ancient e o Intercessor Squad têm esta keyword nas tuas datasheets). O "Crushing Impact" só se aplica a unidades MONSTER/VEHICLE (o Big Mek Dakkarig, o Wartrakk e o Land Speeder qualificam-se).
+**Nota:** o "Explosives" só se aplica a unidades com a keyword EXPLOSIVES ou GRENADES (o Captain — GRENADES na 11ª —, o Chaplain, o Ancient e o Intercessor Squad têm uma destas keywords nas datasheets). O "Crushing Impact" só se aplica a unidades MONSTER/VEHICLE (o Big Mek Dakkarig, os Wartrakks e o Land Speeder qualificam-se).
 
 \---
 
@@ -233,3 +236,8 @@ estes stratagems" com o texto acima), mas a decisão de usar ou não, e o cálcu
 disponível, continua a ser sempre confirmada pelo utilizador — a app nunca ativa um
 stratagem sozinha.
 
+---
+
+## Leader / Attached Units (por confirmar)
+
+O texto da regra de Leader/Attached Units da 11ª **não está** neste ficheiro. Por isso, as abilities do tipo "enquanto este modelo lidera uma unidade" (Litany of Hate, Mental Fortress, Psychic Hood, Node Lash, Alpha Warrior, Astartes Banner) seguem, por agora, o comportamento anterior da app. Falta o Gonçalo colar o texto oficial (Pedido Mestre, Bug F).

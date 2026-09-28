@@ -3,7 +3,7 @@
 // Também confirma que o ajuste/aura do Wound nunca mexe no limiar do
 // Anti-X (que usa sempre o dado não modificado), como pedido.
 const { test, setFile, assert, assertEqual, run } = require("./tiny-test");
-const { loadApp, addFullUnit, weaponByName } = require("./helpers");
+const { loadApp, addFullUnit, weaponByName , declineHail } = require("./helpers");
 setFile("save-adjust.test.js");
 
 function toSaveStep(win, attacker, weaponName, target, phaseKey) {
@@ -180,16 +180,18 @@ test("BS e hit roll somam-se corretamente: BS -1 (cobertura) + modificador ao ro
   assertEqual(wrap.querySelector(".threshold-number").textContent, "5+");
 });
 
-test("Hit roll: HEAVY +1 e ajuste manual +1 (soma +2) cortam para +1: BS5+ → 4+ (sem corte seria 3+)", () => {
+// (Pedido Mestre 28/09/2026: o Blitzkannon do Dakkarig já não é HEAVY nem BS5+;
+// o teste usa o Shardlauncher dos Termagants — HEAVY, BS4+.)
+test("Hit roll: HEAVY +1 e ajuste manual +1 (soma +2) cortam para +1: BS4+ → 3+ (sem corte seria 2+)", () => {
   const win = loadApp();
-  const atk = addFullUnit(win, "playerA", "Big Mek Dakkarig");
+  const atk = addFullUnit(win, "playerA", "Termagants");
   const tgt = addFullUnit(win, "playerB", "Intercessor Squad");
   win.__state.cycle = win.__emptyCycle();
   const c = win.__state.cycle;
-  c.attackerId = atk.id; c.weaponIdx = weaponByName(win, atk, "shooting", "Blitzkannon"); c.targetId = tgt.id;
-  c.step = 1; c.modelsAttacking = 1; c.heavyStationary = true; c.hitAdjust = 1;
+  c.attackerId = atk.id; c.weaponIdx = weaponByName(win, atk, "shooting", "Shardlauncher"); c.targetId = tgt.id;
+  c.step = 1; c.modelsAttacking = 1; c.attacksRolled = 2; c.heavyStationary = true; c.hitAdjust = 1;
   const wrap = win.renderAttackCycle("shooting");
-  assertEqual(wrap.querySelector(".threshold-number").textContent, "4+");
+  assertEqual(wrap.querySelector(".threshold-number").textContent, "3+");
   assert(/LIMITE ±1: modificadores ao hit roll somam \+2 → aplicado \+1/.test(wrap.textContent));
 });
 
@@ -209,13 +211,13 @@ test("Hit roll: suprimido (-1) e ajuste manual -1 (soma -2) cortam para -1: BS4+
 
 test("Arma PSYCHIC: o aviso cobre os dois controlos (BS e hit roll)", () => {
   const win = loadApp();
-  const atk = addFullUnit(win, "playerA", "Weirdboy");
+  const atk = addFullUnit(win, "playerA", "Librarian");
   const tgt = addFullUnit(win, "playerB", "Intercessor Squad");
-  const w1 = toHitStep(win, atk, "'Eadbanger", tgt, "shooting", { modelsAttacking: 1, bsAdjust: -1 });
+  const w1 = toHitStep(win, atk, "Smite - witchfire", tgt, "shooting", { modelsAttacking: 1, bsAdjust: -1 });
   assert(/Arma PSYCHIC — podes ignorar/.test(w1.textContent), "só o controlo de BS ≠ 0 já devia avisar");
-  const w2 = toHitStep(win, atk, "'Eadbanger", tgt, "shooting", { modelsAttacking: 1, hitAdjust: 1 });
+  const w2 = toHitStep(win, atk, "Smite - witchfire", tgt, "shooting", { modelsAttacking: 1, hitAdjust: 1 });
   assert(/Arma PSYCHIC — podes ignorar/.test(w2.textContent), "só o controlo de hit roll ≠ 0 também");
-  const w0 = toHitStep(win, atk, "'Eadbanger", tgt, "shooting", { modelsAttacking: 1 });
+  const w0 = toHitStep(win, atk, "Smite - witchfire", tgt, "shooting", { modelsAttacking: 1 });
   assert(!/Arma PSYCHIC — podes ignorar/.test(w0.textContent), "sem ajustes, sem aviso");
 });
 
@@ -224,18 +226,19 @@ function toHitStep(win, attacker, weaponName, target, phaseKey, extra) {
   win.__state.cycle = win.__emptyCycle();
   const c = win.__state.cycle;
   c.attackerId = attacker.id; c.weaponIdx = weaponByName(win, attacker, phaseKey, weaponName); c.targetId = target.id;
-  c.step = 1; c.modelsAttacking = 1;
+  c.step = 1; c.modelsAttacking = 1; c.attacksRolled = 3;
   Object.assign(c, extra || {});
+  declineHail(win, attacker, target);
   return win.renderAttackCycle(phaseKey);
 }
 
 test("Arma PSYCHIC com ajuste manual ao Hit ≠ 0: mostra o aviso (sem bloquear o valor)", () => {
   const win = loadApp();
-  const atk = addFullUnit(win, "playerA", "Weirdboy"); // 'Eadbanger é PSYCHIC
+  const atk = addFullUnit(win, "playerA", "Librarian"); // Smite - witchfire é PSYCHIC
   const tgt = addFullUnit(win, "playerB", "Intercessor Squad");
-  let wrap = toHitStep(win, atk, "'Eadbanger", tgt, "shooting");
+  let wrap = toHitStep(win, atk, "Smite - witchfire", tgt, "shooting");
   assert(!/Arma PSYCHIC/.test(wrap.textContent), "sem ajuste manual não devia avisar");
-  wrap = toHitStep(win, atk, "'Eadbanger", tgt, "shooting", { hitAdjust: -1 });
+  wrap = toHitStep(win, atk, "Smite - witchfire", tgt, "shooting", { hitAdjust: -1 });
   assert(/Arma PSYCHIC — podes ignorar os modificadores a BS\/WS e ao hit roll, incluindo cobertura\./.test(wrap.textContent), "com ajuste -1 devia avisar");
   assertEqual(win.__state.cycle.hitAdjust, -1, "o aviso não bloqueia nem altera o valor");
 });
@@ -250,9 +253,9 @@ test("Arma NÃO PSYCHIC com ajuste manual ao Hit: não mostra o aviso PSYCHIC", 
 
 test("Arma PSYCHIC com ajuste +2: mostra SÓ o aviso PSYCHIC, nunca o do limite ±1", () => {
   const win = loadApp();
-  const atk = addFullUnit(win, "playerA", "Weirdboy");
+  const atk = addFullUnit(win, "playerA", "Librarian");
   const tgt = addFullUnit(win, "playerB", "Intercessor Squad");
-  const wrap = toHitStep(win, atk, "'Eadbanger", tgt, "shooting", { hitAdjust: 2 });
+  const wrap = toHitStep(win, atk, "Smite - witchfire", tgt, "shooting", { hitAdjust: 2 });
   assert(!/nunca permite modificar um hit roll/.test(wrap.textContent), "numa arma PSYCHIC o aviso ±1 não devia aparecer");
   assert(/Arma PSYCHIC/.test(wrap.textContent), "aviso PSYCHIC");
 });
@@ -332,9 +335,9 @@ test("Lembrete de Stealth some quando a arma tem [IGNORES COVER]", () => {
 });
 test("Lembrete de Stealth mantém-se com [PSYCHIC] (ignorar é opcional)", () => {
   const win = loadApp();
-  const atk = addFullUnit(win, "playerA", "Weirdboy");
+  const atk = addFullUnit(win, "playerA", "Librarian");
   const tgt = addFullUnit(win, "playerB", "Von Ryan's Leapers");
-  const wrap = toHitStep(win, atk, "'Eadbanger", tgt, "shooting", { modelsAttacking: 1 });
+  const wrap = toHitStep(win, atk, "Smite - witchfire", tgt, "shooting", { modelsAttacking: 1 });
   assert(/Alvo com STEALTH/.test(wrap.textContent));
 });
 
