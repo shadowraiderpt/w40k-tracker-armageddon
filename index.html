@@ -1173,7 +1173,12 @@ function renderRollerBadge(role, rollerName, why) {
 // outro (só o dano parcial no MESMO modelo, entre saves consecutivos,
 // persiste — isso resolveGroupDamage já trata). MELTA (se houver) soma-se
 // a cada instância automaticamente, não é preciso o jogador somar à mão.
+// opts.instanceLabel (opcional, default "save falhado"): esta função é
+// reaproveitada tanto para saves falhados normais como para critical
+// wounds de Devastating Wounds (sem save nenhum) — o texto tem de dizer a
+// coisa certa em cada caso, nunca "save" quando não há save envolvido.
 function renderDamageInstancesCard(opts) {
+  const label = opts.instanceLabel || "save falhado";
   const card = el("div", { class: "card" });
   if (opts.onBack) {
     const backBtn = el("button", { class: "small", text: "← Corrigir passo anterior" });
@@ -1181,19 +1186,19 @@ function renderDamageInstancesCard(opts) {
     backBtn.onclick = opts.onBack;
     card.appendChild(backBtn);
   }
-  card.appendChild(renderRollerBadge("attacker", opts.rollerName, "Roll de Dano — quanto dano cada save falhado causa."));
+  card.appendChild(renderRollerBadge("attacker", opts.rollerName, "Roll de Dano — quanto dano cada " + label + " causa."));
   if (opts.count > 0) {
-    card.appendChild(el("div", { class: "dice-call", text: "🎲 Lança " + opts.count + (opts.count === 1 ? " dado de dano (" : " dados de dano (") + opts.weaponD + ") — um por cada save falhado." }));
+    card.appendChild(el("div", { class: "dice-call", text: "🎲 Lança " + opts.count + (opts.count === 1 ? " dado de dano (" : " dados de dano (") + opts.weaponD + ") — um por cada " + label + "." }));
   }
   if (opts.progressLabel) card.appendChild(el("div", { class: "step-hint", text: opts.progressLabel }));
-  card.appendChild(el("h3", { text: (opts.groupLabel ? opts.groupLabel + " — " : "") + "Dano de cada save falhado (arma com " + statLabel("D") + " variável: " + opts.weaponD + ")" }));
+  card.appendChild(el("h3", { text: (opts.groupLabel ? opts.groupLabel + " — " : "") + "Dano de cada " + label + " (arma com " + statLabel("D") + " variável: " + opts.weaponD + ")" }));
   const meltaNote = opts.meltaBonus ? (" MELTA já soma +" + opts.meltaBonus + " a cada um automaticamente, não incluas isso no valor abaixo.") : "";
-  card.appendChild(el("div", { class: "step-hint", text: "Cada save falhado rola o seu próprio dado de dano — não somes tudo num só número, introduz o resultado de cada rolo." + meltaNote }));
+  card.appendChild(el("div", { class: "step-hint", text: "Cada " + label + " rola o seu próprio dado de dano — não somes tudo num só número, introduz o resultado de cada rolo." + meltaNote }));
   const values = Array(opts.count).fill(1);
   values.forEach((v, i) => {
     const row = el("div", { class: "row" });
     row.style.marginBottom = "6px";
-    row.appendChild(el("label", { text: "Save falhado " + (i + 1) + (opts.maxPerRoll != null ? " (1–" + opts.maxPerRoll + ")" : "") + ":" }));
+    row.appendChild(el("label", { text: label.charAt(0).toUpperCase() + label.slice(1) + " " + (i + 1) + (opts.maxPerRoll != null ? " (1–" + opts.maxPerRoll + ")" : "") + ":" }));
     const inp = el("input", { type: "number" });
     inp.style.width = "70px";
     inp.value = v; inp.min = "1";
@@ -3360,25 +3365,49 @@ function renderAttackCycle(phaseKey) {
           initialValue: c.critWounds,
           onBack: backToWounds,
           roller: "attacker", rollerName: attackerRollerName, rollWhy: "A contar, dos wounds que já rolaste, quantos foram um critical wound.",
-          onConfirm: n => {
-            c.critWounds = n;
-            // Cada critical wound = mais uma instância de dano igual ao D da
-            // arma, sem save — processada pelo MESMO resolveGroupDamage dos
-            // saves falhados normais (nunca "1 crit = 1 modelo morto").
-            const critInstances = Array(n).fill(weapon.D);
-            c.critInstances = critInstances;
-            c.critInstancesByGroup = splitInstancesByGroup(target, critInstances);
-            if (c.wounds - n <= 0) {
-              // Todos os wounds eram críticos — nada de dano normal a
-              // resolver, mas os críticos ainda têm de passar pela cascata
-              // normal de alocação para saber quanto sobra no modelo atual.
-              allocateDamage(target, critInstances);
-              c.manualDamage = 0;
-              c.failedSaves = 0;
-            }
-            render();
-          },
+          onConfirm: n => { c.critWounds = n; render(); },
           confirmLabel: "Confirmar críticos →",
+        }));
+        return wrap;
+      }
+    }
+    // Resolve as instâncias de dano dos criticals (Devastating Wounds) — só
+    // depois de saber quantos há (c.critWounds). Com Damage FIXO, o valor já
+    // é um número e pode preencher-se direto. Com Damage VARIÁVEL (ex: D3),
+    // cada critical wound rola o SEU PRÓPRIO dado — bug corrigido: antes
+    // enchia o array com a string da notação ("D3") em vez de pedir o valor
+    // rolado, e a comparação numérica em resolveGroupDamage falhava sempre
+    // (nenhum modelo morria). Reaproveita o mesmo cartão já usado para saves
+    // falhados com Damage variável (renderDamageInstancesCard/step 4.5) —
+    // pergunta-se sempre, mesmo contra alvos W1, porque o valor exato conta
+    // para o Feel No Pain e para o dano acumulado no modelo atual.
+    if (isDevWounds && c.critWounds !== null && c.critInstances === null) {
+      const n = c.critWounds;
+      const finishCritInstances = instances => {
+        c.critInstances = instances;
+        c.critInstancesByGroup = splitInstancesByGroup(target, instances);
+        if (c.wounds - n <= 0) {
+          // Todos os wounds eram críticos — nada de dano normal a resolver,
+          // mas os críticos ainda têm de passar pela cascata normal de
+          // alocação para saber quanto sobra no modelo atual.
+          allocateDamage(target, instances);
+          c.manualDamage = 0;
+          c.failedSaves = 0;
+        }
+      };
+      if (n === 0 || dmgInfo.fixed) {
+        finishCritInstances(Array(n).fill(dmgInfo.fixed ? dmgInfo.value : 0));
+      } else {
+        wrap.appendChild(renderDamageInstancesCard({
+          onBack: () => { c.critWounds = null; render(); },
+          rollerName: attackerRollerName,
+          instanceLabel: "critical wound",
+          weaponD: weapon.D,
+          meltaBonus: 0,
+          count: n,
+          maxPerRoll: maxOfDiceNotation(weapon.D),
+          confirmLabel: "Confirmar dano dos críticos →",
+          onConfirm: values => { finishCritInstances(values); render(); },
         }));
         return wrap;
       }
