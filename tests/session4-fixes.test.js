@@ -125,22 +125,46 @@ test("Bug6 (revisto): Bigboss tem Big Choppa [PRECISION] A5 S7 AP-2 D2 e Sumfin'
   assertEqual(win.unitAuraBonus(bigboss, "meleeHitBonus"), 1, "Sumfin' to Prove: +1 ao hit roll melee");
 });
 
-// --- Bug 7: Hyper Regeneration (Psychophage) -------------------------------
-test("Bug7: Hyper Regeneration oferece FNP 6+ (tipo ask) a unidades Tyranids amigas, nunca ao próprio Psychophage", () => {
+// --- Bug 7 (mecanismo fnpAura, campo injetado) ------------------------------
+// Pedido 28/09: o Hyper Regeneration do Psychophage não existe na 11ª + errata,
+// por isso a datasheet já não tem fnpAura. O mecanismo (aura de FNP a outras
+// unidades Tyranids amigas, sempre condicional/"ask") mantém-se no código e é
+// testado injetando o campo na datasheet em memória.
+function injectFnpAura(win) {
+  win.findDatasheet(win.__library, "Psychophage").fnpAura = { value: 6, range: 6 };
+}
+test("Bug7 (mecanismo, campo injetado): fnpAura oferece FNP 6+ (tipo ask) a unidades Tyranids amigas, nunca ao próprio portador", () => {
   const win = loadApp();
-  addFullUnit(win, "playerA", "Psychophage");
+  injectFnpAura(win);
+  const psy = addFullUnit(win, "playerA", "Psychophage");
   const gauntsReal = addFullUnit(win, "playerA", "Neurogaunts");
   const gaunts = win.findInstance(gauntsReal.id);
   const fnp = win.feelNoPainFor(gaunts);
-  assert(fnp && fnp.value === 6 && fnp.condition && fnp.condition.type === "ask", "Neurogaunts deviam ter uma FNP 6+ condicional (aura do Psychophage)");
+  assert(fnp && fnp.value === 6 && fnp.condition && fnp.condition.type === "ask", "Neurogaunts deviam ter uma FNP 6+ condicional (aura)");
+  // o próprio Psychophage mantém o seu FNP 5+ e não recebe a aura de si próprio
+  assertEqual(win.feelNoPainFor(win.findInstance(psy.id)).value, 5);
 });
 
-test("Bug7: a aura de Hyper Regeneration não se aplica a unidades não-Tyranids", () => {
+test("Bug7 (mecanismo, campo injetado): a fnpAura não se aplica a unidades não-Tyranids", () => {
   const win = loadApp();
+  injectFnpAura(win);
   addFullUnit(win, "playerA", "Psychophage");
   const intercessorsReal = addFullUnit(win, "playerA", "Intercessor Squad");
   const intercessors = win.findInstance(intercessorsReal.id);
   assertEqual(win.feelNoPainFor(intercessors), null, "Space Marines não têm Feel No Pain nenhuma e não deviam ganhar a aura Tyranid");
+});
+
+test("Psychophage 11ª + errata: sem Hyper Regeneration/fnpAura (Neurogaunts sem FNP); mantém FNP 5+ e Deadly Demise 1; keywords MONSTER e SMOKE", () => {
+  const win = loadApp();
+  const ds = win.findDatasheet(win.__library, "Psychophage");
+  assert(!ds.fnpAura && !ds.abilities.join(" ").includes("Hyper Regeneration"), "sem Hyper Regeneration");
+  assertEqual(ds.deadlyDemise, 1);
+  assert(ds.keywords.includes("MONSTER") && ds.keywords.includes("SMOKE"), "MONSTER + SMOKE");
+  assertEqual(ds.source, "Wahapedia 11ª + errata");
+  const psy = addFullUnit(win, "playerA", "Psychophage");
+  assertEqual(win.feelNoPainFor(win.findInstance(psy.id)).value, 5, "FNP 5+ do próprio modelo");
+  const gaunts = addFullUnit(win, "playerA", "Neurogaunts");
+  assertEqual(win.feelNoPainFor(win.findInstance(gaunts.id)), null, "sem aura para os outros");
 });
 
 // --- Bug 8: Litany of Hate (Chaplain) --------------------------------------

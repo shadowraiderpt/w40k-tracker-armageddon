@@ -430,7 +430,7 @@ const RAW_UNITS = {
       "deathScreamOnHit": "Death Scream: depois de disparar, uma unidade atingida tem de testar Battleshock com -1",
       "deadlyDemise": 1,
       "defaultCount":1},
-    {"name":"Psychophage","points":110,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","keywords":["MONSTER"],
+    {"name":"Psychophage","points":110,"source":"Wahapedia 11ª + errata","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","keywords":["MONSTER","SMOKE"],
       "stats":{"M":"12\"","T":9,"SV":"3+","W":10,"LD":"8+","OC":3},
       "ranged_weapons":[{"name":"Psychoclastic torrent","keywords":["IGNORES COVER","TORRENT"],"range":"12\"","A":"D6","BS":"N/A","S":6,"AP":-1,"D":1}],
       "melee_weapons":[{"name":"Talons and betentacled maw","keywords":["ANTI-PSYKER 4+","DEVASTATING WOUNDS"],"range":"Melee","A":6,"WS":"3+","S":6,"AP":-2,"D":2}],
@@ -438,11 +438,9 @@ const RAW_UNITS = {
         "Core: Deadly Demise 1, Feel No Pain 5+",
         "Faction: Synapse",
         "Bio-stimulus: depois de disparar, uma unidade inimiga atingida sofre +1 AP em ataques corpo-a-corpo Tyranid contra ela até ao fim do turno (só uma vez por turno)",
-        "Feeding Frenzy: +1 ao hit roll corpo-a-corpo contra alvos Below Starting Strength, +1 ao wound roll também se Below Half-strength",
-        "Hyper Regeneration: unidades Tyranids amigas a 6\" ou menos desta ganham Feel No Pain 6+"
+        "Feeding Frenzy: +1 ao hit roll corpo-a-corpo contra alvos Below Starting Strength, +1 ao wound roll também se Below Half-strength"
       ],
       "deadlyDemise": 1,
-      "fnpAura": {"value": 6, "range": 6},
       "defaultCount":1},
     {"name":"Haruspex","points":125,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","pointsTiers":[{"upTo":2,"bySize":{"1":125}},{"from":3,"bySize":{"1":135}}],"keywords":["MONSTER","HARVESTER"],
       "stats":{"M":"8\"","T":11,"SV":"3+","W":14,"LD":"8+","OC":4},
@@ -1384,7 +1382,9 @@ function findFeelNoPain(abilities) {
 // não só uma feature em falta). type:"weapon_keyword" é verificável sozinha
 // pela app (a arma atacante já é conhecida); type:"ask" é uma condição
 // física que só o jogador sabe, perguntada uma vez por ataque.
-// Hyper Regeneration (Psychophage) e semelhantes: aura de Feel No Pain a
+// (Nenhuma datasheet 11ª usa fnpAura neste momento — o Hyper Regeneration do
+// Psychophage não existe na 11ª + errata; o mecanismo mantém-se e é testado
+// injetando o campo em memória.) fnpAura: aura de Feel No Pain a
 // OUTRAS unidades amigas dentro de X" — ao contrário do InvSv aura (que só
 // propaga dentro da MESMA Attached Unit, sempre "juntos" por definição),
 // isto depende de posição física entre unidades diferentes, que a app não

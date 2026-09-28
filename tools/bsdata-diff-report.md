@@ -82,10 +82,6 @@ Gerado em 2026-09-28 a partir de `C:\Users\UTILIZ~1\AppData\Local\Temp\bsdata_tm
 - ability só no BSData: Speednob Support
 - ability só no BSData: Bust 'Em
 
-## Psychophage (tyranids)
-
-- ability só na app: Hyper Regeneration
-
 ## Von Ryan's Leapers (tyranids)
 
 - ability só na app: Stealth (nota)
@@ -108,4 +104,4 @@ Gerado em 2026-09-28 a partir de `C:\Users\UTILIZ~1\AppData\Local\Temp\bsdata_tm
 
 ---
 
-Total de diferenças: 57
+Total de diferenças: 56
