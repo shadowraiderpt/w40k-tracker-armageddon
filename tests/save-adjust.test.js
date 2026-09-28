@@ -151,4 +151,42 @@ test("Hit: sem limite no controlo, mas mostra aviso visível quando |ajuste| > 1
   assertEqual(win.__state.cycle.hitAdjust, 2, "o Hit não trava o valor, só avisa");
 });
 
+// --- Aviso [PSYCHIC] no Hit quando há ajuste manual (só avisa, não bloqueia) --
+function toHitStep(win, attacker, weaponName, target, phaseKey, extra) {
+  win.__state.cycle = win.__emptyCycle();
+  const c = win.__state.cycle;
+  c.attackerId = attacker.id; c.weaponIdx = weaponByName(win, attacker, phaseKey, weaponName); c.targetId = target.id;
+  c.step = 1; c.modelsAttacking = 1;
+  Object.assign(c, extra || {});
+  return win.renderAttackCycle(phaseKey);
+}
+
+test("Arma PSYCHIC com ajuste manual ao Hit ≠ 0: mostra o aviso (sem bloquear o valor)", () => {
+  const win = loadApp();
+  const atk = addFullUnit(win, "playerA", "Weirdboy"); // 'Eadbanger é PSYCHIC
+  const tgt = addFullUnit(win, "playerB", "Intercessor Squad");
+  let wrap = toHitStep(win, atk, "'Eadbanger", tgt, "shooting");
+  assert(!/ignora todos os modificadores/.test(wrap.textContent), "sem ajuste manual não devia avisar");
+  wrap = toHitStep(win, atk, "'Eadbanger", tgt, "shooting", { hitAdjust: -1 });
+  assert(/Arma PSYCHIC — ignora todos os modificadores a BS\/WS e ao hit roll, incluindo cobertura\./.test(wrap.textContent), "com ajuste -1 devia avisar");
+  assertEqual(win.__state.cycle.hitAdjust, -1, "o aviso não bloqueia nem altera o valor");
+});
+
+test("Arma NÃO PSYCHIC com ajuste manual ao Hit: não mostra o aviso PSYCHIC", () => {
+  const win = loadApp();
+  const atk = addFullUnit(win, "playerA", "Termagants");
+  const tgt = addFullUnit(win, "playerB", "Intercessor Squad");
+  const wrap = toHitStep(win, atk, "Fleshborer", tgt, "shooting", { hitAdjust: -1 });
+  assert(!/Arma PSYCHIC/.test(wrap.textContent), "Fleshborer não é PSYCHIC");
+});
+
+test("Arma PSYCHIC com ajuste +2: mostra os dois avisos (limite ±1 e PSYCHIC)", () => {
+  const win = loadApp();
+  const atk = addFullUnit(win, "playerA", "Weirdboy");
+  const tgt = addFullUnit(win, "playerB", "Intercessor Squad");
+  const wrap = toHitStep(win, atk, "'Eadbanger", tgt, "shooting", { hitAdjust: 2 });
+  assert(/nunca permite modificar um hit roll mais de -1\/\+1/.test(wrap.textContent), "aviso do limite ±1");
+  assert(/Arma PSYCHIC/.test(wrap.textContent), "aviso PSYCHIC");
+});
+
 run();

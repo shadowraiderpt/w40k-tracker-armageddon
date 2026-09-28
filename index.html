@@ -3253,7 +3253,13 @@ function renderAttackCycle(phaseKey) {
         // edição) — a app não trava o valor (o jogador pode estar a somar
         // vários efeitos que ela não conhece todos), mas avisa sempre que
         // o total ultrapassa esse limite.
-        warning: Math.abs(c.hitAdjust) > 1 ? "Ajuste de " + (c.hitAdjust > 0 ? "+" : "") + c.hitAdjust + " ao hit roll — a 11ª edição nunca permite modificar um hit roll mais de -1/+1 no total. Confirma se isto soma corretamente todas as fontes." : null,
+        // [PSYCHIC] ignora todos os modificadores a BS/WS e ao hit roll (incl.
+        // cobertura) — só avisa quando há ajuste manual, nunca bloqueia (a
+        // app não decide se o ajuste devia ou não aplicar-se).
+        warning: [
+          Math.abs(c.hitAdjust) > 1 ? "Ajuste de " + (c.hitAdjust > 0 ? "+" : "") + c.hitAdjust + " ao hit roll — a 11ª edição nunca permite modificar um hit roll mais de -1/+1 no total. Confirma se isto soma corretamente todas as fontes." : null,
+          (hasKeyword(weapon, "PSYCHIC") && c.hitAdjust !== 0) ? "Arma PSYCHIC — ignora todos os modificadores a BS/WS e ao hit roll, incluindo cobertura." : null,
+        ].filter(Boolean).join(" ") || null,
         threshold: effHitThreshold > 6 ? 999 : effHitThreshold, stepKey: "hits", max: effectiveAttacksMax, countLabel: "Hits",
         rollsDice: true,
         initialValue: c.hits,

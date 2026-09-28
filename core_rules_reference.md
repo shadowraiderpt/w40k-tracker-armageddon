@@ -157,7 +157,7 @@ Um battle-shock roll é um leadership roll: 2D6, compara com o LD da unidade.
 |**\[BLAST]** / **\[BLAST X]**|+1 dado de ataque (ou +X) por cada 5 modelos no alvo (arredondado para baixo)|
 |**\[CLEAVE X]**|Se só houver um alvo selecionado, +X dados de ataque por cada 5 modelos no alvo|
 |**\[CLOSE-QUARTERS]**|Permite close-quarters shooting; idêntico a \[PISTOL]|
-|**Deadly Demise X**|Ao morrer, rola 1D6; num 6, unidades a 6" sofrem X mortal wounds|
+|**Deadly Demise X**|Ao morrer, rola 1D6; num 6, unidades a 6" sofrem X mortal wounds. Em TRANSPORT, resolve-se depois de as unidades embarcadas desembarcarem (11ª).|
 |**Deep Strike** (core, não arma)|Pode fazer ingress move fora de 8" de unidades inimigas|
 |**\[DEVASTATING WOUNDS]**|Critical wound = X mortal wounds direto (X = Damage da arma), sem save, máx. 1 modelo morto por critical wound. Melta + Devastating Wounds: interação por confirmar na 11ª (nenhuma arma do roster atual tem as duas keywords em simultâneo, por isso a app não teve de decidir isto ainda)|
 |**\[EXTRA ATTACKS]**|Ataques adicionais a somar aos da arma principal|
