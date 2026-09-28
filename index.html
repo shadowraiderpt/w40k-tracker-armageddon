@@ -255,15 +255,13 @@ const RAW_UNITS = {
       ],
       "melee_weapons":[{"name":"Master-crafted power weapon","range":"Melee","A":3,"WS":"3+","S":5,"AP":-2,"D":2}],
       "defaultCount":5},
-    {"name":"Eradicator Squad with Heavy Bolters","points":90,"keywords":["INFANTRY"],
-      "abilities":["Total Obliteration: contra alvos MONSTER/VEHICLE, podes re-rolar o hit roll, o wound roll e o Damage"],
-      "totalObliteration":true,
-      "pointsBySize":{"3":90,"6":180},
+    {"name":"Eradicator Squad with Heavy Bolters","points":80,"keywords":["INFANTRY","IMPERIUM","GRAVIS"],
+      "abilities":["Overlapping Detonations: ao ser selecionada para disparar, escolhe 1 unidade inimiga visível que NÃO seja MONSTER/VEHICLE; os heavy bolters que a atacarem têm [BLAST 1]"],
+      "conditionalBlastVsMonsterVehicle":{"weapon":"Heavy bolter","value":1},
       "stats":{"M":"5\"","T":6,"SV":"3+","W":3,"LD":"6+","OC":1},
       "ranged_weapons":[
-        {"name":"Bolt pistol","keywords":["PISTOL"],"range":"12\"","A":1,"BS":"3+","S":4,"AP":0,"D":1},
-        {"name":"Melta rifle","keywords":["HEAVY","MELTA 2"],"range":"18\"","A":1,"BS":"3+","S":9,"AP":-4,"D":6},
-        {"name":"Multi-melta","keywords":["HEAVY","MELTA 2"],"range":"18\"","A":2,"BS":"4+","S":9,"AP":-4,"D":6,"perModels":3,"wargear_note":"1 por cada 3 modelos"}
+        {"name":"Bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"3+","S":4,"AP":0,"D":1},
+        {"name":"Heavy bolter","keywords":["HEAVY","SUSTAINED HITS 1"],"range":"36\"","A":3,"BS":"3+","S":5,"AP":-1,"D":2}
       ],
       "melee_weapons":[{"name":"Close-combat weapon","range":"Melee","A":3,"WS":"3+","S":4,"AP":0,"D":1}],
       "defaultCount":3},
@@ -656,11 +654,7 @@ function weaponBlockedReason(attacker, weapon, phaseKey) {
   return null;
 }
 function maxModelsAttacking(attacker, weapon) {
-  const owners = attackingGroupsFor(attacker, weapon);
-  let total = owners.reduce((s, g) => s + g.liveCount, 0);
-  // weapon.perModels: "1 por cada N modelos" (ex: Multi-melta do Eradicator
-  // Squad) — o teto conta os modelos iniciais do esquadrão, não os vivos.
-  if (typeof weapon.perModels === "number") total = Math.min(total, Math.floor(owners.reduce((s, g) => s + g.initialCount, 0) / weapon.perModels));
+  const total = attackingGroupsFor(attacker, weapon).reduce((s, g) => s + g.liveCount, 0);
   return (typeof weapon.maxModels === "number") ? Math.min(total, weapon.maxModels) : total;
 }
 // HAZARDOUS (11ª edição, core_rules_reference.md): depois de a unidade
@@ -954,7 +948,7 @@ function weaponKeywordNotes(weapon) {
 const BOX_LIMITS = {
   "Captain with Relic Shield": 1, "Librarian": 1, "Chaplain with Jump Pack": 1, "Ancient": 1,
   "Intercessor Squad": 10, "Vanguard Veteran Squad with Jump Packs": 5,
-  "Eradicator Squad with Heavy Bolters": 6, "Land Speeder": 1,
+  "Eradicator Squad with Heavy Bolters": 3, "Land Speeder": 1,
   "Warboss": 1, "Bigboss": 1, "Bannernob": 1, "Painboy": 1, "Weirdboy": 1,
   "Boyz": 20, "Gretchin": 10, "Wartrakk": 1, "Big Mek Dakkarig": 1,
   // Tyranids — miniaturas físicas que o utilizador possui (confirmado com
@@ -1271,9 +1265,14 @@ function datasheetHasUnitKeyword(datasheetName, kw) {
 function targetHasUnitKeyword(target, kw) {
   return target.groups.some(g => datasheetHasUnitKeyword(g.datasheetName, kw));
 }
-// Keywords/estatísticas de arma condicionais ao alvo ou à unidade atacante.
-// (A antiga conditionalBlastVsMonsterVehicle do Eradicator Squad — Overlapping
-// Detonations — foi removida: a datasheet 11ª desta unidade já não a tem.)
+// Overlapping Detonations (Eradicator Squad) e semelhantes: concede uma
+// keyword de arma condicional a uma keyword de UNIDADE do alvo — a app já
+// sabe a datasheet do alvo confirmado, por isso decide isto sozinha (ao
+// contrário de HEAVY/Lethal Hits/Synapse, que dependem de algo físico só o
+// jogador sabe). Devolve o weapon tal como está se não houver nenhuma
+// condição estruturada aplicável, ou uma cópia com a keyword extra incluída.
+// Overlapping Detonations dá BLAST X contra alvos que NÃO são MONSTER/
+// VEHICLE (a regra real é o oposto do que a app tinha antes — corrigido).
 // Soma um bónus fixo a um valor de Strength/Damage que tanto pode ser um
 // número (ex: 1) como notação de dados (ex: "D3", "D6+1") — usado pelo
 // Waaagh! Energy do Weirdboy, que escala S/D com o tamanho do esquadrão.
@@ -1298,6 +1297,12 @@ function conditionalWeaponKeywords(attacker, weapon, target) {
   if (!attacker || !weapon) return weapon;
   for (const name of attacker.datasheetNames) {
     const ds = findDatasheet(library, name);
+    const cond = ds && ds.conditionalBlastVsMonsterVehicle;
+    if (target && cond && cond.weapon === weapon.name && !hasKeyword(weapon, "BLAST")) {
+      if (!targetHasUnitKeyword(target, "MONSTER") && !targetHasUnitKeyword(target, "VEHICLE")) {
+        return Object.assign({}, weapon, { keywords: (weapon.keywords || []).concat(["BLAST " + cond.value]) });
+      }
+    }
     // Waaagh! Energy (Weirdboy): S/D da 'Eadbanger escalam com o Nº de
     // modelos VIVOS da unidade Boyz que lidera, na MESMA ativação (não do
     // alvo) — por isso lê attacker.groups, nunca target. A 10+ modelos
@@ -3060,12 +3065,6 @@ function renderAttackCycle(phaseKey) {
   const symb = state.game.symbioticTarget;
   if (symb && symb.key === phaseInstanceKey() && attacker.faction === "Tyranids" && String(symb.targetId) === String(target.id)) {
     banner.appendChild(el("div", { text: "🎯 Symbiotic Targeting ativo contra esta unidade: podes repetir um hit roll de 1 (só até ao fim desta fase).", style: "font-size:11px;color:var(--gold);margin-top:6px;clear:both;" }));
-  }
-  // TOTAL OBLITERATION (Eradicator Squad): contra alvos MONSTER/VEHICLE pode
-  // re-rolar hit, wound e Damage — só lembrete (re-rolar é físico).
-  const toDs = findDatasheet(library, weapon.sourceDatasheet);
-  if (toDs && toDs.totalObliteration && (targetHasUnitKeyword(target, "MONSTER") || targetHasUnitKeyword(target, "VEHICLE"))) {
-    banner.appendChild(el("div", { text: "🎯 Total Obliteration — podes re-rolar hit, wound e Damage.", style: "font-size:11px;color:var(--gold);margin-top:6px;clear:both;" }));
   }
   wrap.appendChild(banner);
 

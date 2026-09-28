@@ -1,59 +1,10 @@
-// Warboss (Might Is Right, Boss' Ammo Runt, Lethal Hits non-MONSTER/VEHICLE)
-// e Eradicator Squad (Total Obliteration, Multi-melta 1 por cada 3 modelos).
+// Warboss (Might Is Right, Boss' Ammo Runt, Lethal Hits non-MONSTER/VEHICLE).
 const { test, setFile, assert, assertEqual, run } = require("./tiny-test");
 const { loadApp, addFullUnit, weaponByName, setupCycle, diceCallCount, addDummyTarget } = require("./helpers");
-setFile("warboss-eradicator.test.js");
+setFile("warboss.test.js");
 
 function weaponOf(win, unit, phase, name) { return win.weaponsForPhase(unit, phase).find(w => w.name === name); }
 function bigNumber(wrap) { return wrap.querySelector(".threshold-number").textContent; }
-
-// ---------- Eradicator Squad ----------
-test("Eradicators vs Psychophage (MONSTER): mostra o lembrete de Total Obliteration", () => {
-  const win = loadApp();
-  const atk = addFullUnit(win, "playerA", "Eradicator Squad with Heavy Bolters");
-  const tgt = addFullUnit(win, "playerB", "Psychophage");
-  const wrap = setupCycle(win, { attacker: atk, weaponIdx: weaponByName(win, atk, "shooting", "Melta rifle"), target: tgt, phaseKey: "shooting", modelsAttacking: 3 });
-  assert(/Total Obliteration — podes re-rolar hit, wound e Damage\./.test(wrap.textContent), "lembrete devia aparecer contra MONSTER");
-});
-
-test("Eradicators vs Termagants (não M/V): o lembrete NÃO aparece", () => {
-  const win = loadApp();
-  const atk = addFullUnit(win, "playerA", "Eradicator Squad with Heavy Bolters");
-  const tgt = addFullUnit(win, "playerB", "Termagants");
-  const wrap = setupCycle(win, { attacker: atk, weaponIdx: weaponByName(win, atk, "shooting", "Melta rifle"), target: tgt, phaseKey: "shooting", modelsAttacking: 3 });
-  assert(!/Total Obliteration —/.test(wrap.textContent), "lembrete não devia aparecer contra Termagants");
-});
-
-test("Eradicators vs Land Speeder (VEHICLE): lembrete aparece também", () => {
-  const win = loadApp();
-  const atk = addFullUnit(win, "playerA", "Eradicator Squad with Heavy Bolters");
-  const tgt = addFullUnit(win, "playerB", "Land Speeder");
-  const wrap = setupCycle(win, { attacker: atk, weaponIdx: weaponByName(win, atk, "shooting", "Bolt pistol"), target: tgt, phaseKey: "shooting", modelsAttacking: 3 });
-  assert(/Total Obliteration —/.test(wrap.textContent));
-});
-
-test("Eradicators: dados 11e (sem heavy bolter nem Overlapping Detonations)", () => {
-  const win = loadApp();
-  const d = win.findDatasheet(win.__library, "Eradicator Squad with Heavy Bolters");
-  const atk = addFullUnit(win, "playerA", "Eradicator Squad with Heavy Bolters");
-  const shoot = win.weaponsForPhase(atk, "shooting").map(w => w.name);
-  assertEqual(shoot.join(","), "Bolt pistol,Melta rifle,Multi-melta");
-  const mr = weaponOf(win, atk, "shooting", "Melta rifle");
-  assertEqual([mr.S, mr.AP, mr.D, mr.BS].join("/"), "9/-4/6/3+");
-  assert(win.hasKeyword(mr, "MELTA 2") && win.hasKeyword(mr, "HEAVY"));
-  assertEqual(atk.groups[0].stats.T, 6);
-  assertEqual(JSON.stringify(d.pointsBySize), '{"3":90,"6":180}');
-});
-
-test("Multi-melta: 1 por cada 3 modelos (3 modelos → 1 pode disparar, 6 → 2)", () => {
-  const win = loadApp();
-  const atk3 = addFullUnit(win, "playerA", "Eradicator Squad with Heavy Bolters");
-  assertEqual(win.maxModelsAttacking(atk3, weaponOf(win, atk3, "shooting", "Multi-melta")), 1);
-  assertEqual(win.maxModelsAttacking(atk3, weaponOf(win, atk3, "shooting", "Melta rifle")), 3);
-  const win2 = loadApp();
-  const atk6 = addFullUnit(win2, "playerA", "Eradicator Squad with Heavy Bolters", { count: 6 });
-  assertEqual(win2.maxModelsAttacking(atk6, weaponOf(win2, atk6, "shooting", "Multi-melta")), 2);
-});
 
 // ---------- Warboss: Might Is Right ----------
 function fightCycle(win, wb, weaponName, tgt, charged) {

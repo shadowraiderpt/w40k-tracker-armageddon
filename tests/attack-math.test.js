@@ -26,25 +26,25 @@ test("Termagants (10/10, Fleshborer A:1) pede 10 dados de hit roll", () => {
 });
 
 // --- BUG 1: Attacks fixo >1, unidade pequena (A:3 × 3 modelos) ------------
-test("Eradicator Squad (3/3, Melta rifle A:1) pede 3 dados de hit roll", () => {
+test("Eradicator Squad (3/3, Heavy bolter A:3) pede 9 dados de hit roll", () => {
   const win = loadApp();
   const attacker = addFullUnit(win, "playerA", "Eradicator Squad with Heavy Bolters");
   assertEqual(attacker.groups.reduce((s, g) => s + g.liveCount, 0), 3, "squad inicial devia ter 3 modelos vivos");
   const target = freshTargetOnB(win);
-  const weaponIdx = weaponByName(win, attacker, "shooting", "Melta rifle");
+  const weaponIdx = weaponByName(win, attacker, "shooting", "Heavy bolter");
   const wrap = setupCycle(win, { attacker, weaponIdx, target, phaseKey: "shooting", modelsAttacking: 3, heavyStationary: true });
-  assertEqual(diceCallCount(wrap), 3, "3 modelos × A:1 devia pedir 3 dados");
+  assertEqual(diceCallCount(wrap), 9, "3 modelos × A:3 devia pedir 9 dados (não 3)");
 });
 
 // Regressão adicional ao bug 1: reduzir modelsAttacking (ex: 2 dos 3
 // Eradicators fora de alcance) tem de reduzir os dados pedidos também.
-test("Eradicator Squad com só 2/3 a disparar pede 2 dados (não 3)", () => {
+test("Eradicator Squad com só 2/3 a disparar pede 6 dados (não 9)", () => {
   const win = loadApp();
   const attacker = addFullUnit(win, "playerA", "Eradicator Squad with Heavy Bolters");
   const target = freshTargetOnB(win);
-  const weaponIdx = weaponByName(win, attacker, "shooting", "Melta rifle");
+  const weaponIdx = weaponByName(win, attacker, "shooting", "Heavy bolter");
   const wrap = setupCycle(win, { attacker, weaponIdx, target, phaseKey: "shooting", modelsAttacking: 2, heavyStationary: true });
-  assertEqual(diceCallCount(wrap), 2, "2 modelos × A:1 devia pedir 2 dados");
+  assertEqual(diceCallCount(wrap), 6, "2 modelos × A:3 devia pedir 6 dados");
 });
 
 // --- BUG 2: Attacks aleatório, 1 modelo (A:D6) -----------------------------

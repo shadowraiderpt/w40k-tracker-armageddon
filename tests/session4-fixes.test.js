@@ -66,8 +66,18 @@ test("Bug2: perfis alternativos da mesma arma (profileOf) bloqueiam-se mutuament
   assert(win.isWeaponUsed(vanguard.id, win.weaponsForPhase(vanguard, "shooting").find(w => w.name === "Plasma pistol - supercharge")), "Plasma pistol supercharge devia ficar bloqueada depois de usar standard");
 });
 
-// --- Bug 3: Overlapping Detonations foi removida (datasheet 11ª do Eradicator
-// Squad já não tem heavy bolter) — ver warboss-eradicator.test.js.
+// --- Bug 3: Overlapping Detonations tinha a condição invertida ------------
+test("Bug3: Overlapping Detonations dá BLAST 1 contra alvos que NÃO são MONSTER/VEHICLE (não o contrário)", () => {
+  const win = loadApp();
+  const attacker = addFullUnit(win, "playerA", "Eradicator Squad with Heavy Bolters");
+  const rawWeapon = win.weaponsForPhase(attacker, "shooting").find(w => w.name === "Heavy bolter");
+
+  const infantryTarget = addFullUnit(win, "playerB", "Gretchin");
+  assert(win.hasKeyword(win.conditionalWeaponKeywords(attacker, rawWeapon, infantryTarget), "BLAST"), "alvo INFANTRY (não MONSTER/VEHICLE) devia ganhar BLAST 1");
+
+  const monsterTarget = addFullUnit(win, "playerB", "Neurotyrant");
+  assert(!win.hasKeyword(win.conditionalWeaponKeywords(attacker, rawWeapon, monsterTarget), "BLAST"), "alvo MONSTER não devia ganhar BLAST 1");
+});
 
 // --- Bug 4: Alpha Warrior reescrito (buff a outra unidade no Command phase) --
 test("Bug4: Alpha Warrior pergunta no Command phase, aplica-se à unidade escolhida e não repete a pergunta na mesma instância de fase", () => {
