@@ -241,7 +241,7 @@ const RAW_UNITS = {
       ],
       "melee_weapons":[{"name":"Close-combat weapon","range":"Melee","A":5,"WS":"2+","S":4,"AP":0,"D":1}],
       "defaultCount":1, "support_for":["Intercessor Squad"]},
-    {"name":"Intercessor Squad","points":150,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"POR CONFIRMAR — app: 150 (10 modelos); BSData: 80 (5 modelos) (MFM)","keywords":["INFANTRY","EXPLOSIVES"],"stats":{"M":"6\"","T":4,"SV":"3+","W":2,"LD":"6+","OC":2},
+    {"name":"Intercessor Squad","points":150,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","pointsBySize":{"5":80,"10":150},"keywords":["INFANTRY","EXPLOSIVES"],"stats":{"M":"6\"","T":4,"SV":"3+","W":2,"LD":"6+","OC":2},
       "abilities":["Hail of Bolts: ao ser selecionada para disparar, escolhe até 1 unidade inimiga visível; os Bolt rifles que a atacarem têm +2 Attacks"],
       "hailOfBolts":{"weapon":"Bolt rifle","attacks":2},
       "ranged_weapons":[
@@ -287,7 +287,7 @@ const RAW_UNITS = {
       "defaultCount":1}
   ],
   orks: [
-    {"name":"Warboss","points":85,"source":"Faction Pack Orks (11ª) | Wahapedia 11ª | BSData 11ª","verifiedAt":"2026-09-28","pointsSource":"POR CONFIRMAR — app: 85; BSData: 100 (MFM)","keywords":["INFANTRY","CHARACTER"],"stats":{"M":"6\"","T":6,"SV":"4+","InvSV":"5+","W":6,"LD":"6+","OC":1},
+    {"name":"Warboss","points":100,"source":"Faction Pack Orks (11ª) | Wahapedia 11ª | BSData 11ª","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","keywords":["INFANTRY","CHARACTER"],"stats":{"M":"6\"","T":6,"SV":"4+","InvSV":"5+","W":6,"LD":"6+","OC":1},
       "abilities":[
         "Might Is Right: se a unidade fez charge move este turno, os ataques melee DESTE modelo têm +3 Attacks e +2 Strength",
         "Boss' Ammo Runt: 1x por batalha por unidade, ao ser selecionada para disparar, os ataques ranged deste modelo têm +1 ao hit roll"
@@ -308,19 +308,19 @@ const RAW_UNITS = {
         {"name":"Power klaw","range":"Melee","A":6,"WS":"2+","S":12,"AP":-2,"D":2}
       ],
       "defaultCount":1, "leader_for":["Boyz"]},
-    {"name":"Bigboss","points":55,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"POR CONFIRMAR — app: 55; BSData: 50 (MFM)","keywords":["INFANTRY","CHARACTER"],"stats":{"M":"6\"","T":5,"SV":"4+","W":5,"LD":"7+","OC":1},
+    {"name":"Bigboss","points":50,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","keywords":["INFANTRY","CHARACTER"],"stats":{"M":"6\"","T":5,"SV":"4+","W":5,"LD":"7+","OC":1},
       "abilities":["Sumfin' to Prove: os ataques melee da unidade têm +1 ao hit roll (permanente)"],
       "meleeHitBonus":1,
       "ranged_weapons":[{"name":"Slugga","keywords":["CLOSE-QUARTERS","LETHAL HITS"],"lethalHitsExceptTargets":["MONSTER","VEHICLE"],"range":"12\"","A":1,"BS":"5+","S":4,"AP":0,"D":1}],
       "melee_weapons":[{"name":"Big Choppa","keywords":["PRECISION"],"range":"Melee","A":5,"WS":"3+","S":7,"AP":-2,"D":2}],
       "defaultCount":1, "support_for":["Boyz"]},
-    {"name":"Bannernob","points":50,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"POR CONFIRMAR — app: 50; BSData: 35 (MFM)","keywords":["INFANTRY","CHARACTER"],
+    {"name":"Bannernob","points":35,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","keywords":["INFANTRY","CHARACTER"],
       "abilities":["Waaagh! Banner: +1 aos charge rolls (só informativo)"],
       "stats":{"M":"6\"","T":5,"SV":"4+","W":4,"LD":"7+","OC":3},
       "ranged_weapons":[{"name":"Shoota","keywords":["LETHAL HITS","RAPID FIRE 1"],"lethalHitsExceptTargets":["MONSTER","VEHICLE"],"range":"18\"","A":2,"BS":"5+","S":4,"AP":0,"D":1}],
       "melee_weapons":[{"name":"Kustom Choppa","range":"Melee","A":4,"WS":"3+","S":5,"AP":-2,"D":2}],
       "defaultCount":1, "support_for":["Boyz"]},
-    {"name":"Painboy","points":90,"source":"Wahapedia 11ª | BSData 11ª","verifiedAt":"2026-09-28","pointsSource":"POR CONFIRMAR — app: 90; BSData: 45 (MFM)","keywords":["INFANTRY","CHARACTER"],
+    {"name":"Painboy","points":45,"source":"Wahapedia 11ª | BSData 11ª","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","keywords":["INFANTRY","CHARACTER"],
       "abilities":["Crude Surgery: no Command phase, a unidade cura 3 wounds (só informativo)",
         "Catch Dat Red Bit: 1x por batalha por unidade, ao usar Crude Surgery soma D3 às wounds curadas (só informativo; texto do BSData 11ª)"],
       "stats":{"M":"6\"","T":5,"SV":"5+","W":3,"LD":"7+","OC":1},
@@ -334,7 +334,7 @@ const RAW_UNITS = {
       "ranged_weapons":[{"name":"Power Vomit","keywords":["BLAST 1","HAZARDOUS","PSYCHIC","TORRENT"],"range":"12\"","A":3,"BS":"N/A","S":5,"AP":-3,"D":2}],
       "melee_weapons":[{"name":"Copper Staff","keywords":["PSYCHIC"],"range":"Melee","A":3,"WS":"3+","S":8,"AP":-1,"D":2}],
       "defaultCount":1, "support_for":["Boyz"]},
-    {"name":"Boyz","points":75,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"POR CONFIRMAR — app: 75; BSData: 90 (MFM; confirmar também o tamanho da unidade)","keywords":["INFANTRY"],
+    {"name":"Boyz","points":90,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","pointsTiers":[{"upTo":3,"bySize":{"10":90,"20":180}},{"from":4,"bySize":{"10":100,"20":190}}],"keywords":["INFANTRY"],
       "abilities":["Ammo Runts: 1x por batalha, ao ser selecionada para disparar, os ataques ranged da unidade têm +1 ao hit roll",
         "Tide of Muscle: se a unidade fez charge move este turno, as armas melee da unidade têm LETHAL HITS"],
       "lethalHitsOnCharge":"Tide of Muscle: melee weapons gain LETHAL HITS in turn this unit made a charge move",
@@ -362,14 +362,14 @@ const RAW_UNITS = {
       "ranged_weapons":[{"name":"Grot Blasta","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"4+","S":3,"AP":0,"D":1}],
       "melee_weapons":[{"name":"Scavenged Shivs","range":"Melee","A":1,"WS":"5+","S":2,"AP":0,"D":1}],
       "defaultCount":10},
-    {"name":"Wartrakks","points":60,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"POR CONFIRMAR — app: 60; BSData: 70 (MFM)","keywords":["VEHICLE"],"stats":{"M":"12\"","T":6,"SV":"4+","InvSV":"6+","W":7,"LD":"7+","OC":3},
+    {"name":"Wartrakks","points":70,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","pointsBySize":{"1":70,"2":130},"keywords":["VEHICLE"],"stats":{"M":"12\"","T":6,"SV":"4+","InvSV":"6+","W":7,"LD":"7+","OC":3},
       "ranged_weapons":[
         {"name":"Kustom Shoota","keywords":["LETHAL HITS","RAPID FIRE 2"],"lethalHitsExceptTargets":["MONSTER","VEHICLE"],"range":"18\"","A":4,"BS":"5+","S":4,"AP":0,"D":1},
         {"name":"Multi-busta Launcha","range":"24\"","A":"D3+3","BS":"5+","S":10,"AP":-2,"D":3}
       ],
       "melee_weapons":[{"name":"Kustom Choppa","range":"Melee","A":4,"WS":"3+","S":5,"AP":-2,"D":2}],
       "defaultCount":1},
-    {"name":"Big Mek Dakkarig","points":115,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"POR CONFIRMAR — app: 115; BSData: 135 (MFM)","keywords":["VEHICLE","CHARACTER"],"stats":{"M":"8\"","T":8,"SV":"3+","InvSV":"5+","W":11,"LD":"7+","OC":3},
+    {"name":"Big Mek Dakkarig","points":135,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","pointsTiers":[{"upTo":2,"bySize":{"1":135}},{"from":3,"bySize":{"1":145}}],"keywords":["VEHICLE","CHARACTER"],"stats":{"M":"8\"","T":8,"SV":"3+","InvSV":"5+","W":11,"LD":"7+","OC":3},
       "abilities":["Blitz Dem Gitz!: o Blitzkannon tem +6 Attacks contra alvos que NÃO sejam MONSTER/VEHICLE",
         "Even More Dakka (\"riled up\" → SUSTAINED HITS 1 — mecânica de facção Orks, só lembrete de texto)"],
       "attacksBonusVsNonMV":{"weapon":"Blitzkannon","attacks":6},
@@ -403,7 +403,7 @@ const RAW_UNITS = {
       // continuam a ser liderados só pelo Neurotyrant.
       "leader_for":["Gargoyles"],
       "defaultCount":1},
-    {"name":"Neurotyrant","points":105,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"POR CONFIRMAR — app: 105; BSData: 130 (MFM)","keywords":["MONSTER","CHARACTER","PSYKER"],
+    {"name":"Neurotyrant","points":130,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","keywords":["MONSTER","CHARACTER","PSYKER"],
       "stats":{"M":"6\"","T":8,"SV":"4+","InvSV":"4+","W":9,"LD":"7+","OC":3},
       "ranged_weapons":[{"name":"Psychic scream","keywords":["IGNORES COVER","PSYCHIC","TORRENT"],"range":"18\"","A":"2D6","BS":"N/A","S":5,"AP":-1,"D":2}],
       "melee_weapons":[{"name":"Neurotyrant claws and lashes","range":"Melee","A":6,"WS":"3+","S":5,"AP":0,"D":1}],
@@ -498,7 +498,7 @@ const RAW_UNITS = {
       "wingedSwarm":true,
       "pointsBySize":{"10":80,"20":155},
       "defaultCount":10},
-    {"name":"Von Ryan's Leapers","points":70,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"POR CONFIRMAR — app: 70; BSData: 55 (MFM)","keywords":["INFANTRY"],
+    {"name":"Von Ryan's Leapers","points":55,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","pointsBySize":{"3":55,"6":105},"keywords":["INFANTRY"],
       "stats":{"M":"10\"","T":5,"SV":"4+","InvSV":"6+","W":3,"LD":"8+","OC":1},
       "ranged_weapons":[],
       "melee_weapons":[{"name":"Leaper's talons","range":"Melee","A":6,"WS":"3+","S":5,"AP":-1,"D":1}],
@@ -526,7 +526,7 @@ const RAW_UNITS = {
         "Skulking Horrors: se um inimigo terminar um movimento a 8\" desta unidade (e ela não estiver em combate), pode fazer um movimento normal de até D6\""
       ],
       "defaultCount":20},
-    {"name":"Ripper Swarms","points":40,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"POR CONFIRMAR — app: 40; BSData: 30 (MFM; confirmar também o tamanho)","keywords":["SWARM"],
+    {"name":"Ripper Swarms","points":40,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","pointsBySize":{"1":30,"2":40,"3":50},"keywords":["SWARM"],
       "stats":{"M":"6\"","T":2,"SV":"6+","W":4,"LD":"8+","OC":0},
       "ranged_weapons":[{"name":"Spinemaws","keywords":["PISTOL"],"range":"6\"","A":4,"BS":"5+","S":3,"AP":0,"D":1,"wargear_note":"opcional, qualquer modelo"}],
       "melee_weapons":[{"name":"Chitinous claws and teeth","keywords":["SUSTAINED HITS 1"],"range":"Melee","A":6,"WS":"5+","S":2,"AP":0,"D":1}],
@@ -1738,6 +1738,7 @@ function render() {
   root.appendChild(el("h1", { text: "⚔ W40K TRACKER — ARMAGEDDON" }));
   root.appendChild(el("div", { class: "subtitle", text: "Pré-visualização: Setup + sequência do turno (Command → Movement → Shooting → Charge → Fight)" }));
   root.appendChild(el("div", { class: "subtitle", id: "rules-version", text: "Regras: versão de " + RULES_VERSION_DATE + " (dados congelados — atualizados só quando decidido)" }));
+  root.appendChild(el("div", { class: "subtitle", id: "points-version", text: "Pontos: " + POINTS_VERSION }));
   root.appendChild(el("div", { class: "devbanner", text:
     "⚠ Pré-visualização em JavaScript puro para validar o fluxo antes de construir a app completa em React+Vite (é preciso instalar Node.js para esse passo). " +
     "O estado grava-se sozinho neste dispositivo (localStorage) e a app funciona offline depois da primeira visita (service worker). Hits/wounds/saves têm ditado por voz (🎤, pt-PT) como alternativa ao clique. Cada fase mostra os Core Stratagems relevantes (referência — a app nunca os ativa sozinha)."
@@ -2745,6 +2746,45 @@ function supportersFor(ds) {
   );
 }
 
+// ---- Pontos (MFM v1.4) -------------------------------------------------------
+// Nunca se multiplica por modelo: usa-se sempre o valor do tamanho exato
+// (pointsBySize). Algumas unidades têm preço por ORDEM de unidade do mesmo
+// datasheet no exército do jogador (pointsTiers: {"upTo":3|"from":4, "bySize":{}}).
+// Fora de qualquer tabela, cai no preço base (`points`) e marca-se com "*".
+const POINTS_VERSION = "MFM v1.4";
+function dsPointsFor(ds, size, rank) {
+  let table = ds.pointsBySize || null;
+  if (ds.pointsTiers) {
+    const tier = ds.pointsTiers.find(t => (t.upTo == null || rank <= t.upTo) && (t.from == null || rank >= t.from));
+    if (tier) table = tier.bySize;
+  }
+  const exact = table ? table[String(size)] : undefined;
+  return exact != null ? { points: exact, exact: true } : { points: ds.points, exact: false };
+}
+// Pontos de UMA unidade do jogador: soma dos componentes (líder, suporte, base);
+// o escalão de cada componente depende de quantas unidades anteriores do jogador
+// contêm o mesmo datasheet.
+function unitPointsFor(player, unit) {
+  const idx = player.units.indexOf(unit);
+  const before = idx < 0 ? player.units : player.units.slice(0, idx);
+  let total = 0, approx = false;
+  unit.datasheetNames.forEach((name, i) => {
+    const ds = findDatasheet(library, name);
+    if (!ds) return;
+    const rank = 1 + before.filter(u => u.datasheetNames.includes(name)).length;
+    const size = unit.groups.filter(g => g.datasheetName === name).reduce((sum, g) => sum + g.initialCount, 0);
+    const r = dsPointsFor(ds, size, rank);
+    total += r.points;
+    if (!r.exact && size !== squadSizing(ds).defaultTotal) approx = true;
+  });
+  return { points: total, approx };
+}
+function playerTotalPoints(player) {
+  return player.units.reduce((sum, u) => sum + unitPointsFor(player, u).points, 0);
+}
+function unitPointsUnconfirmed(unit) {
+  return unit.datasheetNames.map(n => findDatasheet(library, n)).filter(d => d && /^POR CONFIRMAR/.test(d.pointsSource || "")).map(d => d.name + ": " + d.pointsSource);
+}
 function addUnitToPlayer(playerKey, ds, opts) {
   opts = opts || {};
   const player = state.setup[playerKey];
@@ -2783,25 +2823,23 @@ function addUnitToPlayer(playerKey, ds, opts) {
   const isSquadLike = leaderDs != null || supportDs != null || sizing.defaultTotal > 1;
   const needsNumber = existing > 0 || isSquadLike;
 
-  // pointsBySize (opcional): preço exato em tamanhos de esquadrão oficiais
-  // (ex: Gargoyles 10 = 80, 20 = 155); fora dessa tabela mantém-se o preço
-  // base com asterisco (aproximado), como nas outras unidades escaláveis.
-  const exactPoints = ds.pointsBySize && ds.pointsBySize[String(count != null ? count : sizing.defaultTotal)];
-  const points = (leaderDs ? leaderDs.points : 0) + (supportDs ? supportDs.points : 0) + (exactPoints || ds.points);
-
+  // Pontos: ver dsPointsFor/unitPointsFor (tamanho exato + escalão por ordem de
+  // unidade). O valor guardado aqui é o de agora; o ecrã e o total recalculam
+  // sempre (a ordem das unidades pode mudar).
   const inst = {
     id: nextId(),
     datasheetNames,
     faction: ds.faction,
     label: baseLabel + (needsNumber ? " #" + (existing + 1) : ""),
-    points,
-    pointsApprox: customCount && !exactPoints,
-    pointsUnconfirmed: [ds, leaderDs, supportDs].filter(d => d && /^POR CONFIRMAR/.test(d.pointsSource || "")).map(d => d.name + ": " + d.pointsSource),
+    points: 0,
     battleshocked: false,
     disrupted: false,
     groups,
   };
   player.units.push(inst);
+  const pr = unitPointsFor(player, inst);
+  inst.points = pr.points;
+  inst.pointsApprox = pr.approx;
 }
 
 function renderPlayerColumn(side, player) {
@@ -2828,7 +2866,7 @@ function renderPlayerColumn(side, player) {
   row.appendChild(detectedBadge);
   card.appendChild(row);
 
-  const totalPoints = player.units.reduce((sum, u) => sum + u.points, 0);
+  const totalPoints = playerTotalPoints(player);
   const listRow = el("div", { class: "row" });
   listRow.appendChild(el("label", { text: "Unidades escolhidas para o campo de batalha (" + player.units.length + ")", style: "margin:0" }));
   if (player.units.length > 0) listRow.appendChild(el("span", { class: "faction-badge", text: totalPoints + " pts" }));
@@ -2842,17 +2880,19 @@ function renderPlayerColumn(side, player) {
     nameField.value = u.label; nameField.style.fontSize = "13px";
     nameField.oninput = e => { u.label = e.target.value; };
     r.appendChild(nameField);
-    const ptsSpan = el("span", { text: u.points + " pts" + (u.pointsApprox ? "*" : "") + ((u.pointsUnconfirmed && u.pointsUnconfirmed.length) ? " ⚠️" : ""), style: "font-size:11px;color:var(--text-sec);white-space:nowrap;" });
-    if (u.pointsUnconfirmed && u.pointsUnconfirmed.length) ptsSpan.title = "Pontos por confirmar no MFM — " + u.pointsUnconfirmed.join(" | ");
+    const uPts = unitPointsFor(player, u);
+    const uUnconf = unitPointsUnconfirmed(u);
+    const ptsSpan = el("span", { text: uPts.points + " pts" + (uPts.approx ? "*" : "") + (uUnconf.length ? " ⚠️" : ""), style: "font-size:11px;color:var(--text-sec);white-space:nowrap;" });
+    if (uUnconf.length) ptsSpan.title = "Pontos por confirmar no MFM — " + uUnconf.join(" | ");
     r.appendChild(ptsSpan);
     if (u.battleshocked) r.appendChild(renderBattleshockBadge());
     if (u.disrupted) r.appendChild(renderDisruptedBadge());
     r.appendChild(el("button", { class: "small", text: "✕", onclick: () => { player.units = player.units.filter(x => x.id !== u.id); render(); } }));
     ui.appendChild(r);
-    if (u.pointsUnconfirmed && u.pointsUnconfirmed.length) {
-      ui.appendChild(el("div", { text: "⚠️ pontos por confirmar no MFM (" + u.pointsUnconfirmed.join(" | ") + ")", style: "font-size:10px;color:var(--gold);margin-bottom:4px;" }));
+    if (uUnconf.length) {
+      ui.appendChild(el("div", { text: "⚠️ pontos por confirmar no MFM (" + uUnconf.join(" | ") + ")", style: "font-size:10px;color:var(--gold);margin-bottom:4px;" }));
     }
-    if (u.pointsApprox) {
+    if (uPts.approx) {
       ui.appendChild(el("div", { text: "*pontos listados para a composição padrão da datasheet, não escalam com o nº de modelos ajustado", style: "font-size:10px;color:var(--text-sec);margin-bottom:4px;" }));
     }
     u.groups.forEach(g => {

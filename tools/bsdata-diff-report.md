@@ -58,19 +58,6 @@ Gerado em 2026-09-28 a partir de `C:\Users\UTILIZ~1\AppData\Local\Temp\bsdata_tm
 ## Warboss (orks)
 
 - ability só no BSData: Intimidating Motivation (Once per battle round, per army)
-- pontos: 85 → 100
-
-## Bigboss (orks)
-
-- pontos: 55 → 50
-
-## Bannernob (orks)
-
-- pontos: 50 → 35
-
-## Painboy (orks)
-
-- pontos: 90 → 45
 
 ## Weirdboy (orks)
 
@@ -86,7 +73,6 @@ Gerado em 2026-09-28 a partir de `C:\Users\UTILIZ~1\AppData\Local\Temp\bsdata_tm
 - arma (melee) só no BSData: Kustom Choppa
 - arma (melee) só no BSData: Power Klaw
 - ability só no BSData: Never Too Busy to Fight
-- pontos: 75 → 90
 
 ## Gretchin (orks)
 
@@ -96,15 +82,6 @@ Gerado em 2026-09-28 a partir de `C:\Users\UTILIZ~1\AppData\Local\Temp\bsdata_tm
 
 - ability só no BSData: Speednob Support
 - ability só no BSData: Bust 'Em
-- pontos: 60 → 70
-
-## Big Mek Dakkarig (orks)
-
-- pontos: 115 → 135
-
-## Neurotyrant (tyranids)
-
-- pontos: 105 → 130
 
 ## Psychophage (tyranids)
 
@@ -113,7 +90,6 @@ Gerado em 2026-09-28 a partir de `C:\Users\UTILIZ~1\AppData\Local\Temp\bsdata_tm
 ## Von Ryan's Leapers (tyranids)
 
 - ability só na app: Stealth (nota)
-- pontos: 70 → 55
 
 ## Termagants (tyranids)
 
@@ -133,4 +109,4 @@ Gerado em 2026-09-28 a partir de `C:\Users\UTILIZ~1\AppData\Local\Temp\bsdata_tm
 
 ---
 
-Total de diferenças: 67
+Total de diferenças: 58

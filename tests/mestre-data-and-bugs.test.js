@@ -25,12 +25,14 @@ test("Todas as unidades têm source, verifiedAt e pointsSource; a versão das re
   assert(/Regras: versão de 2026-09-28/.test(win.document.getElementById("rules-version").textContent));
 });
 
-test("Pontos por confirmar: ⚠️ aparece nas unidades com pointsSource POR CONFIRMAR e não nas outras", () => {
+test("Pontos por confirmar: o ⚠️ aparece só nas unidades cujo pointsSource começa por POR CONFIRMAR (mecanismo; as 11 do MFM v1.4 já não têm)", () => {
   const win = loadApp();
   const wb = addFullUnit(win, "playerA", "Warboss");
   const erad = addFullUnit(win, "playerA", "Eradicator Squad with Heavy Bolters");
-  assert(win.findRealUnit(wb.id).pointsUnconfirmed.length === 1);
-  assert(win.findRealUnit(erad.id).pointsUnconfirmed.length === 0);
+  assertEqual(win.unitPointsUnconfirmed(wb).length, 0, "Warboss confirmado no MFM v1.4");
+  win.findDatasheet(win.__library, "Eradicator Squad with Heavy Bolters").pointsSource = "POR CONFIRMAR — teste";
+  assertEqual(win.unitPointsUnconfirmed(erad).length, 1);
+  assertEqual(win.unitPointsUnconfirmed(wb).length, 0);
 });
 
 test("Space Marines 11ª: Captain W6 GRENADES; Chaplain Absolvor 18\" D2; Ancient FNP só no modelo; Vanguard plasma supercharge A1; Heavy Flamer IGNORES COVER", () => {
