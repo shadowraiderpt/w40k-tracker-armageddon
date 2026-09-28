@@ -163,7 +163,7 @@ Um battle-shock roll é um leadership roll: 2D6, compara com o LD da unidade.
 |**\[EXTRA ATTACKS]**|Ataques adicionais a somar aos da arma principal|
 |**Feel No Pain X+**|Cada ferida perdida: rola 1D6, num X+ não é perdida|
 |**Fights First**|A unidade luta antes das que não têm esta ability|
-|**\[HAZARDOUS]**|Depois de disparar/lutar, rola 1D6 por cada arma HAZARDOUS usada. Num 1 não modificado: se o modelo for CHARACTER/MONSTER/VEHICLE, a unidade sofre 3 mortal wounds obrigatoriamente alocadas a esse modelo; caso contrário, 1 modelo da unidade equipado com essa arma é destruído diretamente (prioridade: já ferido > não-character > character)|
+|**\[HAZARDOUS]**|Depois de a unidade resolver TODOS os ataques, 1 hazard roll (1D6) por cada arma HAZARDOUS usada — falha em 1-2. Cada falha: 1 mortal wound à unidade; 3 mortal wounds se TODOS os modelos da unidade forem MONSTER/VEHICLE. Mortal wounds alocadas pela regra normal (06.02: não-character já ferido > não-character > character ferido > character) — nunca obrigatoriamente ao portador da arma. Nunca destrói um modelo diretamente|
 |**\[HEAVY]**|+1 ao hit roll se a unidade estiver unengaged, não foi posta em jogo este turno, e nenhum modelo moveu mais de 3"|
 |**\[LETHAL HITS]**|Critical hit pode escolher ferir automaticamente (sem wound roll)|
 |**\[MELTA X]**|Dentro de metade do alcance, +X ao Damage da arma|

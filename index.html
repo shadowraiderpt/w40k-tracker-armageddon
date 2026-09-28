@@ -641,32 +641,34 @@ function maxModelsAttacking(attacker, weapon) {
   const total = attackingGroupsFor(attacker, weapon).reduce((s, g) => s + g.liveCount, 0);
   return (typeof weapon.maxModels === "number") ? Math.min(total, weapon.maxModels) : total;
 }
-// HAZARDOUS: aplica UM resultado de "1" não modificado ao ATACANTE real
-// (nunca ao alvo) — sempre no(s) grupo(s) donos da arma, nunca pela ordem
-// de alocação normal (essa é só para o alvo levar dano de um ataque
-// inimigo). Se o modelo for CHARACTER/MONSTER/VEHICLE: 3 mortal wounds
-// obrigatórias nesse modelo. Caso contrário: destrói 1 modelo diretamente,
-// preferindo um já ferido, depois um não-character, character por último.
-function applyOneHazardousResult(realAttacker, weapon) {
-  const ownerGroups = attackingGroupsFor(realAttacker, weapon).filter(g => g.liveCount > 0);
-  if (ownerGroups.length === 0) return null;
-  const ds = findDatasheet(library, weapon.sourceDatasheet);
-  const isCMV = ds && (ds.keywords || []).some(k => k === "CHARACTER" || k === "MONSTER" || k === "VEHICLE");
-  if (isCMV) {
-    const g = ownerGroups[0];
-    const result = resolveGroupDamage(g, [], [3]);
+// HAZARDOUS (11ª edição, core_rules_reference.md): depois de a unidade
+// resolver TODOS os ataques desta arma, 1 hazard roll (1D6) — falha em
+// 1-2. Cada falha inflige 1 mortal wound à UNIDADE (não só ao modelo que
+// disparou); 3 mortal wounds por falha se TODOS os modelos da unidade
+// forem MONSTER/VEHICLE. As mortal wounds são alocadas pela regra normal
+// (06.02: não-character já ferido > não-character > character ferido >
+// character) — nunca obrigatoriamente ao portador da arma — e nunca
+// destroem um modelo diretamente, é sempre dano normal (respeita W e o
+// dano já acumulado no modelo atual). Cada mortal wound é 1 instância
+// separada (nunca um "pool" só), para poder passar ao próximo modelo/
+// grupo se o atual morrer, tal como qualquer outra mortal wound.
+function hazardousAllMV(realAttacker) {
+  return realAttacker.groups.every(g => datasheetHasUnitKeyword(g.datasheetName, "MONSTER") || datasheetHasUnitKeyword(g.datasheetName, "VEHICLE"));
+}
+function applyHazardousMortalWounds(realAttacker, order, failCount) {
+  const mwPerFail = hazardousAllMV(realAttacker) ? 3 : 1;
+  let instances = Array(failCount * mwPerFail).fill(1);
+  const deadByGroup = {};
+  (order && order.length ? order : realAttacker.groups.map(g => g.key)).forEach(key => {
+    const g = realAttacker.groups.find(gr => gr.key === key);
+    if (!g || instances.length === 0) return;
+    const result = resolveGroupDamage(g, [], instances);
     g.liveCount = result.liveAfter;
     g.woundsRemainingOnCurrent = result.woundsLeftAfter;
-    return { type: "mortal", dead: result.dead, group: g.label };
-  }
-  let victim = ownerGroups.find(g => g.woundsRemainingOnCurrent != null && g.woundsRemainingOnCurrent < g.stats.W);
-  if (!victim) {
-    const nonChar = ownerGroups.filter(g => !datasheetHasUnitKeyword(g.datasheetName, "CHARACTER"));
-    victim = nonChar[0] || ownerGroups[0];
-  }
-  victim.liveCount = Math.max(0, victim.liveCount - 1);
-  victim.woundsRemainingOnCurrent = victim.stats.W;
-  return { type: "destroyed", group: victim.label };
+    deadByGroup[key] = result.dead;
+    instances = instances.slice(result.instancesConsumed);
+  });
+  return { mwTotal: failCount * mwPerFail, mwPerFail, deadByGroup };
 }
 function toHitValue(weapon, phaseKey) {
   return phaseKey === "fight" ? weapon.WS : weapon.BS;
@@ -1605,7 +1607,7 @@ function emptyCycle() {
     // HAZARDOUS: depois de disparar/lutar com uma arma HAZARDOUS, rola 1D6
     // por modelo que a usou — resultados guardados aqui para mostrar no
     // Resultado (nunca afeta o alvo, só a própria unidade atacante).
-    hazardousAsked: null, hazardousResults: [],
+    hazardousAsked: null, hazardousFailCount: null, hazardousAllocOrder: null, hazardousResult: null,
     // HOLD STILL AND SAY AARGH (Painboy, 'Urty syringe): crítico no wound
     // roll contra alvo não-VEHICLE causa D6 mortal wounds extra.
     critMwAsked: null, critMwCritCount: null, critMwRoll: null,
@@ -3655,31 +3657,36 @@ function renderAttackCycle(phaseKey) {
   if (c.step === 5) {
     // HAZARDOUS: resolve-se logo, antes de qualquer coisa que dependa do
     // alvo — é sempre a própria unidade atacante que sofre, nunca o alvo,
-    // e não depende de hits/wounds/danos deste ataque. 1D6 por modelo que
-    // usou a arma (c.modelsAttacking já sabido).
-    if (hasKeyword(weapon, "HAZARDOUS") && c.hazardousAsked === null) {
-      const hazardDs = findDatasheet(library, weapon.sourceDatasheet);
-      const isCMV = hazardDs && (hazardDs.keywords || []).some(k => k === "CHARACTER" || k === "MONSTER" || k === "VEHICLE");
+    // e não depende de hits/wounds/danos deste ataque. 1 hazard roll (1D6)
+    // por arma HAZARDOUS usada, depois de resolvidos todos os ataques desta
+    // arma — falha em 1-2 (c.modelsAttacking já sabido).
+    if (hasKeyword(weapon, "HAZARDOUS") && c.hazardousFailCount === null) {
+      const isAllMV = attacker.groups.every(g => datasheetHasUnitKeyword(g.datasheetName, "MONSTER") || datasheetHasUnitKeyword(g.datasheetName, "VEHICLE"));
       wrap.appendChild(renderNumberStep({
-        title: "Hazardous — quantos resultados de 1 não modificado saíram?",
-        hint: "☠️ " + weapon.name + " tem HAZARDOUS: depois de disparar/lutar, rola 1D6 por cada arma usada (" + modelsAttacking + " modelo(s) usaram-na). Em cada 1: " + (isCMV ? "a unidade sofre 3 mortal wounds, obrigatoriamente no modelo que usou a arma." : "1 modelo desta unidade equipado com a arma é destruído diretamente (prioridade: já ferido > não-character > character)."),
-        threshold: 2, invertThreshold: true, stepKey: "hazardous", max: modelsAttacking, countLabel: "Resultados de 1",
+        title: "Hazardous — quantos resultados de 1-2 não modificados saíram?",
+        hint: "☠️ " + weapon.name + " tem HAZARDOUS: depois de resolver todos os ataques desta arma, rola 1D6 por cada arma usada (" + modelsAttacking + " modelo(s) usaram-na) — falha em 1-2. Cada falha: " + (isAllMV ? "a unidade sofre 3 mortal wounds (todos os modelos são MONSTER/VEHICLE)." : "a unidade sofre 1 mortal wound.") + " Alocadas pela regra normal (não-character já ferido > não-character > character ferido > character) — nunca obrigatoriamente ao modelo que disparou, e nunca destrói um modelo diretamente.",
+        threshold: 3, invertThreshold: true, stepKey: "hazardous", max: modelsAttacking, countLabel: "Resultados de 1-2",
         rollsDice: true,
         roller: "attacker", rollerName: attackerRollerName, rollWhy: "Hazard roll — depois de usar uma arma HAZARDOUS.",
-        onConfirm: n => {
-          const realAttacker = findRealUnit(attacker.id);
-          const results = [];
-          for (let i = 0; i < n; i++) {
-            const r = realAttacker ? applyOneHazardousResult(realAttacker, weapon) : null;
-            if (r) results.push(r);
-          }
-          c.hazardousResults = results;
-          c.hazardousAsked = true;
-          render();
-        },
+        onConfirm: n => { c.hazardousFailCount = n; render(); },
         confirmLabel: "Confirmar Hazardous →",
       }));
       return wrap;
+    }
+    if (hasKeyword(weapon, "HAZARDOUS") && c.hazardousFailCount > 0 && !c.hazardousAsked) {
+      const realAttacker = findRealUnit(attacker.id);
+      if (realAttacker.groups.length > 1 && c.hazardousAllocOrder === null) {
+        const card = el("div", { class: "card" });
+        card.appendChild(el("h2", { text: "Hazardous — ordem de alocação das mortal wounds" }));
+        card.appendChild(el("div", { class: "step-hint", text: attacker.label + " tem mais que um grupo. Declara a ordem — grupos não-character já feridos primeiro, characters sempre por último (06.02)." }));
+        card.appendChild(renderAllocOrderPicker(realAttacker.groups, order => { c.hazardousAllocOrder = order; render(); }));
+        wrap.appendChild(card);
+        return wrap;
+      }
+      c.hazardousResult = realAttacker ? applyHazardousMortalWounds(realAttacker, c.hazardousAllocOrder, c.hazardousFailCount) : null;
+      c.hazardousAsked = true;
+    } else if (hasKeyword(weapon, "HAZARDOUS") && c.hazardousFailCount === 0 && !c.hazardousAsked) {
+      c.hazardousAsked = true;
     }
 
     // HOLD STILL AND SAY AARGH (Painboy, 'Urty syringe): um critical wound
@@ -3988,17 +3995,15 @@ function renderAttackCycle(phaseKey) {
         : "☠️ Deadly Demise " + deadlyDemiseX + ": rolaste " + c.deadlyDemiseRoll + " — sem efeito.",
         style: "color:var(--gold);font-weight:600;" }));
     }
-    if (c.hazardousAsked && c.hazardousResults.length > 0) {
-      c.hazardousResults.forEach(r => {
-        card.appendChild(el("div", {
-          text: r.type === "mortal"
-            ? "☠️ Hazardous: 3 mortal wounds em " + r.group + (r.dead ? " — modelo destruído." : ".")
-            : "☠️ Hazardous: 1 modelo de " + r.group + " destruído diretamente.",
-          style: "color:var(--gold);font-weight:600;",
-        }));
-      });
+    if (c.hazardousAsked && c.hazardousResult && c.hazardousResult.mwTotal > 0) {
+      const hr = c.hazardousResult;
+      const totalDeadHazard = Object.values(hr.deadByGroup).reduce((a, b) => a + b, 0);
+      card.appendChild(el("div", {
+        text: "☠️ Hazardous: " + hr.mwTotal + " mortal wound(s) no total (" + hr.mwPerFail + " por falha) — " + totalDeadHazard + " modelo(s) de " + attacker.label + " destruído(s).",
+        style: "color:var(--gold);font-weight:600;",
+      }));
     } else if (c.hazardousAsked) {
-      card.appendChild(el("div", { text: "☠️ Hazardous: sem resultados de 1 — sem efeito.", style: "color:var(--text-sec);" }));
+      card.appendChild(el("div", { text: "☠️ Hazardous: sem resultados de 1-2 — sem efeito.", style: "color:var(--text-sec);" }));
     }
     const totalText = critDamageDisplay !== null ? ((critDamageDisplay + normalDamage) + " dano total") : "dano total variável";
     const res = el("div", { class: "result final", text: totalText + " → " + totalDead + " modelo(s) morto(s)" });
@@ -4474,7 +4479,7 @@ function renderPicker(instances, phaseKey) {
     c.deathScreamAsked = null; c.disruptionApplied = null;
     c.modelsAttacking = null;
     c.deadlyDemiseAsked = null; c.deadlyDemiseRoll = null; c.deadlyDemiseTriggered = false;
-    c.hazardousAsked = null; c.hazardousResults = [];
+    c.hazardousAsked = null; c.hazardousFailCount = null; c.hazardousAllocOrder = null; c.hazardousResult = null;
     c.critMwAsked = null; c.critMwCritCount = null; c.critMwRoll = null;
     c.symbioticApplied = false; c.grislySelected = null; c.grislyAsked = false; c.suppressApplied = false;
     c.saboteurHit = null; c.saboteurWound = null; c.feederApplied = false;
