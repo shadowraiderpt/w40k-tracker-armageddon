@@ -112,10 +112,43 @@ test("Anti-X: o limiar de crítico (Devastating Wounds) não muda com ajuste man
   const textNoAdjust = wrapNoAdjust.textContent;
   assert(/≥4/.test(textNoAdjust), 'sem ajuste devia pedir "≥4": ' + textNoAdjust.slice(0, 300));
 
-  c.woundAdjust = 2; // ajuste manual grande ao ferir, aplicado ANTES deste passo
+  c.woundAdjust = 1; // ajuste manual ao ferir (máximo permitido, ver teste do limite ±1 abaixo)
   const wrapWithAdjust = win.renderAttackCycle("fight");
   const textWithAdjust = wrapWithAdjust.textContent;
   assert(/≥4/.test(textWithAdjust), 'com ajuste ao Wound, o limiar do Anti-X continua "≥4", nunca desloca: ' + textWithAdjust.slice(0, 300));
+});
+
+// --- Item 1 (consolidado): Wound travado a ±1, Hit sem limite mas avisado --
+test("Wound: o controlo de ajuste manual está travado a ±1 (regra 11ª: nunca modificado mais)", () => {
+  const win = loadApp();
+  const atk = addFullUnit(win, "playerA", "Termagants");
+  const tgt = addFullUnit(win, "playerB", "Intercessor Squad");
+  win.__state.cycle = win.__emptyCycle();
+  const c = win.__state.cycle;
+  c.attackerId = atk.id; c.weaponIdx = weaponByName(win, atk, "shooting", "Fleshborer"); c.targetId = tgt.id;
+  c.step = 2; c.hits = 3;
+  const wrap = win.renderAttackCycle("shooting");
+  const adjustBtns = Array.from(wrap.querySelectorAll("button")).filter(b => b.textContent === "+");
+  const woundPlus = adjustBtns[0]; // único passo de ajuste nesta tela é o do Wound
+  for (let i = 0; i < 5; i++) woundPlus.click();
+  assertEqual(win.__state.cycle.woundAdjust, 1, "5 cliques em + só deviam levar a +1, nunca mais");
+});
+
+test("Hit: sem limite no controlo, mas mostra aviso visível quando |ajuste| > 1", () => {
+  const win = loadApp();
+  const atk = addFullUnit(win, "playerA", "Termagants");
+  const tgt = addFullUnit(win, "playerB", "Intercessor Squad");
+  win.__state.cycle = win.__emptyCycle();
+  const c = win.__state.cycle;
+  c.attackerId = atk.id; c.weaponIdx = weaponByName(win, atk, "shooting", "Fleshborer"); c.targetId = tgt.id;
+  c.step = 1; c.modelsAttacking = 10;
+  c.hitAdjust = 1;
+  let wrap = win.renderAttackCycle("shooting");
+  assert(!/nunca permite modificar um hit roll/.test(wrap.textContent), "com +1 ainda não devia avisar");
+  c.hitAdjust = 2;
+  wrap = win.renderAttackCycle("shooting");
+  assert(/nunca permite modificar um hit roll mais de -1\/\+1/.test(wrap.textContent), "com +2 devia mostrar o aviso");
+  assertEqual(win.__state.cycle.hitAdjust, 2, "o Hit não trava o valor, só avisa");
 });
 
 run();

@@ -3242,6 +3242,11 @@ function renderAttackCycle(phaseKey) {
         bigNumber: thresholdText(effHitThreshold),
         bonusChips: (heavyBonus ? ["HEAVY: +1 ao acertar"] : []).concat(meleeHitBonusValue ? ["+" + meleeHitBonusValue + " ao acertar (melee, permanente)"] : []).concat(damagedPenaltyValue ? ["DAMAGED: -" + damagedPenaltyValue + " ao acertar"] : []).concat(suppressedPenaltyValue ? ["SUPPRESSED (Indiscriminate Detonations): -1 ao acertar"] : []).concat(engagedPenaltyValue ? ["ENGAGED (MONSTER/VEHICLE, arma não [CLOSE-QUARTERS]): -1 ao acertar"] : []).concat(sabHitPenaltyValue ? ["PSYCHOLOGICAL SABOTEUR: -1 ao acertar"] : []),
         hint: statLabel(hitStat) + ": " + toHitValue(weapon, phaseKey) + (c.hitAdjust ? " · ajuste manual aplicado: " + (c.hitAdjust > 0 ? "+" : "") + c.hitAdjust : "") + attacksBonusSuffix,
+        // Hit roll nunca é modificado mais de -1/+1 no total (regra 11ª
+        // edição) — a app não trava o valor (o jogador pode estar a somar
+        // vários efeitos que ela não conhece todos), mas avisa sempre que
+        // o total ultrapassa esse limite.
+        warning: Math.abs(c.hitAdjust) > 1 ? "Ajuste de " + (c.hitAdjust > 0 ? "+" : "") + c.hitAdjust + " ao hit roll — a 11ª edição nunca permite modificar um hit roll mais de -1/+1 no total. Confirma se isto soma corretamente todas as fontes." : null,
         threshold: effHitThreshold > 6 ? 999 : effHitThreshold, stepKey: "hits", max: effectiveAttacksMax, countLabel: "Hits",
         rollsDice: true,
         initialValue: c.hits,
@@ -3319,7 +3324,10 @@ function renderAttackCycle(phaseKey) {
       rollsDice: true,
       initialValue: woundsRollPrefill,
       onBack: backToHits,
-      adjust: { value: c.woundAdjust, onChange: v => { c.woundAdjust = Math.max(-5, Math.min(5, v)); render(); } },
+      // Wound roll nunca é modificado mais de -1/+1 no total (regra 11ª
+      // edição) — ao contrário do Save (sem este limite), aqui é travado
+      // mesmo, não só avisado.
+      adjust: { value: c.woundAdjust, onChange: v => { c.woundAdjust = Math.max(-1, Math.min(1, v)); render(); } },
       roller: "attacker", rollerName: attackerRollerName, rollWhy: "Roll de ferir (wound roll) — ver se o hit é forte o suficiente para ferir o alvo.",
       onConfirm: n => { c.wounds = n + lethalCrits; c.step = 3; render(); },
       confirmLabel: "Confirmar wounds →",
@@ -4496,6 +4504,11 @@ function renderNumberStep(opts) {
   // partir das MESMAS variáveis que calcularam esse limiar, nunca recalcula
   // nada à parte, por isso nunca pode contradizer o número mostrado.
   if (opts.explainLine) card.appendChild(el("div", { class: "step-hint", text: opts.explainLine, style: "font-size:11px;color:var(--text-sec);margin-top:-4px;margin-bottom:8px;" }));
+  // opts.warning: aviso visível (gold/bold), distinto do explainLine
+  // discreto — usado quando o jogador está prestes a fazer algo que a app
+  // não pode impedir sozinha, mas quer chamar a atenção (ex: ajuste ao Hit
+  // roll acima de ±1, que a 11ª edição não permite, mas o Hit não trava).
+  if (opts.warning) card.appendChild(el("div", { text: "⚠️ " + opts.warning, style: "color:var(--gold);font-weight:600;font-size:12px;margin-bottom:8px;" }));
   if (opts.bonusChips && opts.bonusChips.length) {
     const chipRow = el("div", { class: "bonus-chip-row" });
     opts.bonusChips.forEach(t => chipRow.appendChild(el("span", { class: "bonus-chip", text: t })));
