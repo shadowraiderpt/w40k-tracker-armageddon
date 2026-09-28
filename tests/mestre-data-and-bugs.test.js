@@ -49,12 +49,20 @@ test("Space Marines 11ª: Captain W6 GRENADES; Chaplain Absolvor 18\" D2; Ancien
   assert(win.hasKeyword(weapon(win, ls, "shooting", "Heavy Flamer"), "IGNORES COVER"));
 });
 
-test("Mental Fortress: o Librarian não tem InvSv próprio; a aura 4+ vale para a unidade (sozinho e com líder)", () => {
+test("Mental Fortress (\"while leading\"): sem InvSv próprio; sozinho não há aura; anexado dá 4+ à unidade, mesmo sem escolta viva", () => {
   const win = loadApp();
   const lib = win.findDatasheet(win.__library, "Librarian");
   assert(!lib.stats.InvSV, "InvSv vem do Mental Fortress, não do modelo");
   const solo = addFullUnit(win, "playerA", "Librarian");
-  assertEqual(win.invSvAuraFor(solo).value, 4);
+  assertEqual(win.invSvAuraFor(solo), null, "Bug F regra 2: Leader sozinho não lidera");
+  const win2 = loadApp();
+  win2.addUnitToPlayer("playerA", win2.findDatasheet(win2.__library, "Intercessor Squad"), { leaderDs: win2.findDatasheet(win2.__library, "Librarian") });
+  const unit = win2.__state.setup.playerA.units[0];
+  assertEqual(win2.invSvAuraFor(unit).value, 4);
+  unit.groups.find(g => g.key !== "leader").liveCount = 0; // escolta toda morta
+  assertEqual(win2.invSvAuraFor(unit).value, 4, "regra 1: continua a liderar enquanto vivo");
+  unit.groups.find(g => g.key === "leader").liveCount = 0;
+  assertEqual(win2.invSvAuraFor(unit), null, "Librarian morto: sem aura");
 });
 
 test("Orks 11ª: Bigboss/Bannernob/Painboy/Weirdboy são Support de Boyz (não Leader)", () => {
@@ -155,7 +163,7 @@ test("Hail of Bolts: pergunta ao disparar os Bolt rifles; Sim = +2 A (10 modelos
   assertEqual(diceCallCount(wrap), 20, "Não = sem bónus");
 });
 
-test("Hail of Bolts só afeta os Bolt rifles da Intercessor Squad (não a Bolt pistol nem os do Ancient anexado)", () => {
+test("Hail of Bolts (Bug F regra 3): os Bolt rifles do Ancient anexado também ganham +2 A; a Bolt pistol não", () => {
   const win = loadApp();
   const intDs = win.findDatasheet(win.__library, "Intercessor Squad");
   const ancDs = win.findDatasheet(win.__library, "Ancient");
@@ -169,7 +177,9 @@ test("Hail of Bolts só afeta os Bolt rifles da Intercessor Squad (não a Bolt p
   const byDs = {};
   rifles.forEach(r => { byDs[r.sourceDatasheet] = win.conditionalWeaponKeywords(atk, r, tgt).A; });
   assertEqual(byDs["Intercessor Squad"], 4);
-  assertEqual(byDs["Ancient"], 2, "o Ancient não tem Hail of Bolts");
+  assertEqual(byDs["Ancient"], 4, "ability da unidade: beneficia todos os modelos enquanto houver Intercessors vivos");
+  atk.groups.find(g => g.key !== "support").liveCount = 0;
+  assertEqual(win.conditionalWeaponKeywords(atk, win.weaponsForPhase(atk, "shooting").find(w => w.name === "Bolt rifle" && w.sourceDatasheet === "Ancient"), tgt).A, 2, "sem Intercessors vivos, a ability deixa de valer");
   assertEqual(win.conditionalWeaponKeywords(atk, weapon(win, atk, "shooting", "Bolt pistol"), tgt).A, 1);
 });
 
@@ -217,16 +227,27 @@ test("Bug C: Psychophage com dano letal mas FNP que o salva — Deadly Demise n�
   const atk = addFullUnit(win, "playerA", "Intercessor Squad");
   const tgt = addFullUnit(win, "playerB", "Psychophage");
   const key = tgt.groups[0].key;
-  const setup = () => stepCycle(win, atk, "Bolt pistol", tgt, "shooting", { step: 5, hits: 1, modelsAttacking: 1, deadByGroup: { [key]: 1 }, woundsLeftByGroup: { [key]: 10 } });
-  setup();
-  let wrap = win.renderAttackCycle("shooting");
-  assert(/Feel No Pain .* quantos passaram/.test(wrap.textContent), "FNP vem primeiro");
+  const setup = () => {
+    stepCycle(win, atk, "Bolt pistol", tgt, "shooting", { step: 5, hits: 1, modelsAttacking: 1 });
+    win.allocateDamage(tgt, [10]);   // 1 instância de 10 de dano vs W10: mata
+    return win.renderAttackCycle("shooting");
+  };
+  const answer = n => {
+    const wrap = win.renderAttackCycle("shooting");
+    const inp = wrap.querySelector("input[type=number]");
+    inp.value = String(n); inp.dispatchEvent(new win.Event("input"));
+    const btn = Array.from(wrap.querySelectorAll("button")).find(b => /Confirmar Feel No Pain/.test(b.textContent));
+    btn.click();
+    return win.renderAttackCycle("shooting");
+  };
+  let wrap = setup();
+  assert(/Feel No Pain .* (quantos passaram|sucessos por instância)/.test(wrap.textContent), "FNP vem primeiro");
   assert(!/a unidade foi destruída/.test(wrap.textContent), "Deadly Demise ainda não");
-  win.__state.cycle.fnpSuccesses = 1; win.__state.cycle.deadByGroup = { [key]: 0 };
-  wrap = win.renderAttackCycle("shooting");
+  wrap = answer(10); // 10 sucessos → 0 de dano efetivo
   assert(!/a unidade foi destruída/.test(wrap.textContent), "o FNP salvou o modelo — sem Deadly Demise");
-  setup(); win.__state.cycle.fnpSuccesses = 0;
-  wrap = win.renderAttackCycle("shooting");
+  assertEqual(win.__state.cycle.deadByGroup[key], 0);
+  setup();
+  wrap = answer(0);
   assert(/a unidade foi destruída/.test(wrap.textContent), "sem sucessos de FNP a unidade morre — pergunta o Deadly Demise");
 });
 

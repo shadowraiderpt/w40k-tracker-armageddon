@@ -78,14 +78,7 @@ Gerado em 2026-09-28 a partir de `C:\Users\UTILIZ~1\AppData\Local\Temp\bsdata_tm
 
 ## Boyz (orks)
 
-- arma (ranged) só na app: Kombi-shoota
-- arma (ranged) só na app: Kombi-rokkit
-- arma Kustom shoota — keywords: RAPID FIRE → LETHAL HITS: non-MONSTER/VEHICLE, RAPID FIRE 2
-- arma Kustom shoota — qualificador em falta na app: LETHAL HITS: non-MONSTER/VEHICLE
-- arma (ranged) só no BSData: Big Shoota
-- arma (ranged) só no BSData: ➤ Rokkit Launcha - Busta
-- arma (ranged) só no BSData: ➤ Rokkit Launcha - Blasta
-- arma (ranged) só no BSData: Burna
+- arma (ranged) só no BSData: Kustom Shoota
 - arma (ranged) só no BSData: ➤ Kombi-skorcha - Skorcha
 - arma (ranged) só no BSData: ➤ Kombi-skorcha - Shoota
 - arma (ranged) só no BSData: ➤ Kombi-rokkit - Busta Rokkit
@@ -140,4 +133,4 @@ Gerado em 2026-09-28 a partir de `C:\Users\UTILIZ~1\AppData\Local\Temp\bsdata_tm
 
 ---
 
-Total de diferenças: 74
+Total de diferenças: 67

@@ -39,6 +39,9 @@ test("Librarian anexado a Intercessor Squad: a mortal wound vai para um modelo d
   const tgt = addDummyTarget(win, "playerB");
   const wrap = toHazardousStep(win, atk, "Smite - focused witchfire", tgt, "shooting");
   win.__state.cycle.hazardousFailCount = 1;
+  // O Psychic Hood (unidade a liderar) também cobre as MW do Hazardous da própria
+  // unidade (Bug B) — este teste é sobre a alocação, por isso dá o FNP como resolvido.
+  win.__state.cycle.hazardousFnpDone = true;
   const wrap2 = win.renderAttackCycle("shooting");
   assert(/ordem de alocação/i.test(wrap2.textContent), "Attached Unit (2 grupos) devia pedir a ordem de alocação");
   // aceita a ordem por defeito (já vem com não-character primeiro, character por último)

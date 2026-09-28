@@ -9,7 +9,8 @@ const { loadApp, addFullUnit, weaponByName, findDatasheetByName } = require("./h
 
 setFile("fnp-psychic.test.js");
 
-const FNP_TITLE = /Feel No Pain .+ — quantos passaram\?/;
+// Bug B (Pedido Mestre): FNP por wound — "quantos passaram?" (tudo d=1) ou "sucessos por instância" (algum d>1).
+const FNP_TITLE = /Feel No Pain .+ — (quantos passaram\?|sucessos por instância)/;
 
 // Monta um ataque já em step 5 (resultado), com 1 morte já calculada num
 // grupo do alvo — o mínimo para o bloco de Feel No Pain do step 5 decidir

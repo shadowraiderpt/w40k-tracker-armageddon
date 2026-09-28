@@ -164,7 +164,7 @@ Um battle-shock roll é um leadership roll: 2D6, compara com o LD da unidade.
 |**Deep Strike** (core, não arma)|Pode fazer ingress move fora de 8" de unidades inimigas|
 |**\[DEVASTATING WOUNDS]**|Critical wound = X mortal wounds direto (X = Damage da arma), sem save, máx. 1 modelo morto por critical wound; o excesso perde-se; resolvidos depois do dano normal. Algumas armas só o têm contra certas keywords do alvo (ex: 'Urty syringe do Painboy: só INFANTRY — campo `devastatingWoundsOnlyTargets` na app). Melta + Devastating Wounds: interação por confirmar na 11ª (nenhuma arma do roster atual tem as duas keywords em simultâneo, por isso a app não teve de decidir isto ainda)|
 |**\[EXTRA ATTACKS]**|Ataques adicionais a somar aos da arma principal|
-|**Feel No Pain X+**|Cada vez que um modelo perderia uma wound, rola 1D6; num X+ essa wound não é perdida — é **por ponto de dano, não por morte** (a app ainda trata o FNP por morte — Bug B do Pedido Mestre, à espera da UX aprovada). Âmbito: "this model" = só esse modelo; "models in that unit" = a unidade toda (campo `fnpScope` na app)|
+|**Feel No Pain X+**|Cada vez que um modelo perderia uma wound, rola 1D6; num X+ essa wound não é perdida — é **por ponto de dano, não por morte**. Aplica-se também às mortal wounds (Devastating Wounds, Hazardous). Na app: se todas as instâncias de dano têm d=1, um único "rola N dados, quantos passaram?"; se alguma tem d>1, um campo por instância (dano efetivo = d − sucessos). Âmbito: "this model" = só esse modelo; "models in that unit" = a unidade toda (campo `fnpScope`)|
 |**Fights First**|A unidade luta antes das que não têm esta ability|
 |**\[HAZARDOUS]**|Depois de a unidade resolver TODOS os ataques, 1 hazard roll (1D6) por cada arma HAZARDOUS usada — falha em 1-2. Cada falha: 1 mortal wound à unidade; 3 mortal wounds se TODOS os modelos da unidade forem MONSTER/VEHICLE. Mortal wounds alocadas pela regra normal (06.02: não-character já ferido > não-character > character ferido > character) — nunca obrigatoriamente ao portador da arma. Nunca destrói um modelo diretamente. **POR CONFIRMAR no PDF oficial (24.15):** se um CHARACTER anexado dispara a arma, os mortal wounds vão obrigatoriamente para ele? Fontes secundárias divergem|
 |**\[HEAVY]**|+1 ao hit roll se a unidade estiver unengaged, não foi posta em jogo este turno, e nenhum modelo moveu mais de 3"|
@@ -238,6 +238,9 @@ stratagem sozinha.
 
 ---
 
-## Leader / Attached Units (por confirmar)
+## Leader / Attached Units (fonte: Tabletop Battles — **confirmar no PDF oficial 19.04**)
 
-O texto da regra de Leader/Attached Units da 11ª **não está** neste ficheiro. Por isso, as abilities do tipo "enquanto este modelo lidera uma unidade" (Litany of Hate, Mental Fortress, Psychic Hood, Node Lash, Alpha Warrior, Astartes Banner) seguem, por agora, o comportamento anterior da app. Falta o Gonçalo colar o texto oficial (Pedido Mestre, Bug F).
+* Leader/Support numa Attached unit contam sempre como "a liderar" enquanto estiverem vivos, mesmo sem escolta viva.
+* Um Leader **não anexado** (sozinho) não lidera: as abilities "while this model is leading a unit" não se aplicam (ex: o Chaplain sozinho não tem a Litany of Hate). Campo `leadingOnly` na app (Litany of Hate, Mental Fortress, Psychic Hood, Alpha Warrior).
+* As abilities de qualquer parte da Attached unit beneficiam todos os modelos da unidade enquanto houver pelo menos 1 modelo vivo da datasheet que as dá (ex: o Hail of Bolts dos Intercessors dá +2 A também ao Bolt rifle do Ancient anexado).
+* Um Support só pode existir anexado — o setup da app não deixa adicioná-lo sozinho.

@@ -144,10 +144,19 @@ test("Bug7: a aura de Hyper Regeneration não se aplica a unidades não-Tyranids
 });
 
 // --- Bug 8: Litany of Hate (Chaplain) --------------------------------------
-test("Bug8: Chaplain with Jump Pack tem meleeWoundBonus 1 (+1 to wound em melee, permanente)", () => {
+// (Bug F, regra 2: Litany of Hate é "while this model is leading a unit" — sozinho não vale.)
+test("Bug8 (revisto): Litany of Hate (meleeWoundBonus 1) só vale com o Chaplain a liderar; sozinho, 0", () => {
   const win = loadApp();
-  const chaplain = addFullUnit(win, "playerA", "Chaplain with Jump Pack");
-  assertEqual(win.unitAuraBonus(chaplain, "meleeWoundBonus"), 1);
+  const solo = addFullUnit(win, "playerA", "Chaplain with Jump Pack");
+  assertEqual(win.unitAuraBonus(solo, "meleeWoundBonus"), 0, "sozinho não lidera");
+  const win2 = loadApp();
+  win2.addUnitToPlayer("playerA", win2.findDatasheet(win2.__library, "Vanguard Veteran Squad with Jump Packs"), { leaderDs: win2.findDatasheet(win2.__library, "Chaplain with Jump Pack") });
+  const unit = win2.__state.setup.playerA.units[0];
+  assertEqual(win2.unitAuraBonus(unit, "meleeWoundBonus"), 1, "anexado: +1 ao ferir");
+  unit.groups.find(g => g.key !== "leader").liveCount = 0;
+  assertEqual(win2.unitAuraBonus(unit, "meleeWoundBonus"), 1, "0 Vanguard vivos: o Chaplain continua a liderar");
+  unit.groups.find(g => g.key === "leader").liveCount = 0;
+  assertEqual(win2.unitAuraBonus(unit, "meleeWoundBonus"), 0, "Chaplain morto: sem Litany");
 });
 
 // --- Bug 9 / 10: mecanismos mantidos no código mas sem datasheet 11ª que os use ---

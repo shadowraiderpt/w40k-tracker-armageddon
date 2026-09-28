@@ -29,12 +29,18 @@ test("Bug B continua corrigido: Smite do Librarian (tem [PSYCHIC]) oferece FNP d
   // não dá para addFullUnit(playerB, "Librarian") também. Constrói-se o
   // alvo à mão (mesma forma que addDummyTarget), com datasheetName
   // "Librarian" a sério, para feelNoPainFor encontrar o Psychic Hood dele.
+  // (Bug F, regra 2: um Librarian SOZINHO não tem o Psychic Hood — só a liderar.
+  // O alvo é por isso um Intercessor Squad + Librarian anexado, montado à mão
+  // com uma Librarian de outra "caixa" para não colidir com o BOX_LIMITS.)
   const librarianDs = win.findDatasheet(win.__library, "Librarian");
+  const intDs = win.findDatasheet(win.__library, "Intercessor Squad");
   const target = {
-    id: "dummy-librarian-target", datasheetNames: ["Librarian"], faction: "Space Marines",
-    label: "Dummy Librarian", points: 0, battleshocked: false, disrupted: false,
-    groups: [{ key: "main", label: "Librarian", datasheetName: "Librarian",
-      stats: Object.assign({}, librarianDs.profiles[0].stats), liveCount: 1, initialCount: 1, woundsRemainingOnCurrent: librarianDs.profiles[0].stats.W }],
+    id: "dummy-librarian-target", datasheetNames: ["Intercessor Squad", "Librarian"], faction: "Space Marines",
+    label: "Dummy Intercessors + Librarian", points: 0, battleshocked: false, disrupted: false,
+    groups: [
+      { key: "main", label: "Intercessors", datasheetName: "Intercessor Squad", stats: Object.assign({}, intDs.profiles[0].stats), liveCount: 5, initialCount: 5, woundsRemainingOnCurrent: intDs.profiles[0].stats.W },
+      { key: "leader", label: "Librarian", datasheetName: "Librarian", stats: Object.assign({}, librarianDs.profiles[0].stats), liveCount: 1, initialCount: 1, woundsRemainingOnCurrent: librarianDs.profiles[0].stats.W },
+    ],
   };
   win.__state.setup.playerB.units.push(target);
   win.__state.cycle = win.__emptyCycle();
@@ -44,7 +50,7 @@ test("Bug B continua corrigido: Smite do Librarian (tem [PSYCHIC]) oferece FNP d
   c.targetId = target.id;
   c.step = 5; c.hits = 1; c.deadByGroup = { main: 1 };
   const wrap = win.renderAttackCycle("shooting");
-  assert(/Feel No Pain .+ — quantos passaram\?/.test(wrap.textContent), "Smite tem [PSYCHIC] — devia oferecer o FNP do Psychic Hood");
+  assert(/Feel No Pain .+ — (quantos passaram\?|sucessos por instância)/.test(wrap.textContent), "Smite tem [PSYCHIC] — devia oferecer o FNP do Psychic Hood");
 });
 
 test("HAZARDOUS já tem mecanismo completo (não só uma nota) — não é um keyword em falta", () => {

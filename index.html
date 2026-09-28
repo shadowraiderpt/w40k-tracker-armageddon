@@ -210,6 +210,7 @@ const RAW_UNITS = {
       "fnpCondition":{"type":"weapon_keyword","keyword":"PSYCHIC"},
       "fnpScope":"unit",
       "invSvAura":4,
+      "leadingOnly":["fnp","invSvAura"],
       "stats":{"M":"6\"","T":4,"SV":"3+","W":4,"LD":"6+","OC":1},
       "ranged_weapons":[
         {"name":"Bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"3+","S":4,"AP":0,"D":1},
@@ -223,6 +224,7 @@ const RAW_UNITS = {
         "Litany of Hate: this unit has +1 to wound rolls in melee (permanent)"],
       "exhortationOfRage": true,
       "meleeWoundBonus":1,
+      "leadingOnly":["meleeWoundBonus"],
       "stats":{"M":"12\"","T":4,"SV":"3+","InvSV":"4+","W":4,"LD":"5+","OC":1},
       "ranged_weapons":[{"name":"Absolvor bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"18\"","A":1,"BS":"3+","S":5,"AP":-1,"D":2}],
       "melee_weapons":[{"name":"Crozius arcanum","range":"Melee","A":5,"WS":"2+","S":6,"AP":-1,"D":2}],
@@ -337,7 +339,7 @@ const RAW_UNITS = {
         "Tide of Muscle: se a unidade fez charge move este turno, as armas melee da unidade têm LETHAL HITS"],
       "lethalHitsOnCharge":"Tide of Muscle: melee weapons gain LETHAL HITS in turn this unit made a charge move",
       "onceAbilities":[
-        {"text":"Ammo Runts: ao ser selecionada para disparar, os ataques ranged da unidade têm +1 ao hit roll.","scope":"battle","kind":"shooting","effect":"hitRollBonusRanged","value":1}
+        {"text":"Ammo Runts: ao ser selecionada para disparar, os ataques ranged da unidade têm +1 ao hit roll.","scope":"battle","kind":"shooting","effect":"hitRollBonusRanged","value":1,"applies":"unit"}
       ],
       "multiProfile":[
         {"key":"boss_nob","label":"Boss Nob","stats":{"M":"6\"","T":5,"SV":"5+","W":3,"LD":"7+","OC":2},"count":1},
@@ -346,9 +348,10 @@ const RAW_UNITS = {
       "ranged_weapons":[
         {"name":"Slugga","keywords":["CLOSE-QUARTERS","LETHAL HITS"],"lethalHitsExceptTargets":["MONSTER","VEHICLE"],"range":"12\"","A":1,"BS":"5+","S":4,"AP":0,"D":1},
         {"name":"Shoota","keywords":["LETHAL HITS","RAPID FIRE 1"],"lethalHitsExceptTargets":["MONSTER","VEHICLE"],"range":"18\"","A":2,"BS":"5+","S":4,"AP":0,"D":1},
-        {"name":"Kombi-shoota","range":"24\"","A":2,"BS":"5+","S":4,"AP":0,"D":1},
-        {"name":"Kombi-rokkit","range":"24\"","A":1,"BS":"5+","S":10,"AP":-2,"D":3},
-        {"name":"Kustom shoota","keywords":["LETHAL HITS","RAPID FIRE 2"],"lethalHitsExceptTargets":["MONSTER","VEHICLE"],"range":"18\"","A":4,"BS":"5+","S":4,"AP":0,"D":1}
+        {"name":"Big Shoota","keywords":["LETHAL HITS","RAPID FIRE 2"],"lethalHitsExceptTargets":["MONSTER","VEHICLE"],"range":"36\"","A":3,"BS":"5+","S":4,"AP":0,"D":1},
+        {"name":"Rokkit Launcha - Busta","profileOf":"Rokkit Launcha","range":"24\"","A":2,"BS":"5+","S":10,"AP":-2,"D":3},
+        {"name":"Rokkit Launcha - Blasta","profileOf":"Rokkit Launcha","keywords":["BLAST 2"],"range":"24\"","A":2,"BS":"5+","S":4,"AP":0,"D":1},
+        {"name":"Burna","keywords":["BLAST 1","TORRENT"],"range":"12\"","A":3,"BS":"N/A","S":4,"AP":0,"D":1}
       ],
       "melee_weapons":[
         {"name":"Choppa","range":"Melee","A":3,"WS":"3+","S":5,"AP":-1,"D":1},
@@ -395,6 +398,7 @@ const RAW_UNITS = {
         "Death Blow: se for destruído em combate antes de ter lutado nesta fase, rola 1D6 — num 4+, não é removido, luta depois do atacante terminar os ataques, e só depois é removido"
       ],
       "sustainedHitsAura": 1,
+      "leadingOnly": ["sustainedHitsAura"],
       // Pode liderar os Gargoyles (confirmado pelo utilizador). Os Neurogaunts
       // continuam a ser liderados só pelo Neurotyrant.
       "leader_for":["Gargoyles"],
@@ -692,9 +696,10 @@ function maxModelsAttacking(attacker, weapon) {
 function hazardousAllMV(realAttacker) {
   return realAttacker.groups.every(g => datasheetHasUnitKeyword(g.datasheetName, "MONSTER") || datasheetHasUnitKeyword(g.datasheetName, "VEHICLE"));
 }
-function applyHazardousMortalWounds(realAttacker, order, failCount) {
+function applyHazardousMortalWounds(realAttacker, order, failCount, fnpSuccesses) {
   const mwPerFail = hazardousAllMV(realAttacker) ? 3 : 1;
-  let instances = Array(failCount * mwPerFail).fill(1);
+  // Feel No Pain às mortal wounds do Hazardous (Bug B): cada sucesso evita 1 MW.
+  let instances = Array(Math.max(0, failCount * mwPerFail - (fnpSuccesses || 0))).fill(1);
   const deadByGroup = {};
   (order && order.length ? order : realAttacker.groups.map(g => g.key)).forEach(key => {
     const g = realAttacker.groups.find(gr => gr.key === key);
@@ -705,7 +710,7 @@ function applyHazardousMortalWounds(realAttacker, order, failCount) {
     deadByGroup[key] = result.dead;
     instances = instances.slice(result.instancesConsumed);
   });
-  return { mwTotal: failCount * mwPerFail, mwPerFail, deadByGroup };
+  return { mwTotal: failCount * mwPerFail - (fnpSuccesses || 0), mwRolled: failCount * mwPerFail, mwPerFail, deadByGroup };
 }
 function toHitValue(weapon, phaseKey) {
   return phaseKey === "fight" ? weapon.WS : weapon.BS;
@@ -1075,10 +1080,16 @@ function hasKeyword(weapon, kw) {
 // UNIDADE (ex: Vanguard Assault), não uma keyword de arma — só se aplica a
 // armas de combate (Fight Phase). Devolve o texto da ability (para mostrar
 // tal e qual) ou null se não se aplicar.
-function chargeLethalHitsAbility(weapon, phaseKey) {
+function chargeLethalHitsAbility(weapon, phaseKey, attacker) {
   if (phaseKey !== "fight") return null;
-  const ds = findDatasheet(library, weapon.sourceDatasheet);
-  return (ds && ds.lethalHitsOnCharge) || null;
+  // Ability de UNIDADE: vale para todas as armas de combate da Attached unit
+  // enquanto houver >=1 modelo vivo da datasheet que a dá (Bug F, regra 3).
+  const names = attacker ? attacker.datasheetNames : [weapon.sourceDatasheet];
+  for (const n of names) {
+    const ds = findDatasheet(library, n);
+    if (ds && ds.lethalHitsOnCharge && (!attacker || datasheetLiveInUnit(attacker, ds.name))) return ds.lethalHitsOnCharge;
+  }
+  return null;
 }
 // Aplica um ajuste manual a um threshold base "precisas de X+". O valor
 // introduzido representa o modificador ao ROLL (igual à notação do jogo:
@@ -1296,7 +1307,7 @@ function auraAdjustedWeapon(attacker, weapon, target) {
   for (const name of attacker.datasheetNames) {
     const ds = findDatasheet(library, name);
     if (!ds) continue;
-    if (ds.sustainedHitsAura && !hasKeyword(w, "SUSTAINED HITS")) {
+    if (ds.sustainedHitsAura && !hasKeyword(w, "SUSTAINED HITS") && !leadingBlocked(attacker, ds, "sustainedHitsAura") && datasheetLiveInUnit(attacker, ds.name)) {
       w = Object.assign({}, w, { keywords: (w.keywords || []).concat(["SUSTAINED HITS " + ds.sustainedHitsAura]) });
     }
     const bv = ds.attacksBonusVsNonMV;
@@ -1304,7 +1315,9 @@ function auraAdjustedWeapon(attacker, weapon, target) {
       w = Object.assign({}, w, { A: addToDiceOrNumber(w.A, bv.attacks) });
     }
     const hb = ds.hailOfBolts;
-    if (target && hb && hb.weapon === w.name && w.sourceDatasheet === ds.name) {
+    // Regra 3 (Bug F): vale para os Bolt rifles de QUALQUER parte da unidade
+    // enquanto houver >=1 modelo vivo da datasheet que dá a ability.
+    if (target && hb && hb.weapon === w.name && datasheetLiveInUnit(attacker, ds.name)) {
       const ch = (state.game.hailChoice || {})[hailKey(attacker)];
       if (ch && ch.chosen != null && String(ch.chosen) === String(target.id)) w = Object.assign({}, w, { A: addToDiceOrNumber(w.A, hb.attacks) });
     }
@@ -1395,7 +1408,7 @@ function feelNoPainFor(target) {
   let best = null;
   target.groups.forEach(g => {
     const ds = findDatasheet(library, g.datasheetName);
-    const fnp = ds && findFeelNoPain(ds.abilities);
+    const fnp = ds && !leadingBlocked(target, ds, "fnp") && findFeelNoPain(ds.abilities);
     // fnpScope: "model" = só ESTE modelo (ex: Ancient: "this model has FNP
     // 4+") — aplica-se apenas ao dano alocado a este grupo; "unit"/omitido =
     // a unidade toda (ex: Psychic Hood: "models in that unit").
@@ -1431,11 +1444,28 @@ function invSvAuraFor(target) {
   target.groups.forEach(g => {
     const ds = findDatasheet(library, g.datasheetName);
     const aura = ds && (typeof ds.invSvAura === "number"
-      ? { value: ds.invSvAura, label: ds.name + ": Invulnerable Save " + ds.invSvAura + "+ à unidade" }
+      ? (leadingBlocked(target, ds, "invSvAura") ? null : { value: ds.invSvAura, label: ds.name + ": Invulnerable Save " + ds.invSvAura + "+ à unidade" })
       : findInvSvAura(ds.abilities));
     if (aura && (!best || aura.value < best.value)) best = aura;
   });
   return best;
+}
+// ---- Bug F (regra de Leader, 11ª; fonte Tabletop Battles — confirmar no PDF
+// oficial 19.04) -------------------------------------------------------------
+// 1. Leader/Support numa Attached unit contam SEMPRE como "a liderar" enquanto
+//    estiverem vivos, mesmo sem escolta viva.
+// 2. Leader não anexado (sozinho): as abilities "while leading" não se aplicam
+//    (campo leadingOnly da datasheet lista os efeitos estruturados afetados).
+// 3. Abilities de qualquer parte da Attached unit beneficiam todos os modelos
+//    enquanto houver >=1 modelo vivo da datasheet que as dá.
+function isLeadingInUnit(instance, ds) {
+  return !!instance && instance.groups.some(g => (g.key === "leader" || g.key === "support") && g.datasheetName === ds.name && g.liveCount > 0);
+}
+function leadingBlocked(instance, ds, field) {
+  return !!ds && (ds.leadingOnly || []).includes(field) && !isLeadingInUnit(instance, ds);
+}
+function datasheetLiveInUnit(instance, dsName) {
+  return !!instance && instance.groups.some(g => g.datasheetName === dsName && g.liveCount > 0);
 }
 // Bónus numérico de UNIDADE, permanente e incondicional (ex: Might Is Right
 // do Warboss: meleeHitBonus 1; Litany of Hate do Chaplain: meleeWoundBonus
@@ -1449,7 +1479,7 @@ function unitAuraBonus(instance, field) {
   let best = 0;
   instance.groups.forEach(g => {
     const ds = findDatasheet(library, g.datasheetName);
-    if (ds && typeof ds[field] === "number" && ds[field] > best) best = ds[field];
+    if (ds && typeof ds[field] === "number" && ds[field] > best && !leadingBlocked(instance, ds, field)) best = ds[field];
   });
   return best;
 }
@@ -1644,6 +1674,8 @@ function emptyCycle() {
     // Ancient "perto de objetivo ou a 6\" do centro") — null até o jogador
     // confirmar; nunca decidida sozinha pela app.
     fnpConditionAnswered: null,
+    // Bug B: lista base de instâncias de dano (antes do FNP) para o passo de FNP.
+    fnpBase: null, fnpEffectiveDamage: null,
     // DEATH SCREAM (Screamer-Killer): depois de disparar e acertar, o alvo
     // testa Battleshock com -1 — perguntado uma vez por ataque resolvido
     // (Shooting Phase só), nunca decidido sozinho pela app.
@@ -1667,6 +1699,7 @@ function emptyCycle() {
     // por modelo que a usou — resultados guardados aqui para mostrar no
     // Resultado (nunca afeta o alvo, só a própria unidade atacante).
     hazardousAsked: null, hazardousFailCount: null, hazardousAllocOrder: null, hazardousResult: null,
+    hazardousFnpDone: null, hazardousFnpAnswered: null, hazardousFnpSuccesses: null,
     // HOLD STILL AND SAY AARGH (Painboy, 'Urty syringe): crítico no wound
     // roll contra alvo não-VEHICLE causa D6 mortal wounds extra.
     critMwAsked: null, critMwCritCount: null, critMwRoll: null,
@@ -2913,6 +2946,11 @@ function renderDsPickerItem(ds, player, playerKey) {
     return item;
   }
 
+  // Bug F (regra 4): um Support só pode existir anexado — não se adiciona sozinho.
+  if ((ds.support_for || []).length > 0 && !(ds.leader_for || []).length) {
+    item.appendChild(el("span", { text: "Support: só pode ser anexado (escolhe-o como \"suporte\" ao adicionar " + ds.support_for.join(" / ") + ")", class: "faction-badge", style: "font-size:11px;" }));
+    return item;
+  }
   const eligibleLeaders = leadersFor(ds);
   const eligibleSupports = supportersFor(ds);
   let leaderName = "";
@@ -3057,23 +3095,28 @@ function renderAttackCycle(phaseKey) {
   // para disparar, os ataques ranged DESTE modelo têm +1 ao hit roll — entra
   // na soma de modificadores ao hit roll (limitada a ±1). A decisão é por
   // ativação (unidade+fase); só se pergunta se ainda não foi gasta.
-  const ammoRuntInfo = (() => {
-    if (phaseKey !== "shooting") return null;
-    const dsA = findDatasheet(library, weapon.sourceDatasheet);
-    const idx = dsA ? (dsA.onceAbilities || []).findIndex(a => a.effect === "hitRollBonusRanged") : -1;
-    if (idx < 0) return null;
-    const ability = dsA.onceAbilities[idx];
-    return { ability, key: onceAbilityKey(attacker, dsA, idx), actKey: phaseInstanceKey() + "-" + attacker.id + "-" + dsA.name };
-  })();
-  const ammoRuntChoice = ammoRuntInfo ? state.game.ammoRuntChoice[ammoRuntInfo.actKey] : undefined;
-  const ammoRuntAvailable = !!ammoRuntInfo && ammoRuntChoice === undefined && !isOnceAbilityUsed(ammoRuntInfo.key, ammoRuntInfo.ability);
-  const ammoRuntBonusValue = (ammoRuntInfo && ammoRuntChoice === "yes") ? ammoRuntInfo.ability.value : 0;
+  // Pode haver mais de uma ability deste tipo na mesma unidade (Ammo Runts dos
+  // Boyz: "a unidade"; Boss' Ammo Runt do Warboss: "este modelo") — cada uma tem
+  // o seu próprio uso por batalha e a sua própria pergunta por ativação.
+  const ammoRunts = phaseKey !== "shooting" ? [] : [].concat(...attacker.datasheetNames.map(name => {
+    const dsA = findDatasheet(library, name);
+    if (!dsA || !datasheetLiveInUnit(attacker, dsA.name)) return [];
+    return (dsA.onceAbilities || []).map((ability, idx) => ({ ability, idx, ds: dsA })).filter(x =>
+      x.ability.effect === "hitRollBonusRanged" && (x.ability.applies === "unit" || weapon.sourceDatasheet === x.ds.name)
+    ).map(x => ({ ability: x.ability, key: onceAbilityKey(attacker, x.ds, x.idx), actKey: phaseInstanceKey() + "-" + attacker.id + "-" + x.ds.name, name: x.ability.text.split(":")[0] }));
+  }));
+  const ammoRuntPending = ammoRunts.find(r => state.game.ammoRuntChoice[r.actKey] === undefined && !isOnceAbilityUsed(r.key, r.ability)) || null;
+  const ammoRuntActive = ammoRunts.filter(r => state.game.ammoRuntChoice[r.actKey] === "yes");
+  const ammoRuntAvailable = !!ammoRuntPending;
+  const ammoRuntBonusValue = ammoRuntActive.reduce((sum, r) => sum + r.ability.value, 0);
   // HAIL OF BOLTS (Intercessor Squad): ao ser selecionada para disparar,
   // escolhe até 1 unidade inimiga visível; os Bolt rifles contra ela têm +2 A.
   // A app não sabe qual foi escolhida — pergunta 1x por alvo (a escolha fica
   // registada por ativação; recusar não impede escolher outro alvo depois).
-  const hailDs = phaseKey === "shooting" ? findDatasheet(library, weapon.sourceDatasheet) : null;
-  const hailInfo = (hailDs && hailDs.hailOfBolts && hailDs.hailOfBolts.weapon === weapon.name) ? { hb: hailDs.hailOfBolts, key: hailKey(attacker) } : null;
+  const hailDs = phaseKey === "shooting"
+    ? attacker.datasheetNames.map(n => findDatasheet(library, n)).find(d => d && d.hailOfBolts && d.hailOfBolts.weapon === weapon.name && datasheetLiveInUnit(attacker, d.name))
+    : null;
+  const hailInfo = hailDs ? { hb: hailDs.hailOfBolts, key: hailKey(attacker) } : null;
   const hailState = hailInfo ? ((state.game.hailChoice || {})[hailInfo.key] || { chosen: null, declined: {} }) : null;
   const hailNeedsAsk = !!hailInfo && hailState.chosen == null && !hailState.declined[target.id];
   const hailApplied = !!hailInfo && hailState.chosen != null && String(hailState.chosen) === String(target.id);
@@ -3151,7 +3194,7 @@ function renderAttackCycle(phaseKey) {
   })();
   // Lethal Hits condicional a ter carregado este turno (ability de
   // unidade, ex: Vanguard Assault) — só relevante em combate corpo a corpo.
-  const chargeLethalHitsText = chargeLethalHitsAbility(weapon, phaseKey);
+  const chargeLethalHitsText = chargeLethalHitsAbility(weapon, phaseKey, attacker);
   // LETHAL HITS: keyword da própria arma (opcionalmente só contra alvos SEM
   // certas keywords de unidade — ex: Warboss "non-MONSTER/VEHICLE", campo
   // lethalHitsExceptTargets) OU a ability condicional a charge (Vanguard).
@@ -3313,15 +3356,15 @@ function renderAttackCycle(phaseKey) {
 
     if (ammoRuntAvailable) {
       const card = el("div", { class: "card" });
-      card.appendChild(renderRollerBadge("attacker", attackerRollerName, "Boss' Ammo Runt — 1x por batalha, ao selecionar a unidade para disparar."));
-      card.appendChild(el("div", { class: "step-hint", text: "🔫 " + ammoRuntInfo.ability.text, style: "color:var(--gold);font-weight:600;font-size:13px;" }));
-      card.appendChild(el("h3", { text: "Usar Boss' Ammo Runt nesta ativação? (+1 ao hit roll, gasta o uso da batalha)" }));
+      card.appendChild(renderRollerBadge("attacker", attackerRollerName, ammoRuntPending.name + " — 1x por batalha, ao selecionar a unidade para disparar."));
+      card.appendChild(el("div", { class: "step-hint", text: "🔫 " + ammoRuntPending.ability.text, style: "color:var(--gold);font-weight:600;font-size:13px;" }));
+      card.appendChild(el("h3", { text: "Usar " + ammoRuntPending.name + " nesta ativação? (+1 ao hit roll, gasta o uso da batalha)" }));
       const sel = el("select");
       [["", "— escolher —"], ["yes", "Sim, usar"], ["no", "Não usar"]].forEach(([v, t]) => sel.appendChild(el("option", { value: v, text: t })));
       sel.onchange = e => {
         if (e.target.value === "") return;
-        state.game.ammoRuntChoice[ammoRuntInfo.actKey] = e.target.value;
-        if (e.target.value === "yes") toggleOnceAbilityUsed(ammoRuntInfo.key, ammoRuntInfo.ability);
+        state.game.ammoRuntChoice[ammoRuntPending.actKey] = e.target.value;
+        if (e.target.value === "yes") toggleOnceAbilityUsed(ammoRuntPending.key, ammoRuntPending.ability);
         render();
       };
       card.appendChild(sel);
@@ -3404,7 +3447,7 @@ function renderAttackCycle(phaseKey) {
         // benefício de cobertura (-1 ao BS do atacante) mesmo sem terreno —
         // só lembrete (cobertura entra pelo ajuste manual), só tiro (BS).
         explainLine: (phaseKey === "shooting" && !hasKeyword(weapon, "IGNORES COVER") && target.groups.some(g => { const d = findDatasheet(library, g.datasheetName); return d && d.stealth; })) ? "Alvo com STEALTH — tem benefício de cobertura (-1 ao BS do atacante), mesmo sem terreno." : null,
-        bonusChips: (heavyBonus ? ["HEAVY: +1 ao acertar"] : []).concat(ammoRuntBonusValue ? ["BOSS' AMMO RUNT: +" + ammoRuntBonusValue + " ao acertar (1x por batalha)"] : []).concat(meleeHitBonusValue ? ["+" + meleeHitBonusValue + " ao acertar (melee, permanente)"] : []).concat(damagedPenaltyValue ? ["DAMAGED: -" + damagedPenaltyValue + " ao acertar"] : []).concat(suppressedPenaltyValue ? ["SUPPRESSED (Indiscriminate Detonations): -1 ao acertar"] : []).concat(engagedPenaltyValue ? ["ENGAGED (MONSTER/VEHICLE, arma não [CLOSE-QUARTERS]): -1 ao acertar"] : []).concat(sabHitPenaltyValue ? ["PSYCHOLOGICAL SABOTEUR: -1 ao acertar"] : []).concat(hitRollModifiersRaw !== hitRollModifiersTotal ? ["LIMITE ±1: modificadores ao hit roll somam " + (hitRollModifiersRaw > 0 ? "+" : "") + hitRollModifiersRaw + " → aplicado " + (hitRollModifiersTotal > 0 ? "+" : "") + hitRollModifiersTotal] : []),
+        bonusChips: (heavyBonus ? ["HEAVY: +1 ao acertar"] : []).concat(ammoRuntActive.map(r => r.name.toUpperCase() + ": +" + r.ability.value + " ao acertar (1x por batalha)")).concat(meleeHitBonusValue ? ["+" + meleeHitBonusValue + " ao acertar (melee, permanente)"] : []).concat(damagedPenaltyValue ? ["DAMAGED: -" + damagedPenaltyValue + " ao acertar"] : []).concat(suppressedPenaltyValue ? ["SUPPRESSED (Indiscriminate Detonations): -1 ao acertar"] : []).concat(engagedPenaltyValue ? ["ENGAGED (MONSTER/VEHICLE, arma não [CLOSE-QUARTERS]): -1 ao acertar"] : []).concat(sabHitPenaltyValue ? ["PSYCHOLOGICAL SABOTEUR: -1 ao acertar"] : []).concat(hitRollModifiersRaw !== hitRollModifiersTotal ? ["LIMITE ±1: modificadores ao hit roll somam " + (hitRollModifiersRaw > 0 ? "+" : "") + hitRollModifiersRaw + " → aplicado " + (hitRollModifiersTotal > 0 ? "+" : "") + hitRollModifiersTotal] : []),
         hint: statLabel(hitStat) + ": " + toHitValue(weapon, phaseKey) + (c.bsAdjust ? " · ajuste ao " + hitStat + ": " + (c.bsAdjust > 0 ? "+" : "") + c.bsAdjust : "") + (c.hitAdjust ? " · ajuste manual ao hit roll: " + (c.hitAdjust > 0 ? "+" : "") + c.hitAdjust : "") + attacksBonusSuffix,
         // [PSYCHIC] pode ignorar todos os modificadores a BS/WS e ao hit roll
         // (incl. cobertura) — o aviso cobre os DOIS controlos manuais e só
@@ -3675,6 +3718,12 @@ function renderAttackCycle(phaseKey) {
       c.deadByGroup = deadByGroup;
       c.woundsLeftByGroup = woundsLeftByGroup;
       c.manualDamage = totalDamage;
+      const fnpByGroup = {};
+      target.groups.forEach(g => {
+        const r = c.groupResults[g.key];
+        fnpByGroup[g.key] = (r && r.instancesAll) ? r.instancesAll.slice() : ((c.critInstancesByGroup && c.critInstancesByGroup[g.key]) || []).slice();
+      });
+      c.fnpBase = { mode: "perGroup", byGroup: fnpByGroup };
       c.step = 5;
       return renderAttackCycle(phaseKey);
     }
@@ -3746,6 +3795,7 @@ function renderAttackCycle(phaseKey) {
             const instances = Array(n).fill(dmgInfo.value + meltaBonus);
             const critInstHere = (c.critInstancesByGroup && c.critInstancesByGroup[currentKey]) || [];
             const result = resolveGroupDamage(currentGroup, critInstHere, instances);
+            c.groupResults[currentKey].instancesAll = critInstHere.concat(instances);
             c.groupResults[currentKey].damage = n * (dmgInfo.value + meltaBonus);
             c.groupResults[currentKey].dead = result.dead;
             c.groupResults[currentKey].woundsLeftAfter = result.woundsLeftAfter;
@@ -3766,6 +3816,7 @@ function renderAttackCycle(phaseKey) {
       if (failedHere === 0) {
         // Nada a rolar — 0 saves falhados, 0 instâncias de dano normal.
         const result = resolveGroupDamage(currentGroup, critInstHere, []);
+        c.groupResults[currentKey].instancesAll = critInstHere.slice();
         c.groupResults[currentKey].damage = 0;
         c.groupResults[currentKey].dead = result.dead;
         c.groupResults[currentKey].woundsLeftAfter = result.woundsLeftAfter;
@@ -3784,6 +3835,7 @@ function renderAttackCycle(phaseKey) {
         confirmLabel: "Confirmar dano deste grupo →",
         onConfirm: instances => {
           const result = resolveGroupDamage(currentGroup, critInstHere, instances);
+          c.groupResults[currentKey].instancesAll = critInstHere.concat(instances);
           c.groupResults[currentKey].damage = instances.reduce((a, b) => a + b, 0);
           c.groupResults[currentKey].dead = result.dead;
           c.groupResults[currentKey].woundsLeftAfter = result.woundsLeftAfter;
@@ -3852,7 +3904,47 @@ function renderAttackCycle(phaseKey) {
         wrap.appendChild(card);
         return wrap;
       }
-      c.hazardousResult = realAttacker ? applyHazardousMortalWounds(realAttacker, c.hazardousAllocOrder, c.hazardousFailCount) : null;
+      // Bug B: Feel No Pain também se aplica às mortal wounds do Hazardous (cada
+      // sucesso evita 1 MW). Só quando o FNP da unidade é da unidade toda (um FNP
+      // "só este modelo" não é aplicado aqui — a app não sabe a que modelo cai a MW
+      // antes de as alocar).
+      if (realAttacker && c.hazardousFnpDone === null) {
+        const hazFnp = feelNoPainFor(realAttacker);
+        let ok = !!hazFnp && !hazFnp.groupKeys;
+        if (ok && hazFnp.condition) {
+          if (hazFnp.condition.type === "weapon_keyword") ok = hasKeyword(weapon, hazFnp.condition.keyword);
+          else if (hazFnp.condition.type === "ask") {
+            if (c.hazardousFnpAnswered === null) {
+              const hc = el("div", { class: "card" });
+              hc.appendChild(renderRollerBadge("attacker", attackerRollerName, "Condição de Feel No Pain — confirma antes de rolar."));
+              hc.appendChild(el("div", { class: "step-hint", text: "⚕️ " + hazFnp.label, style: "color:var(--gold);font-weight:600;font-size:13px;" }));
+              hc.appendChild(el("h3", { text: hazFnp.condition.question }));
+              const hsel = el("select");
+              [["", "— escolher —"], ["yes", "Sim"], ["no", "Não"]].forEach(([v, t]) => hsel.appendChild(el("option", { value: v, text: t })));
+              hsel.onchange = e => { c.hazardousFnpAnswered = e.target.value === "" ? null : e.target.value === "yes"; render(); };
+              hc.appendChild(hsel);
+              wrap.appendChild(hc);
+              return wrap;
+            }
+            ok = c.hazardousFnpAnswered === true;
+          }
+        }
+        const mwN = c.hazardousFailCount * (hazardousAllMV(realAttacker) ? 3 : 1);
+        if (ok && mwN > 0) {
+          wrap.appendChild(renderNumberStep({
+            title: "Feel No Pain " + thresholdText(hazFnp.value) + " às mortal wounds do Hazardous — quantos passaram?",
+            hint: "⚕️ " + hazFnp.label + ". Rola " + mwN + " dado(s), 1 por cada mortal wound do Hazardous — cada sucesso evita essa wound.",
+            threshold: hazFnp.value > 6 ? 999 : hazFnp.value, stepKey: "hazfnp", max: mwN, countLabel: "Sucessos de Feel No Pain",
+            rollsDice: true,
+            roller: "attacker", rollerName: attackerRollerName, rollWhy: "Roll de Feel No Pain às mortal wounds do Hazardous (sofridas pela própria unidade).",
+            onConfirm: n => { c.hazardousFnpSuccesses = n; c.hazardousFnpDone = true; render(); },
+            confirmLabel: "Confirmar Feel No Pain →",
+          }));
+          return wrap;
+        }
+        c.hazardousFnpDone = true;
+      }
+      c.hazardousResult = realAttacker ? applyHazardousMortalWounds(realAttacker, c.hazardousAllocOrder, c.hazardousFailCount, c.hazardousFnpSuccesses || 0) : null;
       c.hazardousAsked = true;
     } else if (hasKeyword(weapon, "HAZARDOUS") && c.hazardousFailCount === 0 && !c.hazardousAsked) {
       c.hazardousAsked = true;
@@ -3995,7 +4087,14 @@ function renderAttackCycle(phaseKey) {
     // aparece se houver mortes já calculadas para cancelar.
     const fnp = feelNoPainFor(target);
     const fnpKeys = (fnp && fnp.groupKeys) ? fnp.groupKeys : target.groups.map(g => g.key);
-    const rawTotalDead = fnpKeys.reduce((a, k) => a + ((c.deadByGroup && c.deadByGroup[k]) || 0), 0);
+    // Sem lista de instâncias (estado só com deadByGroup): cada morte conta como
+    // uma instância do dano máximo do modelo (W).
+    if (fnp && !c.fnpBase && c.deadByGroup) {
+      const byGroup = {};
+      target.groups.forEach(g => { byGroup[g.key] = Array((c.deadByGroup[g.key]) || 0).fill(g.stats.W); });
+      c.fnpBase = { mode: "perGroup", byGroup };
+    }
+    const fnpElig = fnp ? fnpEligibleInstances(target, c, fnpKeys) : [];
     // fnp.condition: nem toda Feel No Pain é incondicional (bug corrigido —
     // antes aplicava-se sempre). "weapon_keyword": a app verifica sozinha se
     // a arma atacante tem essa keyword (ex: Librarian só vs PSYCHIC).
@@ -4006,7 +4105,7 @@ function renderAttackCycle(phaseKey) {
       if (fnp.condition.type === "weapon_keyword") {
         fnpApplies = hasKeyword(weapon, fnp.condition.keyword);
       } else if (fnp.condition.type === "ask") {
-        if (c.fnpConditionAnswered === null && rawTotalDead > 0) {
+        if (c.fnpConditionAnswered === null && fnpElig.length > 0) {
           const condCard = el("div", { class: "card" });
           condCard.appendChild(renderRollerBadge("defender", defenderRollerName, "Condição de Feel No Pain — confirma antes de rolar."));
           condCard.appendChild(el("div", { class: "step-hint", text: "⚕️ " + fnp.label, style: "color:var(--gold);font-weight:600;font-size:13px;" }));
@@ -4023,21 +4122,53 @@ function renderAttackCycle(phaseKey) {
         fnpApplies = c.fnpConditionAnswered === true;
       }
     }
-    if (fnp && fnpApplies && c.fnpSuccesses === null && rawTotalDead > 0) {
-      wrap.appendChild(renderNumberStep({
-        title: "Feel No Pain " + thresholdText(fnp.value) + " — quantos passaram?",
-        hint: "⚕️ " + fnp.label + ". Rola 1 dado por cada uma das " + rawTotalDead + " mortes já calculadas (depois do save normal) — cada sucesso cancela 1 morte.",
-        threshold: fnp.value > 6 ? 999 : fnp.value, stepKey: "fnp", max: rawTotalDead, countLabel: "Sucessos de Feel No Pain",
-        rollsDice: true,
-        roller: "defender", rollerName: defenderRollerName, rollWhy: "Roll de Feel No Pain — tenta cancelar uma morte já calculada.",
-        onConfirm: n => {
-          c.fnpSuccesses = n;
-          const order = ((c.allocOrder && c.allocOrder.length) ? c.allocOrder : target.groups.map(g => g.key)).filter(k => fnpKeys.includes(k));
-          c.deadByGroup = applyFeelNoPain(c.deadByGroup, order, n);
-          render();
-        },
-        confirmLabel: "Confirmar Feel No Pain →",
-      }));
+    if (fnp && fnpApplies && c.fnpSuccesses === null && fnpElig.length > 0) {
+      const totalDice = fnpElig.reduce((a, e) => a + e.d, 0);
+      const finishFnp = succ => {
+        c.fnpSuccesses = Object.values(succ).reduce((a, b) => a + b, 0);
+        applyFnpSuccesses(target, c, succ);
+        render();
+      };
+      if (fnpElig.every(e => e.d === 1)) {
+        wrap.appendChild(renderNumberStep({
+          title: "Feel No Pain " + thresholdText(fnp.value) + " — quantos passaram?",
+          hint: "⚕️ " + fnp.label + ". Rola " + totalDice + " dado(s) — 1 por cada wound que o modelo ia perder (" + fnpElig.length + " instância(s) de 1 de dano, saves falhados ou mortal wounds) — cada sucesso evita essa wound.",
+          threshold: fnp.value > 6 ? 999 : fnp.value, stepKey: "fnp", max: totalDice, countLabel: "Sucessos de Feel No Pain",
+          rollsDice: true,
+          roller: "defender", rollerName: defenderRollerName, rollWhy: "Roll de Feel No Pain — cada sucesso evita a perda de 1 wound.",
+          onConfirm: n => {
+            const succ = {};
+            fnpElig.slice(0, n).forEach(e => { succ[e.idx] = 1; });
+            finishFnp(succ);
+          },
+          confirmLabel: "Confirmar Feel No Pain →",
+        }));
+      } else {
+        const card = el("div", { class: "card" });
+        card.appendChild(renderRollerBadge("defender", defenderRollerName, "Roll de Feel No Pain — por instância de dano."));
+        card.appendChild(el("h3", { text: "Feel No Pain " + thresholdText(fnp.value) + " — sucessos por instância de dano" }));
+        card.appendChild(el("div", { class: "step-hint", text: "⚕️ " + fnp.label + ". Cada instância de dano d: rola d dados; cada sucesso evita 1 wound (dano efetivo = d − sucessos). Total de dados: " + totalDice + ". Só se mostram as instâncias alocadas a grupos com FNP." }));
+        const inputs = [];
+        fnpElig.forEach((e, k) => {
+          const row = el("div", { class: "row", style: "align-items:center;gap:8px;margin:4px 0;" });
+          const g = target.groups.find(gr => gr.key === e.key);
+          row.appendChild(el("span", { text: "Instância " + (k + 1) + " (" + (g ? g.label : e.key) + "): dano " + e.d + " → sucessos (0–" + e.d + ")", style: "font-size:12px;flex:1;" }));
+          const inp = el("input", { type: "number" });
+          inp.min = "0"; inp.max = String(e.d); inp.value = "0"; inp.style.width = "56px";
+          inputs.push({ e, inp });
+          row.appendChild(inp);
+          card.appendChild(row);
+        });
+        const okBtn = el("button", { class: "primary", text: "Confirmar Feel No Pain →" });
+        okBtn.style.cssText = "width:100%;margin-top:8px;";
+        okBtn.onclick = () => {
+          const succ = {};
+          inputs.forEach(({ e, inp }) => { succ[e.idx] = Math.max(0, Math.min(e.d, parseInt(inp.value, 10) || 0)); });
+          finishFnp(succ);
+        };
+        card.appendChild(okBtn);
+        wrap.appendChild(card);
+      }
       return wrap;
     }
 
@@ -4176,9 +4307,8 @@ function renderAttackCycle(phaseKey) {
       card.appendChild(el("div", { class: "step-hint", text: "⚠️ Devastating Wounds: " + critCount + " critical wound(s) → " + critCount + "x mortal wound(s) de Damage " + weapon.D + " cada, sem save (respeitando W do alvo, tal como qualquer outro dano)." }));
     }
     if (fnp && c.fnpSuccesses) {
-      // rawTotalDead já reflete deadByGroup PÓS-FNP (foi recalculado neste
-      // render); o total pré-FNP é esse mais os sucessos que cancelaram mortes.
-      card.appendChild(el("div", { class: "step-hint", text: "⚕️ Feel No Pain " + thresholdText(fnp.value) + ": " + c.fnpSuccesses + " sucesso(s) cancelaram " + c.fnpSuccesses + " morte(s) (de " + (rawTotalDead + c.fnpSuccesses) + " antes do FNP)." }));
+      // Bug B: o FNP evita wounds (dano), não mortes — o resumo fala em wounds.
+      card.appendChild(el("div", { class: "step-hint", text: "⚕️ Feel No Pain " + thresholdText(fnp.value) + ": " + c.fnpSuccesses + " sucesso(s) evitaram " + c.fnpSuccesses + " wound(s) perdida(s)." }));
     }
     if (disruptionJustApplied) {
       card.appendChild(el("div", { class: "step-hint", text: "🐌 " + disruptText, style: "color:var(--gold);font-weight:600;" }));
@@ -4193,13 +4323,14 @@ function renderAttackCycle(phaseKey) {
       const hr = c.hazardousResult;
       const totalDeadHazard = Object.values(hr.deadByGroup).reduce((a, b) => a + b, 0);
       card.appendChild(el("div", {
-        text: "☠️ Hazardous: " + hr.mwTotal + " mortal wound(s) no total (" + hr.mwPerFail + " por falha) — " + totalDeadHazard + " modelo(s) de " + attacker.label + " destruído(s).",
+        text: "☠️ Hazardous: " + hr.mwTotal + " mortal wound(s) no total (" + hr.mwPerFail + " por falha" + (hr.mwRolled !== hr.mwTotal ? "; " + (hr.mwRolled - hr.mwTotal) + " evitada(s) por Feel No Pain" : "") + ") — " + totalDeadHazard + " modelo(s) de " + attacker.label + " destruído(s).",
         style: "color:var(--gold);font-weight:600;",
       }));
     } else if (c.hazardousAsked) {
       card.appendChild(el("div", { text: "☠️ Hazardous: sem resultados de 1-2 — sem efeito.", style: "color:var(--text-sec);" }));
     }
-    const totalText = critDamageDisplay !== null ? ((critDamageDisplay + normalDamage) + " dano total") : "dano total variável";
+    const totalText = c.fnpEffectiveDamage != null ? (c.fnpEffectiveDamage + " dano total (depois do Feel No Pain)")
+      : (critDamageDisplay !== null ? ((critDamageDisplay + normalDamage) + " dano total") : "dano total variável");
     const res = el("div", { class: "result final", text: totalText + " → " + totalDead + " modelo(s) morto(s)" });
     card.appendChild(res);
     // Wounds parciais que ficam no modelo atual — só relevante para grupos
@@ -4305,17 +4436,79 @@ function resolveGroupDamage(g, critInstances, damageInstances) {
   return { dead, liveAfter: live, woundsLeftAfter: live > 0 ? woundsLeft : w, instancesConsumed: consumed };
 }
 
+// ---- Bug B: Feel No Pain por wound (não por morte) ---------------------------
+// Cada vez que um modelo perderia uma wound, rola-se 1D6; num X+ essa wound não
+// se perde. Aplica-se por instância de dano (saves falhados, Devastating Wounds
+// e outras mortal wounds): dano efetivo = d - sucessos nessa instância, antes de
+// resolveGroupDamage. UX híbrida: se todas as instâncias elegíveis têm d=1, um
+// único "rola N dados, quantos passaram?"; se alguma tem d>1, um campo por
+// instância. Só se mostram as instâncias alocadas a grupos com FNP.
+function assignInstancesToGroups(target, instances) {
+  const c = state.cycle;
+  const order = (c.allocOrder && c.allocOrder.length) ? c.allocOrder : target.groups.map(g => g.key);
+  let rem = instances.slice();
+  const keys = [];
+  order.forEach(key => {
+    const g = target.groups.find(gr => gr.key === key);
+    if (!g) return;
+    const r = resolveGroupDamage(g, [], rem);
+    for (let k = 0; k < r.instancesConsumed; k++) keys.push(key);
+    rem = rem.slice(r.instancesConsumed);
+  });
+  return keys;
+}
+// Devolve [{idx, d, key}] das instâncias (d>0) alocadas a grupos elegíveis.
+function fnpEligibleInstances(target, c, fnpKeys) {
+  const base = c.fnpBase;
+  if (!base) return [];
+  const out = [];
+  if (base.mode === "flat") {
+    const keys = assignInstancesToGroups(target, base.instances);
+    base.instances.forEach((d, idx) => { if (d > 0 && keys[idx] && fnpKeys.includes(keys[idx])) out.push({ idx, d, key: keys[idx] }); });
+  } else {
+    let idx = 0;
+    const order = (c.allocOrder && c.allocOrder.length) ? c.allocOrder : target.groups.map(g => g.key);
+    order.forEach(key => (base.byGroup[key] || []).forEach(d => { if (d > 0 && fnpKeys.includes(key)) out.push({ idx, d, key }); idx++; }));
+  }
+  return out;
+}
+// succ: {idx: sucessos}. Recalcula deadByGroup/woundsLeftByGroup com o dano reduzido.
+function applyFnpSuccesses(target, c, succ) {
+  const base = c.fnpBase;
+  if (base.mode === "flat") {
+    const reduced = base.instances.map((d, i) => Math.max(0, d - (succ[i] || 0))).filter(d => d > 0);
+    c.fnpEffectiveDamage = reduced.reduce((a, b) => a + b, 0);
+    allocateDamage(target, reduced, { keepFnpBase: true });
+  } else {
+    const order = (c.allocOrder && c.allocOrder.length) ? c.allocOrder : target.groups.map(g => g.key);
+    const dead = {}, left = {};
+    let idx = 0, effTotal = 0;
+    order.forEach(key => {
+      const g = target.groups.find(gr => gr.key === key);
+      const list = (base.byGroup[key] || []).map(d => Math.max(0, d - (succ[idx++] || 0))).filter(d => d > 0);
+      effTotal += list.reduce((a, b) => a + b, 0);
+      if (!g) return;
+      const r = resolveGroupDamage(g, [], list);
+      dead[key] = r.dead; left[key] = r.woundsLeftAfter;
+    });
+    c.deadByGroup = dead; c.woundsLeftByGroup = left;
+    c.fnpEffectiveDamage = effTotal;
+  }
+}
 // damageInstances: array com o dano de cada instância independente (saves
 // falhados normais, e/ou instâncias de Devastating Wounds já concatenadas
 // pelo chamador — ver resolveGroupDamage). Instâncias que "sobrem" de um
 // grupo (porque ele ficou sem modelos vivos) passam para o grupo seguinte
 // na ordem de alocação.
-function allocateDamage(target, damageInstances) {
+function allocateDamage(target, damageInstances, opts) {
   const c = state.cycle;
   const order = (c.allocOrder && c.allocOrder.length) ? c.allocOrder : target.groups.map(g => g.key);
   let instances = damageInstances || [];
   const dead = {};
   const woundsLeftByGroup = {};
+  // Bug B: guarda a lista base (antes de qualquer Feel No Pain) para o passo de
+  // FNP poder reduzir o dano por instância e voltar a alocar.
+  if (!opts || !opts.keepFnpBase) c.fnpBase = { mode: "flat", instances: (damageInstances || []).slice() };
   order.forEach(key => {
     const g = target.groups.find(gr => gr.key === key);
     if (!g) return;
@@ -4667,13 +4860,14 @@ function renderPicker(instances, phaseKey) {
     c.manualDamage = null; c.deadByGroup = null;
     c.hitAdjust = 0; c.bsAdjust = 0; c.woundAdjust = 0; c.saveAdjust = 0;
     c.critWounds = null; c.critInstances = null; c.critInstancesByGroup = null;
-    c.sustainedHits = null; c.fnpSuccesses = null; c.fnpConditionAnswered = null; c.attacksRolled = null;
+    c.sustainedHits = null; c.fnpSuccesses = null; c.fnpBase = null; c.fnpEffectiveDamage = null; c.fnpConditionAnswered = null; c.attacksRolled = null;
     c.heavyStationary = null; c.chargedThisTurn = null; c.lethalHitCrits = null;
     c.groupFlow = null; c.groupCursor = 0; c.woundsPool = 0; c.groupResults = {};
     c.deathScreamAsked = null; c.disruptionApplied = null;
     c.modelsAttacking = null;
     c.deadlyDemiseAsked = null; c.deadlyDemiseRoll = null; c.deadlyDemiseTriggered = false;
     c.hazardousAsked = null; c.hazardousFailCount = null; c.hazardousAllocOrder = null; c.hazardousResult = null;
+    c.hazardousFnpDone = null; c.hazardousFnpAnswered = null; c.hazardousFnpSuccesses = null;
     c.critMwAsked = null; c.critMwCritCount = null; c.critMwRoll = null;
     c.symbioticApplied = false; c.grislySelected = null; c.grislyAsked = false; c.suppressApplied = false;
     c.saboteurHit = null; c.saboteurWound = null; c.feederApplied = false;
