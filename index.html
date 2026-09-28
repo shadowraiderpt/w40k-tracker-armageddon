@@ -255,13 +255,15 @@ const RAW_UNITS = {
       ],
       "melee_weapons":[{"name":"Master-crafted power weapon","range":"Melee","A":3,"WS":"3+","S":5,"AP":-2,"D":2}],
       "defaultCount":5},
-    {"name":"Eradicator Squad with Heavy Bolters","points":80,"keywords":["INFANTRY"],
-      "abilities":["Overlapping Detonations: enemy units shot with heavy bolter that are NOT MONSTER/VEHICLE get [BLAST 1]"],
-      "conditionalBlastVsMonsterVehicle":{"weapon":"Heavy bolter","value":1},
+    {"name":"Eradicator Squad with Heavy Bolters","points":90,"keywords":["INFANTRY"],
+      "abilities":["Total Obliteration: contra alvos MONSTER/VEHICLE, podes re-rolar o hit roll, o wound roll e o Damage"],
+      "totalObliteration":true,
+      "pointsBySize":{"3":90,"6":180},
       "stats":{"M":"5\"","T":6,"SV":"3+","W":3,"LD":"6+","OC":1},
       "ranged_weapons":[
-        {"name":"Bolt pistol","keywords":["CLOSE-QUARTERS"],"range":"12\"","A":1,"BS":"3+","S":4,"AP":0,"D":1},
-        {"name":"Heavy bolter","keywords":["HEAVY","SUSTAINED HITS 1"],"range":"36\"","A":3,"BS":"3+","S":5,"AP":-1,"D":2}
+        {"name":"Bolt pistol","keywords":["PISTOL"],"range":"12\"","A":1,"BS":"3+","S":4,"AP":0,"D":1},
+        {"name":"Melta rifle","keywords":["HEAVY","MELTA 2"],"range":"18\"","A":1,"BS":"3+","S":9,"AP":-4,"D":6},
+        {"name":"Multi-melta","keywords":["HEAVY","MELTA 2"],"range":"18\"","A":2,"BS":"4+","S":9,"AP":-4,"D":6,"perModels":3,"wargear_note":"1 por cada 3 modelos"}
       ],
       "melee_weapons":[{"name":"Close-combat weapon","range":"Melee","A":3,"WS":"3+","S":4,"AP":0,"D":1}],
       "defaultCount":3},
@@ -276,11 +278,26 @@ const RAW_UNITS = {
       "defaultCount":1}
   ],
   orks: [
-    {"name":"Warboss","points":85,"keywords":["INFANTRY","CHARACTER"],"stats":{"M":"6\"","T":5,"SV":"4+","InvSV":"5+","W":6,"LD":"6+","OC":1},
-      "abilities":["Might Is Right: this unit has +1 to hit rolls in melee (permanent, unconditional)"],
-      "meleeHitBonus":1,
-      "ranged_weapons":[{"name":"Kustom shoota","keywords":["RAPID FIRE 2"],"range":"18\"","A":4,"BS":"5+","S":4,"AP":0,"D":1}],
-      "melee_weapons":[{"name":"Kustom choppa","keywords":["CLEAVE 1"],"range":"Melee","A":6,"WS":"2+","S":8,"AP":-2,"D":2}],
+    {"name":"Warboss","points":85,"keywords":["INFANTRY","CHARACTER"],"stats":{"M":"6\"","T":6,"SV":"4+","InvSV":"5+","W":6,"LD":"6+","OC":1},
+      "abilities":[
+        "Might Is Right: se a unidade fez charge move este turno, os ataques melee DESTE modelo têm +3 Attacks e +2 Strength",
+        "Boss' Ammo Runt: 1x por batalha por unidade, ao ser selecionada para disparar, os ataques ranged deste modelo têm +1 ao hit roll"
+      ],
+      "chargeBonus":{"attacks":3,"strength":2,"text":"Might Is Right: se a unidade fez charge move este turno, os ataques melee DESTE modelo têm +3 Attacks e +2 Strength."},
+      "onceAbilities":[
+        {"text":"Boss' Ammo Runt: ao ser selecionada para disparar, os ataques ranged deste modelo têm +1 ao hit roll.","scope":"battle","kind":"shooting","effect":"hitRollBonusRanged","value":1}
+      ],
+      "ranged_weapons":[
+        {"name":"Kombi-rokkit - Busta Rokkit","range":"24\"","A":1,"BS":"5+","S":10,"AP":-2,"D":3},
+        {"name":"Kombi-rokkit - Shoota","keywords":["LETHAL HITS","RAPID FIRE 1"],"lethalHitsExceptTargets":["MONSTER","VEHICLE"],"range":"18\"","A":2,"BS":"5+","S":4,"AP":0,"D":1},
+        {"name":"Kombi-skorcha - Shoota","keywords":["LETHAL HITS","RAPID FIRE 1"],"lethalHitsExceptTargets":["MONSTER","VEHICLE"],"range":"18\"","A":2,"BS":"5+","S":4,"AP":0,"D":1},
+        {"name":"Kombi-skorcha - Skorcha","keywords":["BLAST 1","TORRENT"],"range":"12\"","A":3,"BS":"N/A","S":5,"AP":0,"D":1},
+        {"name":"Kustom shoota","keywords":["LETHAL HITS","RAPID FIRE 2"],"lethalHitsExceptTargets":["MONSTER","VEHICLE"],"range":"18\"","A":4,"BS":"5+","S":4,"AP":0,"D":1}
+      ],
+      "melee_weapons":[
+        {"name":"Kustom choppa","keywords":["CLEAVE 2"],"range":"Melee","A":6,"WS":"2+","S":7,"AP":-2,"D":2},
+        {"name":"Power klaw","range":"Melee","A":6,"WS":"2+","S":12,"AP":-2,"D":2}
+      ],
       "defaultCount":1, "leader_for":["Boyz"]},
     {"name":"Bigboss","points":55,"keywords":["INFANTRY","CHARACTER"],"stats":{"M":"6\"","T":5,"SV":"4+","W":5,"LD":"7+","OC":1},
       "abilities":["Breakin' Heads: this model's melee weapons have [SUSTAINED HITS 1] (permanent)"],
@@ -639,7 +656,11 @@ function weaponBlockedReason(attacker, weapon, phaseKey) {
   return null;
 }
 function maxModelsAttacking(attacker, weapon) {
-  const total = attackingGroupsFor(attacker, weapon).reduce((s, g) => s + g.liveCount, 0);
+  const owners = attackingGroupsFor(attacker, weapon);
+  let total = owners.reduce((s, g) => s + g.liveCount, 0);
+  // weapon.perModels: "1 por cada N modelos" (ex: Multi-melta do Eradicator
+  // Squad) — o teto conta os modelos iniciais do esquadrão, não os vivos.
+  if (typeof weapon.perModels === "number") total = Math.min(total, Math.floor(owners.reduce((s, g) => s + g.initialCount, 0) / weapon.perModels));
   return (typeof weapon.maxModels === "number") ? Math.min(total, weapon.maxModels) : total;
 }
 // HAZARDOUS (11ª edição, core_rules_reference.md): depois de a unidade
@@ -933,7 +954,7 @@ function weaponKeywordNotes(weapon) {
 const BOX_LIMITS = {
   "Captain with Relic Shield": 1, "Librarian": 1, "Chaplain with Jump Pack": 1, "Ancient": 1,
   "Intercessor Squad": 10, "Vanguard Veteran Squad with Jump Packs": 5,
-  "Eradicator Squad with Heavy Bolters": 3, "Land Speeder": 1,
+  "Eradicator Squad with Heavy Bolters": 6, "Land Speeder": 1,
   "Warboss": 1, "Bigboss": 1, "Bannernob": 1, "Painboy": 1, "Weirdboy": 1,
   "Boyz": 20, "Gretchin": 10, "Wartrakk": 1, "Big Mek Dakkarig": 1,
   // Tyranids — miniaturas físicas que o utilizador possui (confirmado com
@@ -1250,14 +1271,9 @@ function datasheetHasUnitKeyword(datasheetName, kw) {
 function targetHasUnitKeyword(target, kw) {
   return target.groups.some(g => datasheetHasUnitKeyword(g.datasheetName, kw));
 }
-// Overlapping Detonations (Eradicator Squad) e semelhantes: concede uma
-// keyword de arma condicional a uma keyword de UNIDADE do alvo — a app já
-// sabe a datasheet do alvo confirmado, por isso decide isto sozinha (ao
-// contrário de HEAVY/Lethal Hits/Synapse, que dependem de algo físico só o
-// jogador sabe). Devolve o weapon tal como está se não houver nenhuma
-// condição estruturada aplicável, ou uma cópia com a keyword extra incluída.
-// Overlapping Detonations dá BLAST X contra alvos que NÃO são MONSTER/
-// VEHICLE (a regra real é o oposto do que a app tinha antes — corrigido).
+// Keywords/estatísticas de arma condicionais ao alvo ou à unidade atacante.
+// (A antiga conditionalBlastVsMonsterVehicle do Eradicator Squad — Overlapping
+// Detonations — foi removida: a datasheet 11ª desta unidade já não a tem.)
 // Soma um bónus fixo a um valor de Strength/Damage que tanto pode ser um
 // número (ex: 1) como notação de dados (ex: "D3", "D6+1") — usado pelo
 // Waaagh! Energy do Weirdboy, que escala S/D com o tamanho do esquadrão.
@@ -1268,16 +1284,20 @@ function addToDiceOrNumber(value, bonus) {
   if (m) return m[1] + "+" + ((parseInt(m[2] || "0", 10)) + bonus);
   return value;
 }
+// Might Is Right (Warboss): se a unidade fez charge move este turno
+// (c.chargedThisTurn, perguntado antes dos hits), os ataques melee DESTE
+// modelo — só as armas da datasheet que tem chargeBonus — ganham +A e +S.
+function chargeBonusWeapon(weapon, c, phaseKey) {
+  if (!weapon || phaseKey !== "fight" || c.chargedThisTurn !== true) return weapon;
+  const ds = findDatasheet(library, weapon.sourceDatasheet);
+  const cb = ds && ds.chargeBonus;
+  if (!cb) return weapon;
+  return Object.assign({}, weapon, { A: addToDiceOrNumber(weapon.A, cb.attacks || 0), S: addToDiceOrNumber(weapon.S, cb.strength || 0) });
+}
 function conditionalWeaponKeywords(attacker, weapon, target) {
   if (!attacker || !weapon) return weapon;
   for (const name of attacker.datasheetNames) {
     const ds = findDatasheet(library, name);
-    const cond = ds && ds.conditionalBlastVsMonsterVehicle;
-    if (target && cond && cond.weapon === weapon.name && !hasKeyword(weapon, "BLAST")) {
-      if (!targetHasUnitKeyword(target, "MONSTER") && !targetHasUnitKeyword(target, "VEHICLE")) {
-        return Object.assign({}, weapon, { keywords: (weapon.keywords || []).concat(["BLAST " + cond.value]) });
-      }
-    }
     // Waaagh! Energy (Weirdboy): S/D da 'Eadbanger escalam com o Nº de
     // modelos VIVOS da unidade Boyz que lidera, na MESMA ativação (não do
     // alvo) — por isso lê attacker.groups, nunca target. A 10+ modelos
@@ -1542,6 +1562,8 @@ const state = {
     // SYMBIOTIC TARGETING (Exocrine) e GRISLY SPECTACLE (Haruspex)
     symbioticTarget: null, grislyDone: {},
     neuralAskedInstance: null, neuralTargetId: null,
+    // Boss' Ammo Runt: decisão por ativação (unidade+fase) -> "yes"/"no".
+    ammoRuntChoice: {},
   },
 };
 
@@ -1704,7 +1726,7 @@ function startNewGame() {
       u.groups.forEach(g => { g.liveCount = g.initialCount; g.woundsRemainingOnCurrent = g.stats.W; });
     });
   });
-  state.game = { round: 1, activePlayerKey: "playerA", phase: "command", ended: false, checklist: {}, battleshockRolls: {}, battleshockSynapse: {}, advanceRoll: { unitId: "", die: null }, chargeRoll: { unitId: "", dice: [] }, score: { playerA: [], playerB: [] }, actedByPhaseInstance: {}, usedWeaponsByUnit: {}, onceAbilityUsed: {}, alphaWarriorAskedInstance: null, alphaWarriorTargetId: null, symbioticTarget: null, grislyDone: {}, neuralAskedInstance: null, neuralTargetId: null };
+  state.game = { round: 1, activePlayerKey: "playerA", phase: "command", ended: false, checklist: {}, battleshockRolls: {}, battleshockSynapse: {}, advanceRoll: { unitId: "", die: null }, chargeRoll: { unitId: "", dice: [] }, score: { playerA: [], playerB: [] }, actedByPhaseInstance: {}, usedWeaponsByUnit: {}, onceAbilityUsed: {}, alphaWarriorAskedInstance: null, alphaWarriorTargetId: null, symbioticTarget: null, grislyDone: {}, neuralAskedInstance: null, neuralTargetId: null, ammoRuntChoice: {} };
   state.cycle = emptyCycle();
   state.attackLog = [];
 }
@@ -2970,6 +2992,10 @@ function renderAttackCycle(phaseKey) {
     const combatOnceCard = renderOnceAbilitiesCard("combat", "Abilities \"once per battle\" ligadas a combate");
     if (combatOnceCard) wrap.appendChild(combatOnceCard);
   }
+  if (phaseKey === "shooting") {
+    const shootOnceCard = renderOnceAbilitiesCard("shooting", "Abilities \"once per battle\" ligadas a tiro");
+    if (shootOnceCard) wrap.appendChild(shootOnceCard);
+  }
 
   if (instances.length === 0 && c.step === 0) {
     wrap.appendChild(el("div", { class: "empty", text: 'Ainda não há unidades configuradas. Vai ao separador "Setup" e adiciona unidades aos dois jogadores primeiro.' }));
@@ -2984,8 +3010,25 @@ function renderAttackCycle(phaseKey) {
   const attackerWeapons = attacker ? weaponsForPhase(attacker, phaseKey) : [];
   const rawWeapon = attacker && c.weaponIdx !== "" ? attackerWeapons[c.weaponIdx] : null;
   const target = findInstance(c.targetId);
-  const weapon = conditionalWeaponKeywords(attacker, rawWeapon, target);
+  const weapon = chargeBonusWeapon(conditionalWeaponKeywords(attacker, rawWeapon, target), c, phaseKey);
   if (!attacker || !weapon || !target) { c.step = 0; return renderAttackCycle(phaseKey); }
+  // BOSS' AMMO RUNT (Warboss): 1x por batalha por unidade, ao ser selecionada
+  // para disparar, os ataques ranged DESTE modelo têm +1 ao hit roll — entra
+  // na soma de modificadores ao hit roll (limitada a ±1). A decisão é por
+  // ativação (unidade+fase); só se pergunta se ainda não foi gasta.
+  const ammoRuntInfo = (() => {
+    if (phaseKey !== "shooting") return null;
+    const dsA = findDatasheet(library, weapon.sourceDatasheet);
+    const idx = dsA ? (dsA.onceAbilities || []).findIndex(a => a.effect === "hitRollBonusRanged") : -1;
+    if (idx < 0) return null;
+    const ability = dsA.onceAbilities[idx];
+    return { ability, key: onceAbilityKey(attacker, dsA, idx), actKey: phaseInstanceKey() + "-" + attacker.id };
+  })();
+  const ammoRuntChoice = ammoRuntInfo ? state.game.ammoRuntChoice[ammoRuntInfo.actKey] : undefined;
+  const ammoRuntAvailable = !!ammoRuntInfo && ammoRuntChoice === undefined && !isOnceAbilityUsed(ammoRuntInfo.key, ammoRuntInfo.ability);
+  const ammoRuntBonusValue = (ammoRuntInfo && ammoRuntChoice === "yes") ? ammoRuntInfo.ability.value : 0;
+  // Might Is Right: pergunta "fez charge move?" quando a arma tem chargeBonus.
+  const chargeBonusInfo = (phaseKey === "fight" && (findDatasheet(library, weapon.sourceDatasheet) || {}).chargeBonus) || null;
   // Nome a mostrar na badge "quem rola" de cada passo — sempre o jogador
   // dono da unidade + a unidade em si, para nunca haver dúvida.
   const attackerRollerName = attacker.ownerName + " (" + unitLiveLabel(attacker) + ")";
@@ -3017,6 +3060,12 @@ function renderAttackCycle(phaseKey) {
   const symb = state.game.symbioticTarget;
   if (symb && symb.key === phaseInstanceKey() && attacker.faction === "Tyranids" && String(symb.targetId) === String(target.id)) {
     banner.appendChild(el("div", { text: "🎯 Symbiotic Targeting ativo contra esta unidade: podes repetir um hit roll de 1 (só até ao fim desta fase).", style: "font-size:11px;color:var(--gold);margin-top:6px;clear:both;" }));
+  }
+  // TOTAL OBLITERATION (Eradicator Squad): contra alvos MONSTER/VEHICLE pode
+  // re-rolar hit, wound e Damage — só lembrete (re-rolar é físico).
+  const toDs = findDatasheet(library, weapon.sourceDatasheet);
+  if (toDs && toDs.totalObliteration && (targetHasUnitKeyword(target, "MONSTER") || targetHasUnitKeyword(target, "VEHICLE"))) {
+    banner.appendChild(el("div", { text: "🎯 Total Obliteration — podes re-rolar hit, wound e Damage.", style: "font-size:11px;color:var(--gold);margin-top:6px;clear:both;" }));
   }
   wrap.appendChild(banner);
 
@@ -3058,7 +3107,11 @@ function renderAttackCycle(phaseKey) {
   // Lethal Hits condicional a ter carregado este turno (ability de
   // unidade, ex: Vanguard Assault) — só relevante em combate corpo a corpo.
   const chargeLethalHitsText = chargeLethalHitsAbility(weapon, phaseKey);
-  const lethalHitsActive = !!chargeLethalHitsText && c.chargedThisTurn === true;
+  // LETHAL HITS: keyword da própria arma (opcionalmente só contra alvos SEM
+  // certas keywords de unidade — ex: Warboss "non-MONSTER/VEHICLE", campo
+  // lethalHitsExceptTargets) OU a ability condicional a charge (Vanguard).
+  const weaponLethalHits = hasKeyword(weapon, "LETHAL HITS") && !(weapon.lethalHitsExceptTargets || []).some(k => targetHasUnitKeyword(target, k));
+  const lethalHitsActive = weaponLethalHits || (!!chargeLethalHitsText && c.chargedThisTurn === true);
   // ANTI-X Y+: se o alvo tiver a keyword X (confirmado automaticamente via
   // datasheet, nunca perguntado — não depende de nada físico na mesa),
   // qualquer wound roll ≥ Y é sempre critical wound, mesmo abaixo do
@@ -3076,7 +3129,7 @@ function renderAttackCycle(phaseKey) {
   // é travada a ±1 aqui, num só sítio. O BS entra sem corte intermédio (um
   // BS melhorado abaixo de 2+ ainda conta para o roll) e só o resultado
   // final é limitado a 2+ (1 natural falha sempre) / 7 (auto-falha).
-  const hitRollModifiersRaw = c.hitAdjust + heavyBonus + meleeHitBonusValue - damagedPenaltyValue - suppressedPenaltyValue - engagedPenaltyValue - sabHitPenaltyValue;
+  const hitRollModifiersRaw = c.hitAdjust + heavyBonus + ammoRuntBonusValue + meleeHitBonusValue - damagedPenaltyValue - suppressedPenaltyValue - engagedPenaltyValue - sabHitPenaltyValue;
   const hitRollModifiersTotal = Math.max(-1, Math.min(1, hitRollModifiersRaw));
   const effHitThreshold = hitThreshold === null ? null : Math.max(2, Math.min(7, hitThreshold - c.bsAdjust - hitRollModifiersTotal));
   // Toughness da unidade-alvo: a maior Toughness entre os grupos vivos, não
@@ -3194,6 +3247,24 @@ function renderAttackCycle(phaseKey) {
       return wrap;
     }
 
+    if (ammoRuntAvailable) {
+      const card = el("div", { class: "card" });
+      card.appendChild(renderRollerBadge("attacker", attackerRollerName, "Boss' Ammo Runt — 1x por batalha, ao selecionar a unidade para disparar."));
+      card.appendChild(el("div", { class: "step-hint", text: "🔫 " + ammoRuntInfo.ability.text, style: "color:var(--gold);font-weight:600;font-size:13px;" }));
+      card.appendChild(el("h3", { text: "Usar Boss' Ammo Runt nesta ativação? (+1 ao hit roll, gasta o uso da batalha)" }));
+      const sel = el("select");
+      [["", "— escolher —"], ["yes", "Sim, usar"], ["no", "Não usar"]].forEach(([v, t]) => sel.appendChild(el("option", { value: v, text: t })));
+      sel.onchange = e => {
+        if (e.target.value === "") return;
+        state.game.ammoRuntChoice[ammoRuntInfo.actKey] = e.target.value;
+        if (e.target.value === "yes") toggleOnceAbilityUsed(ammoRuntInfo.key, ammoRuntInfo.ability);
+        render();
+      };
+      card.appendChild(sel);
+      wrap.appendChild(card);
+      return wrap;
+    }
+
     if (needsAttacksRollStep && c.attacksRolled === null) {
       const bonusSentence = attacksBonus ? " Depois soma-se o bónus de +" + attacksBonus + " attacks (" + attacksBonusLabel(weapon, c, modelsAttacking) + ") antes de perguntar os hits." : "";
       wrap.appendChild(renderNumberStep({
@@ -3230,11 +3301,11 @@ function renderAttackCycle(phaseKey) {
     // Lethal Hits condicional a ter carregado este turno (ex: Vanguard
     // Assault) — pergunta antes do passo de hits, já que muda o que os 6
     // não modificados vão fazer no passo seguinte.
-    if (chargeLethalHitsText && c.chargedThisTurn === null) {
+    if ((chargeLethalHitsText || chargeBonusInfo) && c.chargedThisTurn === null) {
       const card = el("div", { class: "card" });
-      card.appendChild(renderRollerBadge("attacker", attackerRollerName, "Condição de Lethal Hits — confirma antes de rolar os hits."));
-      card.appendChild(el("div", { class: "step-hint", text: "⚔️ " + chargeLethalHitsText, style: "color:var(--gold);font-weight:600;font-size:13px;" }));
-      card.appendChild(el("h3", { text: "Esta unidade carregou este turno? (ativa Lethal Hits)" }));
+      card.appendChild(renderRollerBadge("attacker", attackerRollerName, "Condição de charge — confirma antes de rolar os hits."));
+      card.appendChild(el("div", { class: "step-hint", text: "⚔️ " + [chargeLethalHitsText, chargeBonusInfo && chargeBonusInfo.text].filter(Boolean).join(" · "), style: "color:var(--gold);font-weight:600;font-size:13px;" }));
+      card.appendChild(el("h3", { text: "Esta unidade fez charge move este turno?" }));
       const sel = el("select");
       [["", "— escolher —"], ["yes", "Sim"], ["no", "Não"]].forEach(([v, t]) => {
         const o = el("option", { value: v, text: t });
@@ -3269,7 +3340,7 @@ function renderAttackCycle(phaseKey) {
         // benefício de cobertura (-1 ao BS do atacante) mesmo sem terreno —
         // só lembrete (cobertura entra pelo ajuste manual), só tiro (BS).
         explainLine: (phaseKey === "shooting" && !hasKeyword(weapon, "IGNORES COVER") && target.groups.some(g => { const d = findDatasheet(library, g.datasheetName); return d && d.stealth; })) ? "Alvo com STEALTH — tem benefício de cobertura (-1 ao BS do atacante), mesmo sem terreno." : null,
-        bonusChips: (heavyBonus ? ["HEAVY: +1 ao acertar"] : []).concat(meleeHitBonusValue ? ["+" + meleeHitBonusValue + " ao acertar (melee, permanente)"] : []).concat(damagedPenaltyValue ? ["DAMAGED: -" + damagedPenaltyValue + " ao acertar"] : []).concat(suppressedPenaltyValue ? ["SUPPRESSED (Indiscriminate Detonations): -1 ao acertar"] : []).concat(engagedPenaltyValue ? ["ENGAGED (MONSTER/VEHICLE, arma não [CLOSE-QUARTERS]): -1 ao acertar"] : []).concat(sabHitPenaltyValue ? ["PSYCHOLOGICAL SABOTEUR: -1 ao acertar"] : []).concat(hitRollModifiersRaw !== hitRollModifiersTotal ? ["LIMITE ±1: modificadores ao hit roll somam " + (hitRollModifiersRaw > 0 ? "+" : "") + hitRollModifiersRaw + " → aplicado " + (hitRollModifiersTotal > 0 ? "+" : "") + hitRollModifiersTotal] : []),
+        bonusChips: (heavyBonus ? ["HEAVY: +1 ao acertar"] : []).concat(ammoRuntBonusValue ? ["BOSS' AMMO RUNT: +" + ammoRuntBonusValue + " ao acertar (1x por batalha)"] : []).concat(meleeHitBonusValue ? ["+" + meleeHitBonusValue + " ao acertar (melee, permanente)"] : []).concat(damagedPenaltyValue ? ["DAMAGED: -" + damagedPenaltyValue + " ao acertar"] : []).concat(suppressedPenaltyValue ? ["SUPPRESSED (Indiscriminate Detonations): -1 ao acertar"] : []).concat(engagedPenaltyValue ? ["ENGAGED (MONSTER/VEHICLE, arma não [CLOSE-QUARTERS]): -1 ao acertar"] : []).concat(sabHitPenaltyValue ? ["PSYCHOLOGICAL SABOTEUR: -1 ao acertar"] : []).concat(hitRollModifiersRaw !== hitRollModifiersTotal ? ["LIMITE ±1: modificadores ao hit roll somam " + (hitRollModifiersRaw > 0 ? "+" : "") + hitRollModifiersRaw + " → aplicado " + (hitRollModifiersTotal > 0 ? "+" : "") + hitRollModifiersTotal] : []),
         hint: statLabel(hitStat) + ": " + toHitValue(weapon, phaseKey) + (c.bsAdjust ? " · ajuste ao " + hitStat + ": " + (c.bsAdjust > 0 ? "+" : "") + c.bsAdjust : "") + (c.hitAdjust ? " · ajuste manual ao hit roll: " + (c.hitAdjust > 0 ? "+" : "") + c.hitAdjust : "") + attacksBonusSuffix,
         // [PSYCHIC] pode ignorar todos os modificadores a BS/WS e ao hit roll
         // (incl. cobertura) — o aviso cobre os DOIS controlos manuais e só
@@ -3317,7 +3388,7 @@ function renderAttackCycle(phaseKey) {
       } else {
         wrap.appendChild(renderNumberStep({
           title: "Desses hits, quantos foram um 6 não modificado (Lethal Hits)?",
-          hint: "⚔️ Lethal Hits ativo (esta unidade carregou este turno): cada 6 não modificado no hit roll fere automaticamente, sem wound roll para esses.",
+          hint: "⚔️ Lethal Hits ativo (" + (weaponLethalHits ? weapon.name + " tem [LETHAL HITS]" : "esta unidade carregou este turno") + "): cada 6 não modificado no hit roll fere automaticamente, sem wound roll para esses.",
           threshold: 6, stepKey: "lethalhits", max: effectiveHits, countLabel: "Hits críticos (6 não modificado)",
           initialValue: c.lethalHitCrits,
           onBack: backToHits,

@@ -43,10 +43,10 @@ test("Ferir: S5 vs T4 — maior → 3+", () => {
 
 test("Ferir: S8 vs T4 — dobro → 2+", () => {
   const win = loadApp();
-  const atk = addFullUnit(win, "playerA", "Warboss"); // Kustom choppa S8 (melee)
+  const atk = addFullUnit(win, "playerA", "Warboss"); // Power klaw S12 (melee)
   const tgt = addFullUnit(win, "playerB", "Intercessor Squad"); // T4
-  const wrap = toWoundStep(win, atk, "Kustom choppa", tgt, "fight");
-  assertEqual(explainText(wrap), "S8 é o dobro ou mais de T4 → 2+");
+  const wrap = toWoundStep(win, atk, "Power klaw", tgt, "fight");
+  assertEqual(explainText(wrap), "S12 é o dobro ou mais de T4 → 2+");
 });
 
 test("Ferir: ajuste manual reflete-se na linha sem contradizer o número mostrado", () => {
@@ -118,10 +118,10 @@ test("Ferir: sem a keyword do Anti-X, a linha fica só a comparação normal", (
 test("Ferir: com a keyword do Anti-X (Warboss é INFANTRY), a linha mostra a cláusula do crítico, via o ciclo real", () => {
   const win = loadApp();
   const atk = addFullUnit(win, "playerA", "Painboy"); // 'Urty syringe: ANTI-INFANTRY 4+, S2
-  const tgt = addFullUnit(win, "playerB", "Warboss"); // INFANTRY, T5
+  const tgt = addFullUnit(win, "playerB", "Warboss"); // INFANTRY, T6
   const wrap = toWoundStep(win, atk, "'Urty syringe", tgt, "fight");
   const line = explainText(wrap);
-  assertEqual(line, "T5 é o dobro ou mais de S2 → 6+; ANTI-INFANTRY 4+ → um 4+ ou mais fere sempre (crítico)");
+  assertEqual(line, "T6 é o dobro ou mais de S2 → 6+; ANTI-INFANTRY 4+ → um 4+ ou mais fere sempre (crítico)");
 });
 
 test("Salvar: quando fica impossível (>6), diz-o explicitamente", () => {

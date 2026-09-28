@@ -18,9 +18,13 @@ function auditWeapon(datasheetName, phaseKey, weaponName) {
     const maxModels = win.maxModelsAttacking(attacker, weapon);
     assertEqual(typeof weapon.A, "number", "esta função de auditoria só cobre Attacks fixo — " + weaponName + " tem A:" + weapon.A);
     const isTorrent = phaseKey === "shooting" && win.hasKeyword(weapon, "TORRENT");
+    // Boss' Ammo Runt (pergunta antes dos hits) — a auditoria não o usa.
+    win.__state.game.ammoRuntChoice[win.phaseInstanceKey() + "-" + attacker.id] = "no";
     const wrap = setupCycle(win, {
       attacker, weaponIdx, target, phaseKey, modelsAttacking: maxModels,
-      heavyStationary: true, chargedThisTurn: true,
+      // false (não true): evita os bónus de Might Is Right (+3 A) — o bónus
+      // de charge tem testes dedicados em warboss-eradicator.test.js.
+      heavyStationary: true, chargedThisTurn: false,
     });
     const expected = weapon.A * maxModels;
     if (isTorrent) {
