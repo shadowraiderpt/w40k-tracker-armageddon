@@ -208,4 +208,66 @@ test("Alvo sem STEALTH: sem lembrete; alvo STEALTH em combate (WS): sem lembrete
   assert(/Alvo com STEALTH/.test(toHitStep(win, atk, "Bolt rifle", stealthy, "shooting", { modelsAttacking: 10, heavyStationary: false }).textContent), "Neurolictor também tem Stealth");
 });
 
+// --- Soma dos modificadores ao Wound travada a ±1 (11ª) ------------------------
+function woundStepWith(win, atk, weaponName, tgt, phaseKey, extra) {
+  win.__state.cycle = win.__emptyCycle();
+  const c = win.__state.cycle;
+  c.attackerId = atk.id; c.weaponIdx = weaponByName(win, atk, phaseKey, weaponName); c.targetId = tgt.id;
+  c.step = 2; c.hits = 3; c.modelsAttacking = 1;
+  Object.assign(c, extra || {});
+  return win.renderAttackCycle(phaseKey);
+}
+test("Wound: manual +1, Litany +1 e Saboteur +1 somam +3 mas o modificador efetivo é +1", () => {
+  const win = loadApp();
+  // Termagants (Tyranids) com uma Chaplain (meleeWoundBonus 1) no grupo, um
+  // Neurolictor amigo e alvo Battle-shocked — combinação impossível no roster
+  // real (Litany é SM, Saboteur é Tyranid), por isso montada à mão.
+  const atk = addFullUnit(win, "playerA", "Termagants");
+  const real = win.findRealUnit(atk.id);
+  real.groups.push({ key: "leader", label: "Chaplain", datasheetName: "Chaplain with Jump Pack", stats: { W: 4, T: 4, SV: "3+" }, liveCount: 1, initialCount: 1, woundsRemainingOnCurrent: 4 });
+  real.datasheetNames.push("Chaplain with Jump Pack");
+  addFullUnit(win, "playerA", "Neurolictor");
+  const tgt = addFullUnit(win, "playerB", "Ancient"); // T4
+  win.findRealUnit(tgt.id).battleshocked = true;
+  const wrap = woundStepWith(win, win.findInstance(atk.id), "Chitinous claws and teeth", tgt, "fight", { woundAdjust: 1, saboteurWound: true });
+  // S3 vs T4 = 5+; +1 efetivo = 4+ (sem limite seria 2+)
+  assertEqual(wrap.querySelector(".threshold-number").textContent, "4+");
+  assert(/LIMITE ±1: modificadores somam \+3 → aplicado \+1/.test(wrap.textContent), "devia explicar o corte");
+});
+test("Wound: modificadores dentro de ±1 não mostram nenhum corte", () => {
+  const win = loadApp();
+  const atk = addFullUnit(win, "playerA", "Termagants");
+  const tgt = addFullUnit(win, "playerB", "Ancient");
+  const wrap = woundStepWith(win, atk, "Fleshborer", tgt, "shooting", { woundAdjust: 1 });
+  assert(!/LIMITE ±1/.test(wrap.textContent));
+});
+test("Wound: critThreshold do Anti-X não muda com o corte (Psychophage vs Librarian, +1 manual)", () => {
+  const win = loadApp();
+  const atk = addFullUnit(win, "playerA", "Psychophage");
+  const tgt = addFullUnit(win, "playerB", "Librarian");
+  win.__state.cycle = win.__emptyCycle();
+  const c = win.__state.cycle;
+  c.attackerId = atk.id; c.weaponIdx = weaponByName(win, atk, "fight", "Talons and betentacled maw"); c.targetId = tgt.id;
+  c.step = 3; c.wounds = 3; c.woundAdjust = 1;
+  assert(/≥4/.test(win.renderAttackCycle("fight").textContent));
+});
+
+// --- Stealth: escondido com [IGNORES COVER], mantido com [PSYCHIC] --------------
+test("Lembrete de Stealth some quando a arma tem [IGNORES COVER]", () => {
+  const win = loadApp();
+  const ds = win.findDatasheet(win.__library, "Intercessor Squad");
+  ds.ranged_weapons.find(w => w.name === "Bolt rifle").keywords.push("IGNORES COVER");
+  const atk = addFullUnit(win, "playerA", "Intercessor Squad");
+  const tgt = addFullUnit(win, "playerB", "Von Ryan's Leapers");
+  const wrap = toHitStep(win, atk, "Bolt rifle", tgt, "shooting", { modelsAttacking: 10, heavyStationary: false });
+  assert(!/Alvo com STEALTH/.test(wrap.textContent), "IGNORES COVER ignora o benefício de cobertura — sem lembrete");
+});
+test("Lembrete de Stealth mantém-se com [PSYCHIC] (ignorar é opcional)", () => {
+  const win = loadApp();
+  const atk = addFullUnit(win, "playerA", "Weirdboy");
+  const tgt = addFullUnit(win, "playerB", "Von Ryan's Leapers");
+  const wrap = toHitStep(win, atk, "'Eadbanger", tgt, "shooting", { modelsAttacking: 1 });
+  assert(/Alvo com STEALTH/.test(wrap.textContent));
+});
+
 run();

@@ -3077,7 +3077,14 @@ function renderAttackCycle(phaseKey) {
   const targetT = Math.max(...(targetLiveGroups.length ? targetLiveGroups : target.groups).map(g => Number(g.stats.T)));
   const rawWoundT = woundThreshold(weapon.S, targetT);
   const woundT = antiApplies ? Math.min(rawWoundT, antiInfo.threshold) : rawWoundT;
-  const effWoundThreshold = adjustedThreshold(woundT, c.woundAdjust + meleeWoundBonusValue + sabWoundBonusValue);
+  // Regra 11ª: um wound roll nunca é modificado mais de -1/+1 no TOTAL,
+  // seja qual for o nº de fontes — por isso a SOMA de todos os modificadores
+  // (ajuste manual + bónus automáticos, incluindo futuros) é travada a ±1
+  // aqui, num único sítio. Não afeta critThreshold (Anti-X usa o dado não
+  // modificado).
+  const woundModifiersRaw = c.woundAdjust + meleeWoundBonusValue + sabWoundBonusValue;
+  const woundModifiersTotal = Math.max(-1, Math.min(1, woundModifiersRaw));
+  const effWoundThreshold = adjustedThreshold(woundT, woundModifiersTotal);
 
   // Abilities de UNIDADE que dão InvSv a toda a unidade (ex: Bannernob)
   // aplicam-se a TODOS os grupos do alvo, não só ao grupo que já tem InvSV
@@ -3251,7 +3258,7 @@ function renderAttackCycle(phaseKey) {
         // STEALTH no alvo (Von Ryan's Leapers, Neurolictor): 11ª edição dá-lhe
         // benefício de cobertura (-1 ao BS do atacante) mesmo sem terreno —
         // só lembrete (cobertura entra pelo ajuste manual), só tiro (BS).
-        explainLine: (phaseKey === "shooting" && target.groups.some(g => { const d = findDatasheet(library, g.datasheetName); return d && d.stealth; })) ? "Alvo com STEALTH — tem benefício de cobertura (-1 ao BS do atacante), mesmo sem terreno." : null,
+        explainLine: (phaseKey === "shooting" && !hasKeyword(weapon, "IGNORES COVER") && target.groups.some(g => { const d = findDatasheet(library, g.datasheetName); return d && d.stealth; })) ? "Alvo com STEALTH — tem benefício de cobertura (-1 ao BS do atacante), mesmo sem terreno." : null,
         bonusChips: (heavyBonus ? ["HEAVY: +1 ao acertar"] : []).concat(meleeHitBonusValue ? ["+" + meleeHitBonusValue + " ao acertar (melee, permanente)"] : []).concat(damagedPenaltyValue ? ["DAMAGED: -" + damagedPenaltyValue + " ao acertar"] : []).concat(suppressedPenaltyValue ? ["SUPPRESSED (Indiscriminate Detonations): -1 ao acertar"] : []).concat(engagedPenaltyValue ? ["ENGAGED (MONSTER/VEHICLE, arma não [CLOSE-QUARTERS]): -1 ao acertar"] : []).concat(sabHitPenaltyValue ? ["PSYCHOLOGICAL SABOTEUR: -1 ao acertar"] : []),
         hint: statLabel(hitStat) + ": " + toHitValue(weapon, phaseKey) + (c.hitAdjust ? " · ajuste manual aplicado: " + (c.hitAdjust > 0 ? "+" : "") + c.hitAdjust : "") + attacksBonusSuffix,
         // Hit roll nunca é modificado mais de -1/+1 no total (regra 11ª
@@ -3330,6 +3337,7 @@ function renderAttackCycle(phaseKey) {
     if (lethalCrits) woundBonusChips.push("LETHAL HITS: " + lethalCrits + " wound(s) automático(s)");
     if (sabWoundBonusValue) woundBonusChips.push("PSYCHOLOGICAL SABOTEUR: +1 ao ferir");
     if (meleeWoundBonusValue) woundBonusChips.push("+" + meleeWoundBonusValue + " ao ferir (melee, permanente)");
+    if (woundModifiersRaw !== woundModifiersTotal) woundBonusChips.push("LIMITE ±1: modificadores somam " + (woundModifiersRaw > 0 ? "+" : "") + woundModifiersRaw + " → aplicado " + (woundModifiersTotal > 0 ? "+" : "") + woundModifiersTotal);
     // wound-roll anterior (sem a parte automática do Lethal Hits) — usado só
     // para pré-preencher se voltares aqui via "Corrigir passo anterior".
     const woundsRollPrefill = c.wounds != null ? Math.max(0, c.wounds - lethalCrits) : null;
