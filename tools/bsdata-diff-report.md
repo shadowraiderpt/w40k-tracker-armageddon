@@ -2,7 +2,7 @@
 
 > O BSData é mantido pela comunidade; confirmar no Wahapedia/datasheet oficial antes de aplicar. As abilities com mecânica própria na app têm de ser revistas à mão.
 
-Gerado em 2026-09-28 a partir de `C:\Users\UTILIZ~1\AppData\Local\Temp\bsdata_tmp`. Formato: `campo: app → BSData`. Só diferenças.
+Gerado em 2026-10-01 a partir de `C:\Users\UTILIZ~1\AppData\Local\Temp\bsdata_tmp`. Formato: `campo: app → BSData`. Só diferenças.
 
 ## Captain with Relic Shield (space_marines)
 

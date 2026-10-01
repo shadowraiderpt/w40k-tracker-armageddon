@@ -397,8 +397,8 @@ const RAW_UNITS = {
         "Alpha Warrior: enquanto lidera uma unidade, as armas dessa unidade têm [SUSTAINED HITS 1]",
         "Death Blow: se for destruído em combate antes de ter lutado nesta fase, rola 1D6 — num 4+, não é removido, luta depois do atacante terminar os ataques, e só depois é removido"
       ],
-      "sustainedHitsAura": 1,
-      "leadingOnly": ["sustainedHitsAura"],
+      "weaponKeywordAura": {"keyword": "SUSTAINED HITS", "value": 1},
+      "leadingOnly": ["weaponKeywordAura"],
       // Pode liderar os Gargoyles (confirmado pelo utilizador). Os Neurogaunts
       // continuam a ser liderados só pelo Neurotyrant.
       "leader_for":["Gargoyles"],
@@ -1302,13 +1302,41 @@ function hailKey(attacker) { return phaseInstanceKey() + "-" + attacker.id + "-h
 // Dakkarig: Blitzkannon +6 A contra alvos que NÃO sejam MONSTER/VEHICLE) e
 // Hail of Bolts (Intercessor Squad: +2 A nos Bolt rifles contra o alvo
 // escolhido pelo jogador, perguntado no ciclo de ataque).
+// Acrescenta (ou reforça) uma keyword de arma com valor numérico opcional,
+// mantendo sempre o maior valor já presente em vez de somar.
+function grantWeaponKeyword(w, keyword, value) {
+  const existing = keywordValue(w, keyword);
+  if (existing != null && (value == null || existing >= value)) return w; // já tem igual ou maior
+  const kws = (w.keywords || []).filter(k => k.toUpperCase().indexOf(keyword.toUpperCase()) !== 0);
+  const text = value != null ? (keyword + " " + Math.max(existing || 0, value)) : keyword;
+  return Object.assign({}, w, { keywords: kws.concat([text]) });
+}
 function auraAdjustedWeapon(attacker, weapon, target) {
   let w = weapon;
   for (const name of attacker.datasheetNames) {
     const ds = findDatasheet(library, name);
     if (!ds) continue;
-    if (ds.sustainedHitsAura && !hasKeyword(w, "SUSTAINED HITS") && !leadingBlocked(attacker, ds, "sustainedHitsAura") && datasheetLiveInUnit(attacker, ds.name)) {
-      w = Object.assign({}, w, { keywords: (w.keywords || []).concat(["SUSTAINED HITS " + ds.sustainedHitsAura]) });
+    // Bug (01/10/2026): ability de LÍDER que concede uma keyword de arma a TODOS
+    // os modelos da unidade que lidera ("weapons equipped by models in that
+    // unit have the [X] ability") — mecanismo genérico, não específico do
+    // Winged Tyranid Prime (campo `weaponKeywordAura`). Vale para armas de
+    // tiro E de combate, de QUALQUER datasheet dentro da Attached Unit
+    // (inclusive as do próprio líder), enquanto este estiver vivo e a
+    // liderar (leadingOnly) — nunca sozinho. Se a arma já tiver a keyword
+    // com valor maior, mantém-se o maior (nunca soma).
+    // Auditoria 01/10/2026 (fonte BSData 11ª, textos "weapons equipped by models
+    // in that unit have [X]"): dos líderes/characters da app, só o Winged
+    // Tyranid Prime (Alpha Warrior) tem esta ability. Captain (Finest Hour,
+    // Rites of Battle), Librarian (Mental Fortress, Psychic Hood), Chaplain
+    // (Litany of Hate, Exhortation of Rage), Ancient (Unbreakable Duty,
+    // Astartes Banner), Warboss (Might Is Right, Boss' Ammo Runt), Bigboss
+    // (Sumfin' to Prove), Bannernob (Waaagh! Banner), Painboy (Crude Surgery),
+    // Weirdboy (Waaagh! Energy) e Neurotyrant (Node Lash, Neuroloids) não
+    // concedem keyword de arma à unidade — não implementar nada para eles sem
+    // o Gonçalo confirmar o texto exato da datasheet.
+    const wka = ds.weaponKeywordAura;
+    if (wka && !leadingBlocked(attacker, ds, "weaponKeywordAura") && datasheetLiveInUnit(attacker, ds.name)) {
+      w = grantWeaponKeyword(w, wka.keyword, wka.value);
     }
     const bv = ds.attacksBonusVsNonMV;
     if (target && bv && bv.weapon === w.name && w.sourceDatasheet === ds.name && !unitIsMV(target)) {
