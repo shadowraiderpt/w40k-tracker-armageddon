@@ -16,11 +16,18 @@ function loadApp() {
   const htmlPath = path.join(__dirname, "..", "index.html");
   let html = fs.readFileSync(htmlPath, "utf8");
 
+  // jsdom (sem resourceLoader) não carrega <script src> externos — version.js
+  // é inline aqui para o bridge/testes poderem ler window.APP_VERSION tal
+  // como o browser real o carrega via <script src="./version.js">.
+  const versionJs = fs.readFileSync(path.join(__dirname, "..", "version.js"), "utf8");
+  html = html.replace('<script src="./version.js"></script>', "<script>" + versionJs + "</script>");
+
   const bridge = "\n<script>\n" +
     "window.__state = state;\n" +
     "window.__library = library;\n" +
     "window.__RAW_UNITS = RAW_UNITS;\n" +
     "window.__emptyCycle = emptyCycle;\n" +
+    "window.APP_VERSION = typeof APP_VERSION !== 'undefined' ? APP_VERSION : null;\n" +
     "</script>\n";
   if (!html.includes("</body>")) throw new Error("index.html sem </body> — layout mudou, ajustar load-app.js");
   html = html.replace("</body>", bridge + "</body>");

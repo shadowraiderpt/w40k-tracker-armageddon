@@ -7,10 +7,17 @@
 // ícones, fotos das unidades), com atualização em segundo plano sempre que
 // há rede. Pedidos a outras origens (ex: Google Fonts) passam direto para a
 // rede — nunca guardamos nem interceptamos o que não é nosso.
-const CACHE_NAME = "w40k-tracker-armageddon-v3";
+//
+// CACHE_NAME vem de APP_VERSION (version.js, fonte única partilhada com o
+// rodapé da app) — nunca escrito à mão aqui. Subir o APP_VERSION a cada
+// deploy (tools/bump-version.py) é o que faz este worker detetar uma versão
+// nova e a app mostrar o aviso "Nova versão disponível — recarregar".
+importScripts("./version.js");
+const CACHE_NAME = "w40k-tracker-armageddon-" + APP_VERSION;
 const PRECACHE_URLS = [
   "./",
   "./index.html",
+  "./version.js",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png",
@@ -23,11 +30,15 @@ const PRECACHE_URLS = [
   "./unit_photos/captain-with-relic-shield.jpg",
   "./unit_photos/chaplain-with-jump-pack.jpg",
   "./unit_photos/eradicator-squad-with-heavy-bolters.jpg",
+  "./unit_photos/exocrine.jpg",
+  "./unit_photos/gargoyles.jpg",
   "./unit_photos/gretchin.jpg",
+  "./unit_photos/haruspex.jpg",
   "./unit_photos/intercessor-squad.jpg",
   "./unit_photos/land-speeder.jpg",
   "./unit_photos/librarian.jpg",
   "./unit_photos/neurogaunts.jpg",
+  "./unit_photos/neurolictor.jpg",
   "./unit_photos/neurotyrant.jpg",
   "./unit_photos/painboy.jpg",
   "./unit_photos/psychophage.jpg",
@@ -49,7 +60,11 @@ self.addEventListener("install", event => {
       // Uma foto em falta (unit_photos é opcional, ver README dessa pasta)
       // não pode impedir o resto de ficar em cache.
       .catch(() => {})
-      .then(() => self.skipWaiting())
+    // SEM self.skipWaiting() aqui: a versão nova fica "waiting" até o
+    // jogador confirmar o aviso (ou até não haver nenhuma página aberta a
+    // controlar) — index.html só manda skipWaiting quando é mesmo a
+    // primeira instalação (sem controller) ou quando o jogador clica
+    // "Recarregar" no aviso de nova versão.
   );
 });
 
@@ -59,6 +74,10 @@ self.addEventListener("activate", event => {
       .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
+});
+
+self.addEventListener("message", event => {
+  if (event.data === "skipWaiting") self.skipWaiting();
 });
 
 self.addEventListener("fetch", event => {

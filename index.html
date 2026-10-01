@@ -36,6 +36,9 @@
   h1{font-family:var(--display-font);font-size:26px;margin:0 0 2px;text-align:center;letter-spacing:0.07em;text-transform:uppercase;}
   .subtitle{font-size:11px;color:var(--text-sec);text-align:center;margin-bottom:14px;}
   .devbanner{background:#2e2410;border:1px solid var(--gold);color:#e8c27a;font-size:11px;padding:8px 10px;border-radius:4px;margin-bottom:14px;line-height:1.4;}
+  .app-footer{margin-top:18px;padding-top:10px;border-top:1px solid var(--border);font-size:10px;color:var(--text-sec);text-align:center;}
+  .update-banner{position:fixed;left:0;right:0;bottom:0;z-index:50;background:var(--gold);color:#1a1200;font-size:13px;font-weight:600;padding:10px 14px;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;box-shadow:0 -2px 10px rgba(0,0,0,0.4);}
+  .update-banner button{background:#1a1200;color:var(--gold);border:none;border-radius:4px;padding:6px 12px;font-weight:700;cursor:pointer;}
   .tabs{display:flex;gap:6px;margin-bottom:14px;}
   .tab{
     flex:1;min-height:48px;display:flex;align-items:center;justify-content:center;
@@ -177,6 +180,7 @@
 </head>
 <body>
 <div id="root"></div>
+<script src="./version.js"></script>
 
 <script>
 // ===========================================================================
@@ -387,7 +391,7 @@ const RAW_UNITS = {
   // geral das datasheets (classificação factual, não uma regra/ability),
   // só para o ANTI-X continuar a funcionar; convém confirmar/corrigir.
   tyranids: [
-    {"name":"Winged Tyranid Prime","points":65,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","keywords":["INFANTRY","CHARACTER"],
+    {"name":"Winged Tyranid Prime","points":65,"source":"BSData 11ª (auditoria 28/09/2026)","verifiedAt":"2026-09-28","pointsSource":"MFM v1.4, consultado 2026-09-28","keywords":["INFANTRY","CHARACTER","FLY","GREAT DEVOURER","SYNAPSE","VANGUARD INVADER"],
       "stats":{"M":"12\"","T":5,"SV":"4+","W":6,"LD":"7+","OC":1},
       "ranged_weapons":[],
       "melee_weapons":[{"name":"Prime talons","range":"Melee","A":6,"WS":"2+","S":6,"AP":-1,"D":2}],
@@ -842,19 +846,6 @@ function renderOnceAbilitiesCard(kind, title) {
   return card;
 }
 
-// ALPHA WARRIOR (Winged Tyranid Prime): no Command phase do seu próprio
-// controlador, pode escolher uma unidade Tyranids amiga a 12" ou menos —
-// essa unidade ganha reroll de hit rolls e wound rolls de 1 até ao próximo
-// Command phase. Ao contrário do que a app tinha antes (Sustained Hits 1
-// "enquanto lidera uma unidade" — errado, nem depende de liderança), isto é
-// um buff a OUTRA unidade, opcional, perguntado uma vez por instância de
-// Command phase (mesma chave que actedByPhaseInstance). A distância de 12"
-// é física — a app só lista as unidades Tyranids amigas e deixa o jogador
-// confirmar/escolher, nunca decide sozinha. O reroll de 1s em si não é
-// computado (é o jogador que re-rola fisicamente antes de reportar o
-// resultado final) — a app só lembra que a unidade tem esse direito
-// enquanto o ciclo de ataque dela estiver aberto (ver banner em
-// renderAttackCycle).
 // NEURAL DISRUPTION (Neurolictor): no Command phase do dono, escolhe uma
 // unidade inimiga a 12" (distância física — o jogador escolhe) que testa
 // Battle-shock. Perguntado uma vez por instância de Command phase.
@@ -1646,11 +1637,6 @@ const state = {
     // sozinha (ver onceAbilities nas datasheets, renderOnceAbilitiesCard).
     // Chave "idDaUnidade|datasheet|índice" -> { round: N em que foi marcada }.
     onceAbilityUsed: {},
-    // ALPHA WARRIOR (Winged Tyranid Prime): unidade Tyranids amiga
-    // escolhida no Command phase, com reroll de 1s até ao próximo Command
-    // phase — alphaWarriorAskedInstance guarda o phaseInstanceKey() já
-    // resolvido, para não perguntar de novo dentro do mesmo Command phase.
-    alphaWarriorAskedInstance: null, alphaWarriorTargetId: null,
     // SYMBIOTIC TARGETING (Exocrine) e GRISLY SPECTACLE (Haruspex)
     symbioticTarget: null, grislyDone: {},
     neuralAskedInstance: null, neuralTargetId: null,
@@ -1773,6 +1759,17 @@ function render() {
     "⚠ Pré-visualização em JavaScript puro para validar o fluxo antes de construir a app completa em React+Vite (é preciso instalar Node.js para esse passo). " +
     "O estado grava-se sozinho neste dispositivo (localStorage) e a app funciona offline depois da primeira visita (service worker). Hits/wounds/saves têm ditado por voz (🎤, pt-PT) como alternativa ao clique. Cada fase mostra os Core Stratagems relevantes (referência — a app nunca os ativa sozinha)."
   }));
+  if (swUpdateAvailable) {
+    const banner = el("div", { class: "update-banner" });
+    banner.appendChild(el("span", { text: "⬆️ Nova versão disponível." }));
+    const btn = el("button", { text: "Recarregar" });
+    btn.onclick = () => {
+      if (swWaitingWorker) swWaitingWorker.postMessage("skipWaiting");
+      else window.location.reload();
+    };
+    banner.appendChild(btn);
+    document.body.appendChild(banner);
+  }
 
   const tabs = el("div", { class: "tabs" });
   const tabSetup = el("div", { class: "tab" + (state.tab === "setup" ? " active" : ""), text: "1. Setup", onclick: () => { state.tab = "setup"; render(); } });
@@ -1784,6 +1781,8 @@ function render() {
   if (state.tab === "setup") root.appendChild(renderSetup());
   else if (state.tab === "estado") root.appendChild(renderEstadoJogo());
   else root.appendChild(renderTurno());
+
+  root.appendChild(el("div", { class: "app-footer", text: "Versão: " + (typeof APP_VERSION !== "undefined" ? APP_VERSION : "?") }));
 
   saveStateToLocalStorage();
 }
@@ -1827,7 +1826,7 @@ function startNewGame() {
       u.groups.forEach(g => { g.liveCount = g.initialCount; g.woundsRemainingOnCurrent = g.stats.W; });
     });
   });
-  state.game = { round: 1, activePlayerKey: "playerA", phase: "command", ended: false, checklist: {}, battleshockRolls: {}, battleshockSynapse: {}, advanceRoll: { unitId: "", die: null }, chargeRoll: { unitId: "", dice: [] }, score: { playerA: [], playerB: [] }, actedByPhaseInstance: {}, usedWeaponsByUnit: {}, onceAbilityUsed: {}, alphaWarriorAskedInstance: null, alphaWarriorTargetId: null, symbioticTarget: null, grislyDone: {}, neuralAskedInstance: null, neuralTargetId: null, ammoRuntChoice: {}, hailChoice: {}, disruptChosen: {} };
+  state.game = { round: 1, activePlayerKey: "playerA", phase: "command", ended: false, checklist: {}, battleshockRolls: {}, battleshockSynapse: {}, advanceRoll: { unitId: "", die: null }, chargeRoll: { unitId: "", dice: [] }, score: { playerA: [], playerB: [] }, actedByPhaseInstance: {}, usedWeaponsByUnit: {}, onceAbilityUsed: {}, symbioticTarget: null, grislyDone: {}, neuralAskedInstance: null, neuralTargetId: null, ammoRuntChoice: {}, hailChoice: {}, disruptChosen: {} };
   state.cycle = emptyCycle();
   state.attackLog = [];
 }
@@ -5359,6 +5358,12 @@ function renderAllocOrderPicker(groups, onConfirm) {
   return wrap;
 }
 
+// swUpdateAvailable/swWaitingWorker: declarados ANTES do primeiro render()
+// (o render() já as lê no rodapé/banner) — ver o registo do service worker
+// mais abaixo, onde ficam atualizadas.
+let swUpdateAvailable = false;
+let swWaitingWorker = null;
+
 loadStateFromLocalStorage();
 render();
 
@@ -5366,9 +5371,39 @@ render();
 // não atrasar o primeiro render. Uma falha aqui (ex: a servir de file://
 // sem servidor, onde service workers não correm) nunca deve impedir a app
 // de funcionar normalmente — só perde-se a cache offline.
+// O service worker instala a versão nova em segundo plano e fica à espera
+// (sem skipWaiting automático) até clicares "Recarregar" no aviso; só aí é
+// que troca de versão e a página recarrega sozinha ("controllerchange").
+// Nunca recarrega nem decide por ti sozinho.
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+    navigator.serviceWorker.register("./service-worker.js").then(reg => {
+      if (reg.waiting && navigator.serviceWorker.controller) {
+        swUpdateAvailable = true; swWaitingWorker = reg.waiting; render();
+      }
+      reg.addEventListener("updatefound", () => {
+        const newWorker = reg.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener("statechange", () => {
+          if (newWorker.state === "installed") {
+            if (navigator.serviceWorker.controller) {
+              // já havia uma versão a controlar a página — isto é mesmo uma
+              // atualização, não a primeira instalação.
+              swUpdateAvailable = true; swWaitingWorker = newWorker; render();
+            } else {
+              // primeira visita: ativa logo, sem aviso (nada para substituir).
+              newWorker.postMessage("skipWaiting");
+            }
+          }
+        });
+      });
+    }).catch(() => {});
+  });
+  let reloading = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloading) return;
+    reloading = true;
+    window.location.reload();
   });
 }
 </script>
