@@ -4715,8 +4715,11 @@ function renderPicker(instances, phaseKey) {
     const reopenCard = el("div", { class: "step-hint", style: "margin:8px 0;padding:8px;background:var(--surface2);border-radius:6px;" });
     reopenCard.appendChild(el("div", { text: "Unidades que já terminaram esta fase:", style: "font-weight:600;margin-bottom:4px;" }));
     actedUnitsHere.forEach(u => {
-      const row = el("div", { style: "display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:4px;" });
-      row.appendChild(el("span", { text: u.ownerName + ": " + unitLiveLabel(u) }));
+      // Continuam listadas (não desaparecem) e selecionáveis depois de
+      // "Reabrir" — para corrigir um erro, Fire Overwatch, Death Blow, etc.
+      // A cinzento + ✓ para não se confundirem com unidades ainda por atuar.
+      const row = el("div", { style: "display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:4px;color:var(--text-sec);" });
+      row.appendChild(el("span", { text: "✓ " + u.ownerName + ": " + unitLiveLabel(u) + " — já atacou nesta fase" }));
       const btn = el("button", { class: "small", text: "Reabrir esta unidade nesta fase" });
       btn.onclick = () => {
         const arr = actedSetForCurrentPhase();
@@ -4844,7 +4847,7 @@ function renderPicker(instances, phaseKey) {
       f2.appendChild(el("div", { class: "step-hint", text: phaseKey === "fight" ? "Esta unidade não tem armas de combate." : "Esta unidade não tem armas de tiro." }));
     } else if (availableWeaponCount === 0) {
       const blockedAll = attackerWeapons.filter(w => !isWeaponUsed(attacker.id, w) && weaponBlockedReason(attacker, w, phaseKey));
-      f2.appendChild(el("div", { class: "step-hint", text: blockedAll.length ? "Nenhuma arma disponível: " + weaponBlockedReason(attacker, blockedAll[0], phaseKey) + "." : "Esta unidade já usou todas as armas disponíveis nesta fase — escolhe outra unidade, ou confirma \"terminar esta unidade\" no último ataque resolvido." }));
+      f2.appendChild(el("div", { class: "step-hint", text: blockedAll.length ? "Nenhuma arma disponível: " + weaponBlockedReason(attacker, blockedAll[0], phaseKey) + "." : "Esta unidade já usou todas as armas disponíveis nesta fase." }));
     } else {
       const sel2 = el("select");
       sel2.appendChild(el("option", { value: "", text: "— escolher —" }));
@@ -4867,6 +4870,41 @@ function renderPicker(instances, phaseKey) {
       f2.appendChild(sel2);
     }
     card.appendChild(f2);
+
+    // Regra geral (bug bloqueante 01/10/2026): nenhum ecrã pode exigir uma
+    // ação que só existe noutro ecrã já fechado. "Confirmar e terminar esta
+    // unidade" só existia no ecrã de Resultado do ÚLTIMO ataque — uma
+    // unidade que ficasse sem armas disponíveis (todas usadas, ou nenhuma
+    // para esta fase) depois de escolher "resolver outro ataque com esta
+    // unidade" ficava sem nenhuma ação possível aqui. Estes dois botões
+    // ficam sempre disponíveis diretamente no picker nesse estado: terminar
+    // a unidade (sem precisar de resolver outro ataque fictício) e desfazer
+    // o último ataque desta unidade (reabre a última arma usada e repõe os
+    // modelos mortos), usando os mesmos mecanismos já existentes
+    // (markUnitActedThisPhase, undoLastAttack).
+    if (availableWeaponCount === 0) {
+      const stuckCard = el("div", { style: "margin-top:8px;display:flex;flex-direction:column;gap:6px;" });
+      const endBtn = el("button", { class: "primary", text: "Terminar esta unidade nesta fase" });
+      endBtn.onclick = () => {
+        markUnitActedThisPhase(attacker.id);
+        state.cycle = emptyCycle();
+        render();
+      };
+      stuckCard.appendChild(endBtn);
+      const lastEntry = state.attackLog[0];
+      if (lastEntry && String(lastEntry.attackerId) === String(attacker.id)) {
+        const undoBtn = el("button", { text: "Desfazer último ataque desta unidade" });
+        undoBtn.onclick = () => {
+          undoLastAttack();
+          c.weaponIdx = ""; c.targetId = "";
+          c.rapidFireHalfRange = null; c.meltaHalfRange = null; c.blastCleaveModels = null;
+          c.abilityAttacksAdjust = 0;
+          render();
+        };
+        stuckCard.appendChild(undoBtn);
+      }
+      card.appendChild(stuckCard);
+    }
   }
 
   const f3 = el("div", { class: "field" });
